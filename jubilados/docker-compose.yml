@@ -1,0 +1,79 @@
+version: "3.9"
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: jubilados-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: jubilados
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations/001_create_jubilados_tables.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+    networks:
+      - jubilados-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d jubilados"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  jubilados-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jubilados-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      # ── Banco de Dados (PostgreSQL local) ─────────────────────────
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=jubilados;Username=postgres;Password=${DB_PASSWORD};SSL Mode=Disable
+
+      # ── Ambiente NFe ──────────────────────────────────────────────
+      - NFe__Ambiente=${NFE_AMBIENTE:-2}
+      - NFe__CodigoUF=${NFE_CODIGO_UF:-25}
+      - NFe__CodigoMunicipio=${NFE_CODIGO_MUNICIPIO:-2507507}
+      - NFe__ModeloNFe=55
+      - NFe__VersaoNFe=4.00
+      - NFe__SchemaPath=schemas
+      - NFe__SefazUrlHomologacao=https://nfe-homologacao.svrs.rs.gov.br/ws/NfeAutorizacao/NfeAutorizacao4.asmx
+      - NFe__SefazUrlProducao=https://nfe.svrs.rs.gov.br/ws/NfeAutorizacao/NfeAutorizacao4.asmx
+      - NFe__SefazUrlConsultaHom=https://nfe-homologacao.svrs.rs.gov.br/ws/NfeConsulta/NfeConsulta4.asmx
+      - NFe__SefazUrlConsultaProd=https://nfe.svrs.rs.gov.br/ws/NfeConsulta/NfeConsulta4.asmx
+      - NFe__SefazUrlStatusHom=https://nfe-homologacao.svrs.rs.gov.br/ws/NfeStatusServico/NfeStatusServico4.asmx
+      - NFe__SefazUrlStatusProd=https://nfe.svrs.rs.gov.br/ws/NfeStatusServico/NfeStatusServico4.asmx
+      - NFe__SefazUrlInutilizacaoHom=https://nfe-homologacao.svrs.rs.gov.br/ws/NfeInutilizacao/NfeInutilizacao4.asmx
+      - NFe__SefazUrlInutilizacaoProd=https://nfe.svrs.rs.gov.br/ws/NfeInutilizacao/NfeInutilizacao4.asmx
+
+      # ── Runtime ───────────────────────────────────────────────────
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      - ASPNETCORE_URLS=http://+:8080
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    volumes:
+      - ./schemas:/app/schemas:ro
+
+    networks:
+      - jubilados-net
+
+volumes:
+  pgdata:
+
+networks:
+  jubilados-net:
+    driver: bridge

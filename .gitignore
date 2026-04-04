@@ -1,0 +1,23 @@
+# Build outputs
+**/bin/
+**/obj/
+
+# User-specific files
+*.user
+*.suo
+.vs/
+
+# Rider
+.idea/
+
+# Environment / secrets
+appsettings.Development.json
+*.pfx
+*.p12
+
+# Docker volumes
+postgres_data/
+
+# OS
+.DS_Store
+Thumbs.db

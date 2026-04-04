@@ -1,0 +1,11 @@
+.env
+*.pfx
+*.p12
+bin/
+obj/
+.vs/
+*.user
+*.suo
+.idea/
+*.DS_Store
+logs/

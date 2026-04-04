@@ -1,0 +1,99 @@
+using System.Globalization;
+using Jubilados.Application.Configuration;
+using Jubilados.Application.Interfaces;
+using Jubilados.Application.Services;
+using Jubilados.Infrastructure.Data;
+using Jubilados.Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
+
+// Garante que todos os formatos numéricos usem ponto (.) como separador decimal
+// independente da cultura do SO (pt-BR usaria vírgula e quebraria o XML da SEFAZ)
+CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// ── Configuração ──────────────────────────────────────────────────────────────
+builder.Services.Configure<NFeOptions>(builder.Configuration.GetSection(NFeOptions.Section));
+
+// ── Banco de Dados (Supabase PostgreSQL via EF Core) ─────────────────────────
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' não configurada.");
+
+builder.Services.AddDbContext<JubiladosDbContext>(options =>
+    options.UseNpgsql(connectionString, npgsql =>
+    {
+        npgsql.CommandTimeout(60);
+    }));
+
+// ── Serviços da Aplicação (DI) ────────────────────────────────────────────────
+builder.Services.AddScoped<ICertificadoService, CertificadoService>();
+builder.Services.AddScoped<INFeService, NFeService>();
+builder.Services.AddScoped<InotaEntradaService, NotaEntradaService>();
+builder.Services.AddScoped<IManifestacaoService, ManifestacaoService>();
+
+// ── Controllers + Validação ───────────────────────────────────────────────────
+builder.Services.AddControllers()
+    .AddJsonOptions(opts =>
+    {
+        opts.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        opts.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+        opts.JsonSerializerOptions.DefaultIgnoreCondition =
+            System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+    });
+
+// ── Swagger / OpenAPI ─────────────────────────────────────────────────────────
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Jubilados — SaaS NFe API",
+        Version = "v1",
+        Description = "API para emissão de Nota Fiscal Eletrônica (NFe) multi-tenant.",
+        Contact = new OpenApiContact { Name = "Jubilados SaaS" }
+    });
+});
+
+// ── CORS (ajuste origens em produção) ────────────────────────────────────────
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+    });
+});
+
+// ── Health Check ──────────────────────────────────────────────────────────────
+builder.Services.AddHealthChecks()
+    .AddNpgSql(connectionString, name: "supabase-postgres");
+
+// ── Build App ─────────────────────────────────────────────────────────────────
+var app = builder.Build();
+
+// ── Migrations automáticas (opcional — recomendado só em dev) ─────────────────
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<JubiladosDbContext>();
+    await db.Database.MigrateAsync();
+}
+
+// ── Middleware Pipeline ───────────────────────────────────────────────────────
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Jubilados NFe API v1");
+    c.RoutePrefix = string.Empty; // Swagger na raiz
+});
+
+app.UseStaticFiles();
+
+app.UseCors();
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.MapControllers();
+app.MapHealthChecks("/health");
+
+app.Run();

@@ -1,0 +1,876 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jubilados NF-e — Painel SEFAZ</title>
+<style>
+  :root {
+    --primary: #2563eb; --primary-dark: #1d4ed8;
+    --success: #16a34a; --danger: #dc2626; --warn: #d97706;
+    --bg: #f8fafc; --card: #ffffff; --border: #e2e8f0;
+    --text: #1e293b; --muted: #64748b;
+    --step-active: #eff6ff; --step-done: #f0fdf4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; }
+  header { background: var(--primary); color: white; padding: 14px 24px; display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+  header h1 { font-size: 1.1rem; font-weight: 700; }
+  header .env-badge { margin-left: auto; background: #fbbf24; color: #78350f; border-radius: 6px; padding: 3px 12px; font-size:.8rem; font-weight:700; }
+  .container { max-width: 960px; margin: 0 auto; padding: 20px 16px 60px; }
+  .tabs { display: flex; gap: 2px; background: var(--border); border-radius: 10px; padding: 3px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab-btn { flex: 1; min-width: 110px; padding: 9px 8px; border: none; border-radius: 8px; font-size: .82rem; font-weight: 600; cursor: pointer; background: transparent; color: var(--muted); transition: all .15s; }
+  .tab-btn.active { background: white; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .tab-btn:hover:not(.active) { color: var(--text); }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+  .card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+  .card h2 { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
+  .card .subtitle { font-size: .83rem; color: var(--muted); margin-bottom: 18px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .span2 { grid-column: span 2; }
+  .span3 { grid-column: span 3; }
+  label { display: block; font-size: .78rem; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+  label .req { color: var(--danger); }
+  input, select, textarea { width: 100%; padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px; font-size: .88rem; color: var(--text); background: white; transition: border .15s; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+  textarea { resize: vertical; min-height: 60px; }
+  .field { display: flex; flex-direction: column; }
+  .btn { padding: 9px 20px; border: none; border-radius: 8px; font-size: .88rem; font-weight: 600; cursor: pointer; transition: background .15s, transform .1s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:active { transform: scale(.98); }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-success { background: var(--success); color: white; }
+  .btn-success:hover { background: #15803d; }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-danger:hover { background: #b91c1c; }
+  .btn-outline { background: white; color: var(--primary); border: 1px solid var(--primary); }
+  .btn-outline:hover { background: var(--step-active); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; align-items: center; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: .74rem; font-weight: 700; }
+  .badge-green { background: #dcfce7; color: #15803d; }
+  .badge-blue { background: #dbeafe; color: #1d4ed8; }
+  .badge-red { background: #fee2e2; color: #b91c1c; }
+  .badge-orange { background: #ffedd5; color: #c2410c; }
+  .badge-gray { background: #f1f5f9; color: #475569; }
+  .alert { padding: 11px 15px; border-radius: 8px; font-size: .86rem; margin-bottom: 14px; display: flex; gap: 9px; align-items: flex-start; }
+  .alert-info { background: #eff6ff; border: 1px solid #93c5fd; color: #1e40af; }
+  .alert-success { background: #f0fdf4; border: 1px solid #86efac; color: #15803d; }
+  .alert-error { background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; }
+  .alert-warn { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+  .result-box { background: #0f172a; color: #e2e8f0; border-radius: 10px; padding: 18px; font-family: Consolas, monospace; font-size: .8rem; white-space: pre-wrap; word-break: break-all; max-height: 420px; overflow-y: auto; margin-top: 14px; }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .section-title { font-size: .71rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 12px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
+  .estado-bar { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; margin-bottom: 18px; display: flex; gap: 14px; flex-wrap: wrap; font-size: .8rem; align-items: center; }
+  .estado-bar strong { color: var(--muted); }
+  .estado-item { display: flex; gap: 4px; align-items: center; }
+  .file-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 18px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; }
+  .file-zone:hover, .file-zone.dragover { border-color: var(--primary); background: var(--step-active); }
+  .file-zone .icon { font-size: 1.8rem; }
+  .file-zone p { font-size: .83rem; color: var(--muted); margin-top: 5px; }
+  .file-zone.ok { border-color: var(--success); background: var(--step-done); }
+  .file-zone.ok p { color: var(--success); }
+  .item-linha { background: var(--bg); border-radius: 8px; padding: 12px; margin-bottom: 10px; border: 1px solid var(--border); position: relative; }
+  .item-linha .remover { position: absolute; top: 8px; right: 10px; background: none; border: none; cursor: pointer; color: var(--danger); font-size: 1rem; }
+  .stepper { display: flex; background: var(--card); border-radius: 10px; border: 1px solid var(--border); overflow: hidden; margin-bottom: 20px; }
+  .step-item { flex: 1; padding: 12px 8px; text-align: center; font-size: .78rem; font-weight: 600; color: var(--muted); cursor: pointer; border-right: 1px solid var(--border); transition: background .15s; }
+  .step-item:last-child { border-right: none; }
+  .step-item .num { width: 24px; height: 24px; border-radius: 50%; background: var(--border); color: var(--muted); font-size: .78rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 4px; }
+  .step-item.active { background: var(--step-active); color: var(--primary); }
+  .step-item.active .num { background: var(--primary); color: white; }
+  .step-item.done { background: var(--step-done); color: var(--success); }
+  .step-item.done .num { background: var(--success); color: white; }
+  .tipo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tipo-btn { padding: 10px; border: 2px solid var(--border); border-radius: 8px; background: white; cursor: pointer; font-size: .82rem; font-weight: 600; text-align: center; transition: all .15s; }
+  .tipo-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .tipo-btn.selected { border-color: var(--primary); background: var(--step-active); color: var(--primary); }
+  @media (max-width: 600px) { .grid2, .grid3, .tipo-grid { grid-template-columns: 1fr; } .span2, .span3 { grid-column: span 1; } }
+</style>
+</head>
+<body>
+<header>
+  <div style="font-size:1.4rem">🧾</div>
+  <h1>Jubilados NF-e</h1>
+  <span class="env-badge">🟡 HOMOLOGACAO</span>
+</header>
+<div class="container">
+  <div class="estado-bar" id="estadoBar">
+    <strong>Estado:</strong>
+    <div class="estado-item">Empresa: <span id="stEmpresa" class="badge badge-red">nao selecionada</span></div>
+    <div class="estado-item">Certificado: <span id="stCert" class="badge badge-red">nao enviado</span></div>
+    <div class="estado-item">Destinatario: <span id="stCliente" class="badge badge-red">nao cadastrado</span></div>
+    <div class="estado-item">Produto: <span id="stProduto" class="badge badge-red">nao cadastrado</span></div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('emitir',this)">Emitir NF-e</button>
+    <button class="tab-btn" onclick="showTab('consultar',this)">Consultar SEFAZ</button>
+    <button class="tab-btn" onclick="showTab('status',this)">Status Servico</button>
+    <button class="tab-btn" onclick="showTab('inutilizar',this)">Inutilizar</button>
+    <button class="tab-btn" onclick="showTab('manifestar',this)">Manifestacao</button>
+    <button class="tab-btn" onclick="showTab('entrada',this)">Notas Entrada</button>
+    <button class="tab-btn" onclick="showTab('nuvemfiscal',this)">☁️ Nuvem Fiscal</button>
+  </div>
+
+  <!-- ABA EMITIR -->
+  <div id="tab-emitir" class="tab-pane active">
+    <div class="stepper">
+      <div class="step-item active" id="nav0" onclick="irParaPasso(0)"><div class="num" id="num0">1</div><br>Empresa + Cert.</div>
+      <div class="step-item" id="nav1" onclick="irParaPasso(1)"><div class="num" id="num1">2</div><br>Destinatario</div>
+      <div class="step-item" id="nav2" onclick="irParaPasso(2)"><div class="num" id="num2">3</div><br>Produto</div>
+      <div class="step-item" id="nav3" onclick="irParaPasso(3)"><div class="num" id="num3">4</div><br>Emitir NF-e</div>
+    </div>
+    <!-- Passo 0 -->
+    <div id="passo0">
+      <div class="card">
+        <h2>1. Dados da Empresa Emitente</h2>
+        <p class="subtitle">Preencha os dados do CNPJ emissor.</p>
+        <div class="section-title">Identificacao</div>
+        <div class="grid2" style="margin-bottom:12px">
+          <div class="field"><label>CNPJ <span class="req">*</span></label><input id="e_cnpj" placeholder="00000000000000" maxlength="18"></div>
+          <div class="field"><label>Razao Social <span class="req">*</span></label><input id="e_razao" placeholder="Empresa Ltda"></div>
+          <div class="field"><label>Nome Fantasia</label><input id="e_fantasia" placeholder="Fantasia"></div>
+          <div class="field"><label>Inscricao Estadual <span class="req">*</span></label><input id="e_ie" placeholder="000000000000"></div>
+          <div class="field"><label>E-mail</label><input id="e_email" type="email" placeholder="contato@empresa.com"></div>
+          <div class="field"><label>Telefone</label><input id="e_fone" placeholder="83999999999"></div>
+        </div>
+        <div class="section-title">Endereco</div>
+        <div class="grid3" style="margin-bottom:12px">
+          <div class="field span2"><label>Logradouro <span class="req">*</span></label><input id="e_logradouro" placeholder="Rua das Flores"></div>
+          <div class="field"><label>Numero <span class="req">*</span></label><input id="e_numero" placeholder="100"></div>
+          <div class="field"><label>Complemento</label><input id="e_complemento" placeholder="Sala 1"></div>
+          <div class="field"><label>Bairro <span class="req">*</span></label><input id="e_bairro" placeholder="Centro"></div>
+          <div class="field span2"><label>Municipio <span class="req">*</span></label><input id="e_municipio" placeholder="Joao Pessoa"></div>
+          <div class="field"><label>UF <span class="req">*</span></label><select id="e_uf"><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option selected>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option></select></div>
+          <div class="field"><label>CEP <span class="req">*</span></label><input id="e_cep" placeholder="58000000" maxlength="9"></div>
+        </div>
+        <div id="alertaEmpresa"></div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="cadastrarEmpresa()"><span id="spinEmpresa" class="spinner" style="display:none"></span> Cadastrar Empresa</button>
+          <small id="empresaIdLabel" style="color:var(--muted)"></small>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Certificado Digital A1</h2>
+        <p class="subtitle">Arquivo .pfx do certificado e-CNPJ. Obrigatorio para assinar e enviar a SEFAZ.</p>
+        <div class="grid2">
+          <div class="field">
+            <label>Arquivo .pfx <span class="req">*</span></label>
+            <div class="file-zone" id="fileZone" onclick="document.getElementById('pfxInput').click()" ondragover="fileDragOver(event)" ondragleave="fileDragLeave()" ondrop="fileDrop(event)">
+              <div class="icon">📁</div>
+              <p id="fileZoneText">Clique ou arraste o arquivo .pfx aqui</p>
+            </div>
+            <input type="file" id="pfxInput" accept=".pfx,.p12" style="display:none" onchange="pfxSelecionado(event)">
+          </div>
+          <div class="field">
+            <label>Senha do Certificado <span class="req">*</span></label>
+            <input type="password" id="certSenha" placeholder="Senha do .pfx">
+            <br>
+            <label>Validade (opcional)</label>
+            <input type="date" id="certValidade">
+          </div>
+        </div>
+        <div id="alertaCert"></div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="enviarCertificado()"><span id="spinCert" class="spinner" style="display:none"></span> Enviar Certificado</button>
+        </div>
+      </div>
+      <div class="actions" style="justify-content:flex-end">
+        <button class="btn btn-success" onclick="irParaPasso(1)">Proximo: Destinatario</button>
+      </div>
+    </div>
+    <!-- Passo 1 -->
+    <div id="passo1" style="display:none">
+      <div class="card">
+        <h2>2. Dados do Destinatario</h2>
+        <p class="subtitle">Pessoa fisica ou juridica que recebera a nota fiscal.</p>
+        <div class="grid2" style="margin-bottom:12px">
+          <div class="field"><label>Nome / Razao Social <span class="req">*</span></label><input id="c_nome" placeholder="Cliente Teste"></div>
+          <div class="field"><label>CPF / CNPJ <span class="req">*</span></label><input id="c_cpfcnpj" placeholder="00000000000000"></div>
+          <div class="field"><label>Inscricao Estadual</label><input id="c_ie" placeholder="ISENTO"></div>
+          <div class="field"><label>E-mail</label><input id="c_email" type="email" placeholder="cliente@email.com"></div>
+          <div class="field"><label>Telefone</label><input id="c_fone" placeholder="11999999999"></div>
+        </div>
+        <div class="section-title">Endereco</div>
+        <div class="grid3" style="margin-bottom:12px">
+          <div class="field span2"><label>Logradouro <span class="req">*</span></label><input id="c_logradouro"></div>
+          <div class="field"><label>Numero <span class="req">*</span></label><input id="c_numero"></div>
+          <div class="field"><label>Complemento</label><input id="c_complemento"></div>
+          <div class="field"><label>Bairro <span class="req">*</span></label><input id="c_bairro"></div>
+          <div class="field span2"><label>Municipio <span class="req">*</span></label><input id="c_municipio"></div>
+          <div class="field"><label>Cod. Municipio IBGE</label><input id="c_codmun" placeholder="2507507" maxlength="7"></div>
+          <div class="field"><label>UF <span class="req">*</span></label><select id="c_uf"><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option selected>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option></select></div>
+          <div class="field"><label>CEP <span class="req">*</span></label><input id="c_cep" placeholder="58000000" maxlength="9"></div>
+        </div>
+        <div id="alertaCliente"></div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="cadastrarCliente()"><span id="spinCliente" class="spinner" style="display:none"></span> Cadastrar Destinatario</button>
+          <small id="clienteIdLabel" style="color:var(--muted)"></small>
+        </div>
+      </div>
+      <div class="actions" style="justify-content:space-between">
+        <button class="btn btn-outline" onclick="irParaPasso(0)">Voltar</button>
+        <button class="btn btn-success" onclick="irParaPasso(2)">Proximo: Produto</button>
+      </div>
+    </div>
+    <!-- Passo 2 -->
+    <div id="passo2" style="display:none">
+      <div class="card">
+        <h2>3. Produto / Servico</h2>
+        <p class="subtitle">Cadastre o produto que sera incluido na nota.</p>
+        <div class="grid2" style="margin-bottom:12px">
+          <div class="field"><label>Nome do Produto <span class="req">*</span></label><input id="p_nome" value="Produto Teste Homologacao"></div>
+          <div class="field"><label>Descricao</label><input id="p_descricao" value="Produto para teste de emissao NF-e em homologacao"></div>
+          <div class="field"><label>NCM <span class="req">*</span></label><input id="p_ncm" value="84713012" maxlength="8"></div>
+          <div class="field"><label>CFOP <span class="req">*</span></label><input id="p_cfop" value="5102" maxlength="4"></div>
+          <div class="field"><label>CST</label><input id="p_cst" value="00" maxlength="3"></div>
+          <div class="field"><label>CSOSN</label><input id="p_csosn" value="102" maxlength="3"></div>
+          <div class="field"><label>Unidade</label><select id="p_unidade"><option selected>UN</option><option>PC</option><option>KG</option><option>LT</option><option>MT</option><option>CX</option></select></div>
+          <div class="field"><label>Preco Unitario (R$) <span class="req">*</span></label><input id="p_preco" type="number" step="0.01" value="100.00" min="0.01"></div>
+        </div>
+        <div id="alertaProduto"></div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="cadastrarProduto()"><span id="spinProduto" class="spinner" style="display:none"></span> Cadastrar Produto</button>
+          <small id="produtoIdLabel" style="color:var(--muted)"></small>
+        </div>
+      </div>
+      <div class="actions" style="justify-content:space-between">
+        <button class="btn btn-outline" onclick="irParaPasso(1)">Voltar</button>
+        <button class="btn btn-success" onclick="irParaPasso(3)">Proximo: Emitir NF-e</button>
+      </div>
+    </div>
+    <!-- Passo 3 -->
+    <div id="passo3" style="display:none">
+      <div class="card">
+        <h2>4. Emitir Nota Fiscal Eletronica</h2>
+        <p class="subtitle">Configure os dados e clique em Emitir NF-e para enviar a SEFAZ.</p>
+        <div class="alert alert-warn">Voce esta em AMBIENTE DE HOMOLOGACAO. As notas emitidas nao tem validade fiscal.</div>
+        <div class="grid2" style="margin-bottom:12px">
+          <div class="field"><label>Natureza da Operacao <span class="req">*</span></label><input id="n_natureza" value="Venda de Mercadoria"></div>
+          <div class="field"><label>Serie <span class="req">*</span></label><input id="n_serie" value="1" maxlength="3"></div>
+          <div class="field"><label>Frete (R$)</label><input id="n_frete" type="number" step="0.01" value="0" min="0"></div>
+          <div class="field"><label>Desconto Geral (R$)</label><input id="n_desconto" type="number" step="0.01" value="0" min="0"></div>
+          <div class="field span2"><label>Informacoes Complementares</label><input id="n_info" placeholder="Observacoes adicionais. NOTA SEM VALOR FISCAL - EMITIDA PARA FINS DE TESTE" value="NOTA SEM VALOR FISCAL - EMITIDA PARA FINS DE TESTE"></div>
+        </div>
+        <div class="section-title" style="display:flex;justify-content:space-between;align-items:center">
+          Itens da Nota
+          <button class="btn btn-outline" style="font-size:.78rem;padding:5px 12px" onclick="adicionarItem()">+ Item</button>
+        </div>
+        <div id="itensContainer" style="margin-bottom:12px"></div>
+        <div id="alertaEmitir"></div>
+        <div class="actions">
+          <button class="btn btn-success" style="font-size:.96rem;padding:11px 28px" onclick="emitirNFe()">
+            <span id="spinEmitir" class="spinner" style="display:none"></span> Emitir NF-e em Homologacao
+          </button>
+        </div>
+      </div>
+      <div id="resultadoCard" style="display:none" class="card">
+        <h2 id="resultadoTitulo">Resultado</h2>
+        <p class="subtitle" id="resultadoSubtitulo"></p>
+        <div id="resultadoBadge" style="margin-bottom:10px"></div>
+        <div id="consultarNfeBtn" style="display:none;margin-bottom:10px">
+          <button class="btn btn-outline" onclick="consultarUltimaNfeSefaz()">Verificar na SEFAZ</button>
+        </div>
+        <pre class="result-box" id="resultadoJson"></pre>
+      </div>
+      <div class="actions" style="margin-top:10px">
+        <button class="btn btn-outline" onclick="irParaPasso(2)">Voltar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABA CONSULTAR -->
+  <div id="tab-consultar" class="tab-pane">
+    <div class="card">
+      <h2>Consultar NF-e na SEFAZ</h2>
+      <p class="subtitle">Consulta direta ao WebService NFeConsultaProtocolo4 da SEFAZ homologacao usando a chave de acesso.</p>
+      <div class="grid2">
+        <div class="field span2"><label>Empresa ID <span class="req">*</span></label><input id="cs_empresaId" placeholder="UUID da empresa"></div>
+        <div class="field span2"><label>Chave de Acesso (44 digitos) <span class="req">*</span></label><input id="cs_chave" placeholder="25260421362844000152550010000000201876103102" maxlength="44"></div>
+      </div>
+      <div id="alertaConsultar"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="consultarSefaz()"><span id="spinConsultar" class="spinner" style="display:none"></span> Consultar na SEFAZ</button>
+        <button class="btn btn-outline" onclick="preencherUltimaChave()">Usar ultima NF-e emitida</button>
+      </div>
+    </div>
+    <div id="resultConsultar" style="display:none" class="card">
+      <h2 id="rcTitulo">Resultado</h2>
+      <div id="rcBadge" style="margin-bottom:10px"></div>
+      <pre class="result-box" id="rcJson"></pre>
+    </div>
+  </div>
+
+  <!-- ABA STATUS -->
+  <div id="tab-status" class="tab-pane">
+    <div class="card">
+      <h2>Status do Servico SEFAZ</h2>
+      <p class="subtitle">Consulta o NFeStatusServico4 — verifica se os servidores da SEFAZ SVRS estao operacionais.</p>
+      <div class="field" style="max-width:400px">
+        <label>Empresa ID <span class="req">*</span></label>
+        <input id="st_empresaId" placeholder="UUID da empresa">
+      </div>
+      <div id="alertaStatus"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="consultarStatus()"><span id="spinStatus" class="spinner" style="display:none"></span> Consultar Status</button>
+        <button class="btn btn-outline" onclick="document.getElementById('st_empresaId').value=estado.empresaId||''">Usar empresa cadastrada</button>
+      </div>
+    </div>
+    <div id="resultStatus" style="display:none" class="card">
+      <h2 id="stTitulo">Resultado</h2>
+      <div id="stBadge" style="margin-bottom:10px"></div>
+      <pre class="result-box" id="stJson"></pre>
+    </div>
+  </div>
+
+  <!-- ABA INUTILIZAR -->
+  <div id="tab-inutilizar" class="tab-pane">
+    <div class="card">
+      <h2>Inutilizar Numeracao NF-e</h2>
+      <p class="subtitle">Inutiliza uma faixa de numeros no NFeInutilizacao4. Use apenas quando necessario.</p>
+      <div class="alert alert-warn">A inutilizacao e IRREVERSIVEL. Os numeros inutilizados nao poderao ser reutilizados.</div>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field span2"><label>Empresa ID <span class="req">*</span></label><input id="in_empresaId" placeholder="UUID da empresa"></div>
+        <div class="field"><label>Serie <span class="req">*</span></label><input id="in_serie" value="1" maxlength="3"></div>
+        <div class="field"><!-- spacer --></div>
+        <div class="field"><label>Numero Inicial <span class="req">*</span></label><input id="in_ini" type="number" min="1" value="1"></div>
+        <div class="field"><label>Numero Final <span class="req">*</span></label><input id="in_fim" type="number" min="1" value="1"></div>
+        <div class="field span2">
+          <label>Justificativa <span class="req">*</span> (min. 15 caracteres)</label>
+          <textarea id="in_justificativa" placeholder="Justificativa para inutilizacao dos numeros que nao foram utilizados" style="min-height:64px"></textarea>
+        </div>
+      </div>
+      <div id="alertaInutilizar"></div>
+      <div class="actions">
+        <button class="btn btn-danger" onclick="inutilizar()"><span id="spinInutilizar" class="spinner" style="display:none"></span> Inutilizar Numeracao</button>
+        <button class="btn btn-outline" onclick="document.getElementById('in_empresaId').value=estado.empresaId||''">Usar empresa cadastrada</button>
+      </div>
+    </div>
+    <div id="resultInutilizar" style="display:none" class="card">
+      <h2 id="inTitulo">Resultado</h2>
+      <div id="inBadge" style="margin-bottom:10px"></div>
+      <pre class="result-box" id="inJson"></pre>
+    </div>
+  </div>
+
+  <!-- ABA MANIFESTAR -->
+  <div id="tab-manifestar" class="tab-pane">
+    <div class="card">
+      <h2>Manifestacao do Destinatario</h2>
+      <p class="subtitle">Registra a ciencia ou confirmacao de uma NF-e no NFeRecepcaoEvento4 (SEFAZ Nacional).</p>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field span2"><label>Empresa ID <span class="req">*</span></label><input id="mf_empresaId" placeholder="UUID da empresa"></div>
+        <div class="field span2"><label>ID da Nota Fiscal (UUID do banco) <span class="req">*</span></label><input id="mf_notaId" placeholder="UUID da nota no banco"></div>
+      </div>
+      <div class="section-title">Tipo de Manifestacao</div>
+      <div class="tipo-grid" style="margin-bottom:14px">
+        <button class="tipo-btn selected" id="tipo_ciencia" onclick="selecionarTipo('CienciaOperacao')">Ciencia da Operacao<br><small style="font-weight:400;color:var(--muted)">cStat 135 - Tomei ciencia da nota</small></button>
+        <button class="tipo-btn" id="tipo_confirmacao" onclick="selecionarTipo('ConfirmacaoOperacao')">Confirmacao da Operacao<br><small style="font-weight:400;color:var(--muted)">cStat 135 - Confirmo o recebimento</small></button>
+        <button class="tipo-btn" id="tipo_desconhecimento" onclick="selecionarTipo('Desconhecimento')">Desconhecimento<br><small style="font-weight:400;color:var(--muted)">cStat 135 - Nao reconheco a operacao</small></button>
+        <button class="tipo-btn" id="tipo_nrealizada" onclick="selecionarTipo('OperacaoNaoRealizada')">Operacao nao Realizada<br><small style="font-weight:400;color:var(--muted)">cStat 135 - Operacao nao ocorreu</small></button>
+      </div>
+      <div id="mf_justArea" style="display:none;margin-bottom:12px">
+        <div class="field">
+          <label>Justificativa <span class="req">*</span> (min. 15 chars)</label>
+          <textarea id="mf_justificativa" placeholder="Informe o motivo da nao realizacao da operacao"></textarea>
+        </div>
+      </div>
+      <div id="alertaManifestar"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="manifestar()"><span id="spinManifestar" class="spinner" style="display:none"></span> Registrar Manifestacao</button>
+        <button class="btn btn-outline" onclick="preencherUltimaNotaId()">Usar ultima NF-e emitida</button>
+      </div>
+    </div>
+    <div id="resultManifestar" style="display:none" class="card">
+      <h2 id="mfTitulo">Resultado</h2>
+      <div id="mfBadge" style="margin-bottom:10px"></div>
+      <pre class="result-box" id="mfJson"></pre>
+    </div>
+  </div>
+
+  <!-- ABA ENTRADA -->
+  <div id="tab-entrada" class="tab-pane">
+    <div class="card">
+      <h2>Consultar NF-es de Entrada</h2>
+      <p class="subtitle">Busca NF-es destinadas a empresa via NFeDistribuicaoDFe (SEFAZ Nacional). NSU=0 busca todas.</p>
+      <div class="grid2">
+        <div class="field"><label>Empresa ID <span class="req">*</span></label><input id="en_empresaId" placeholder="UUID da empresa"></div>
+        <div class="field"><label>Ultimo NSU (0=buscar tudo)</label><input id="en_nsu" type="number" min="0" value="0"></div>
+      </div>
+      <div id="alertaEntrada"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="consultarEntrada()"><span id="spinEntrada" class="spinner" style="display:none"></span> Buscar Notas de Entrada</button>
+        <button class="btn btn-outline" onclick="document.getElementById('en_empresaId').value=estado.empresaId||''">Usar empresa cadastrada</button>
+      </div>
+    </div>
+    <div id="resultEntrada" style="display:none" class="card">
+      <h2 id="enTitulo">Resultado</h2>
+      <div id="enBadge" style="margin-bottom:10px"></div>
+      <pre class="result-box" id="enJson"></pre>
+    </div>
+  </div>
+
+  <!-- ABA NUVEM FISCAL -->
+  <div id="tab-nuvemfiscal" class="tab-pane">
+    <div class="card">
+      <h2>☁️ Nuvem Fiscal</h2>
+      <p class="subtitle">Informe o CNPJ do lojista para listar todas as NF-e (entrada e saída) registradas.</p>
+      <div class="grid2">
+        <div class="field span2"><label>CNPJ do Lojista <span class="req">*</span></label>
+          <input id="nf_cnpj" placeholder="00.000.000/0000-00 ou 14 dígitos" maxlength="18"></div>
+      </div>
+      <div id="alertaNuvem"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="consultarNuvemFiscal()"><span id="spinNuvem" class="spinner" style="display:none"></span> Buscar NF-es</button>
+        <button class="btn btn-outline" onclick="document.getElementById('nf_cnpj').value='21362844000152'">Usar empresa cadastrada</button>
+      </div>
+    </div>
+    <div id="resultNuvem" style="display:none">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <h2 id="nfTitulo" style="margin:0">Resultado</h2>
+          <span id="nfBadge"></span>
+        </div>
+        <p id="nfSubtitulo" style="color:var(--muted);font-size:.84rem;margin-bottom:14px"></p>
+        <div id="nfTabela" style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+            <thead>
+              <tr style="background:var(--bg);text-align:left">
+                <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Tipo</th>
+                <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Nº / Série</th>
+                <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Natureza</th>
+                <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Status</th>
+                <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Valor</th>
+                <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Data</th>
+                <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Manifesta</th>
+                <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Chave</th>
+              </tr>
+            </thead>
+            <tbody id="nfLinhas"></tbody>
+          </table>
+        </div>
+        <div id="nfEmpty" style="display:none;text-align:center;padding:32px;color:var(--muted)">Nenhuma NF-e encontrada para este CNPJ.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+const estado = { empresaId:null, clienteId:null, produtoId:null, certEnviado:false, pfxBase64:null, pfxNome:null, ultimaChave:null, ultimaNotaId:null };
+const API = window.location.origin;
+
+function showTab(name,btn){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+
+let passoAtual=0;
+function irParaPasso(n){
+  document.getElementById('passo'+passoAtual).style.display='none';
+  document.getElementById('nav'+passoAtual).classList.remove('active');
+  passoAtual=n;
+  document.getElementById('passo'+passoAtual).style.display='block';
+  for(let i=0;i<4;i++){
+    const nav=document.getElementById('nav'+i),num=document.getElementById('num'+i);
+    nav.classList.remove('active','done');
+    if(i<passoAtual){nav.classList.add('done');num.textContent='ok';}
+    else if(i===passoAtual){nav.classList.add('active');num.textContent=i+1;}
+    else{num.textContent=i+1;}
+  }
+  if(n===3)renderItens();
+}
+
+const v=id=>(document.getElementById(id)||{}).value?.trim()||'';
+const spin=(id,show)=>{const el=document.getElementById(id);if(el)el.style.display=show?'inline-block':'none';};
+
+function mostrarAlerta(cid,tipo,msg){
+  const icons={info:'i',success:'OK',error:'ERRO',warn:'ATENC'};
+  const el=document.getElementById(cid);
+  if(el)el.innerHTML='<div class="alert alert-'+tipo+'"><span>'+msg+'</span></div>';
+}
+function limparAlerta(id){const el=document.getElementById(id);if(el)el.innerHTML='';}
+
+async function safeJson(res){try{const t=await res.text();return t?JSON.parse(t):{}}catch{return {};}}
+
+function jsonBonito(obj){
+  return JSON.stringify(obj,null,2)
+    .replace(/"([^"]+)":/g,'<span style="color:#7dd3fc">"$1"</span>:')
+    .replace(/: "([^"]*)"/g,': <span style="color:#86efac">"$1"</span>')
+    .replace(/: (true)\b/g,': <span style="color:#4ade80">$1</span>')
+    .replace(/: (false)\b/g,': <span style="color:#f87171">$1</span>')
+    .replace(/: (-?\d+\.?\d*)\b(?!")/g,': <span style="color:#fbbf24">$1</span>');
+}
+
+function mostrarResultado(cardId,tituloId,badgeId,jsonId,data,ok,tOk,tErr){
+  document.getElementById(cardId).style.display='block';
+  document.getElementById(tituloId).textContent=(ok?'OK: ':'ERRO: ')+(ok?tOk:tErr);
+  var badges='';
+  if(data.cStat)badges+='<span class="badge '+(ok?'badge-green':'badge-red')+'">cStat: '+data.cStat+'</span>';
+  if(data.protocolo)badges+=' <span class="badge badge-blue">Protocolo: '+data.protocolo+'</span>';
+  document.getElementById(badgeId).innerHTML=badges;
+  document.getElementById(jsonId).innerHTML=jsonBonito(data);
+  document.getElementById(cardId).scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function atualizarEstadoBar(){
+  var s=function(id,ok,texto){var el=document.getElementById(id);el.className='badge '+(ok?'badge-green':'badge-red');el.textContent=ok?texto:'nao cadastrado';};
+  s('stEmpresa',!!estado.empresaId,estado.empresaId?'Orlando ok':'');
+  var cert=document.getElementById('stCert');
+  cert.className='badge '+(estado.certEnviado?'badge-green':'badge-red');
+  cert.textContent=estado.certEnviado?'enviado ok':'nao enviado';
+  s('stCliente',!!estado.clienteId,estado.clienteId?'WURTH ok':'');
+  s('stProduto',!!estado.produtoId,estado.produtoId?'Produto ok':'');
+}
+
+async function cadastrarEmpresa(){
+  limparAlerta('alertaEmpresa');
+  if(!v('e_cnpj')||!v('e_razao')||!v('e_ie')){mostrarAlerta('alertaEmpresa','error','Preencha CNPJ, Razao Social e IE.');return;}
+  spin('spinEmpresa',true);
+  try{
+    var res=await fetch(API+'/api/empresa',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({cnpj:v('e_cnpj'),razaoSocial:v('e_razao'),nomeFantasia:v('e_fantasia'),inscricaoEstadual:v('e_ie'),logradouro:v('e_logradouro'),numero:v('e_numero'),complemento:v('e_complemento'),bairro:v('e_bairro'),municipio:v('e_municipio'),uf:v('e_uf'),cep:v('e_cep'),telefone:v('e_fone'),email:v('e_email')})});
+    var data=await safeJson(res);
+    if(!res.ok)throw new Error(data.erro||'HTTP '+res.status);
+    estado.empresaId=data.id;
+    document.getElementById('empresaIdLabel').textContent='ID: '+data.id;
+    mostrarAlerta('alertaEmpresa','success','Empresa cadastrada! ID: '+data.id);
+    atualizarEstadoBar();
+  }catch(e){mostrarAlerta('alertaEmpresa','error',e.message);}
+  finally{spin('spinEmpresa',false);}
+}
+
+function pfxSelecionado(event){if(event.target.files[0])lerArquivoPfx(event.target.files[0]);}
+function fileDragOver(e){e.preventDefault();document.getElementById('fileZone').classList.add('dragover');}
+function fileDragLeave(){document.getElementById('fileZone').classList.remove('dragover');}
+function fileDrop(e){e.preventDefault();document.getElementById('fileZone').classList.remove('dragover');if(e.dataTransfer.files[0])lerArquivoPfx(e.dataTransfer.files[0]);}
+function lerArquivoPfx(file){
+  var reader=new FileReader();
+  reader.onload=function(e){var bytes=new Uint8Array(e.target.result),bin='';bytes.forEach(function(b){bin+=String.fromCharCode(b);});estado.pfxBase64=btoa(bin);estado.pfxNome=file.name;var zone=document.getElementById('fileZone');zone.classList.add('ok');document.getElementById('fileZoneText').textContent=file.name+' ('+Math.round(file.size/1024)+' KB)';};
+  reader.readAsArrayBuffer(file);
+}
+
+async function enviarCertificado(){
+  limparAlerta('alertaCert');
+  if(!estado.empresaId){mostrarAlerta('alertaCert','error','Cadastre a empresa primeiro.');return;}
+  if(!estado.pfxBase64){mostrarAlerta('alertaCert','error','Selecione o arquivo .pfx.');return;}
+  if(!v('certSenha')){mostrarAlerta('alertaCert','error','Informe a senha.');return;}
+  spin('spinCert',true);
+  try{
+    var validade=v('certValidade')||null;
+    var res=await fetch(API+'/api/empresa/'+estado.empresaId+'/certificado',{method:'PUT',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({base64:estado.pfxBase64,senha:v('certSenha'),validade:validade?new Date(validade).toISOString():null})});
+    if(!res.ok){var d=await res.json().catch(function(){return{};});throw new Error(d.erro||'HTTP '+res.status);}
+    estado.certEnviado=true;atualizarEstadoBar();
+    mostrarAlerta('alertaCert','success','Certificado enviado com sucesso!');
+  }catch(e){mostrarAlerta('alertaCert','error',e.message);}
+  finally{spin('spinCert',false);}
+}
+
+async function cadastrarCliente(){
+  limparAlerta('alertaCliente');
+  if(!estado.empresaId){mostrarAlerta('alertaCliente','warn','Cadastre a empresa primeiro.');return;}
+  if(!v('c_nome')||!v('c_cpfcnpj')){mostrarAlerta('alertaCliente','error','Nome e CPF/CNPJ sao obrigatorios.');return;}
+  spin('spinCliente',true);
+  try{
+    var res=await fetch(API+'/api/cliente',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({empresaId:estado.empresaId,nome:v('c_nome'),cpf_CNPJ:v('c_cpfcnpj'),inscricaoEstadual:v('c_ie'),email:v('c_email'),telefone:v('c_fone'),logradouro:v('c_logradouro'),numero:v('c_numero'),complemento:v('c_complemento'),bairro:v('c_bairro'),municipio:v('c_municipio'),codigoMunicipio:v('c_codmun'),uf:v('c_uf'),cep:v('c_cep'),pais:'Brasil',codigoPais:'1058'})});
+    var data=await safeJson(res);
+    if(!res.ok)throw new Error(data.erro||'HTTP '+res.status);
+    estado.clienteId=data.id;document.getElementById('clienteIdLabel').textContent='ID: '+data.id;
+    mostrarAlerta('alertaCliente','success','Destinatario cadastrado! ID: '+data.id);
+    atualizarEstadoBar();
+  }catch(e){mostrarAlerta('alertaCliente','error',e.message);}
+  finally{spin('spinCliente',false);}
+}
+
+async function cadastrarProduto(){
+  limparAlerta('alertaProduto');
+  if(!estado.empresaId){mostrarAlerta('alertaProduto','warn','Cadastre a empresa primeiro.');return;}
+  spin('spinProduto',true);
+  try{
+    var res=await fetch(API+'/api/produto',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({empresaId:estado.empresaId,nome:v('p_nome'),descricao:v('p_descricao'),ncm:v('p_ncm'),cfop:v('p_cfop'),cst:v('p_cst'),csosn:v('p_csosn'),unidade:v('p_unidade'),preco:parseFloat(v('p_preco'))||0,aliquotaICMS:0,aliquotaIPI:0,aliquotaPIS:0.65,aliquotaCOFINS:3})});
+    var data=await safeJson(res);
+    if(!res.ok)throw new Error(data.erro||'HTTP '+res.status);
+    estado.produtoId=data.id;document.getElementById('produtoIdLabel').textContent='ID: '+data.id;
+    mostrarAlerta('alertaProduto','success','Produto cadastrado! ID: '+data.id);
+    atualizarEstadoBar();
+  }catch(e){mostrarAlerta('alertaProduto','error',e.message);}
+  finally{spin('spinProduto',false);}
+}
+
+var itens=[];
+function renderItens(){
+  if(!itens.length)itens=[{produtoId:estado.produtoId||'',qtd:1,valor:100,desc:0}];
+  if(estado.produtoId&&!itens[0].produtoId)itens[0].produtoId=estado.produtoId;
+  var container=document.getElementById('itensContainer');container.innerHTML='';
+  itens.forEach(function(item,i){
+    var div=document.createElement('div');div.className='item-linha';
+    div.innerHTML='<button class="remover" onclick="removerItem('+i+')" title="Remover">x</button>'
+      +'<div class="grid3"><div class="field span3"><label>Produto ID *</label><input id="item_pid_'+i+'" value="'+(item.produtoId||'')+'" placeholder="UUID do produto"></div>'
+      +'<div class="field"><label>Quantidade</label><input id="item_qtd_'+i+'" type="number" step="0.001" min="0.001" value="'+item.qtd+'"></div>'
+      +'<div class="field"><label>Valor Unitario (R$)</label><input id="item_val_'+i+'" type="number" step="0.01" min="0.01" value="'+item.valor+'"></div>'
+      +'<div class="field"><label>Desconto (R$)</label><input id="item_desc_'+i+'" type="number" step="0.01" value="'+item.desc+'"></div></div>';
+    container.appendChild(div);
+  });
+}
+function adicionarItem(){itens.push({produtoId:estado.produtoId||'',qtd:1,valor:100,desc:0});renderItens();}
+function removerItem(i){if(itens.length>1){itens.splice(i,1);renderItens();}}
+function coletarItens(){
+  return itens.map(function(_,i){return{
+    produtoId:(document.getElementById('item_pid_'+i)||{}).value||'',
+    quantidade:parseFloat((document.getElementById('item_qtd_'+i)||{}).value)||1,
+    valorUnitario:parseFloat((document.getElementById('item_val_'+i)||{}).value)||0,
+    valorDesconto:parseFloat((document.getElementById('item_desc_'+i)||{}).value)||0
+  };});
+}
+
+async function emitirNFe(){
+  limparAlerta('alertaEmitir');
+  document.getElementById('resultadoCard').style.display='none';
+  if(!estado.empresaId){mostrarAlerta('alertaEmitir','error','Cadastre a empresa primeiro.');return;}
+  if(!estado.clienteId){mostrarAlerta('alertaEmitir','error','Cadastre o destinatario primeiro.');return;}
+  var itensList=coletarItens();
+  if(itensList.some(function(it){return!it.produtoId;})){mostrarAlerta('alertaEmitir','error','Informe o ID do produto em todos os itens.');return;}
+  spin('spinEmitir',true);
+  try{
+    var body={empresaId:estado.empresaId,clienteId:estado.clienteId,naturezaOperacao:v('n_natureza')||'Venda de Mercadoria',serie:v('n_serie')||'1',itens:itensList,valorFrete:parseFloat(v('n_frete'))||0,valorSeguro:0,valorDesconto:parseFloat(v('n_desconto'))||0,informacaoComplementar:v('n_info')||null};
+    var res=await fetch(API+'/api/nfe/emitir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var data=await safeJson(res);
+    var card=document.getElementById('resultadoCard');card.style.display='block';
+    if(res.ok&&data.sucesso){
+      estado.ultimaChave=data.chaveAcesso;estado.ultimaNotaId=data.notaFiscalId;
+      document.getElementById('resultadoTitulo').textContent='NF-e Autorizada!';
+      document.getElementById('resultadoSubtitulo').textContent=data.xMotivo||'Autorizado o uso da NF-e';
+      document.getElementById('resultadoBadge').innerHTML='<span class="badge badge-green">cStat: '+data.cStat+'</span>'+(data.protocolo?' <span class="badge badge-blue">Protocolo: '+data.protocolo+'</span>':'');
+      document.getElementById('consultarNfeBtn').style.display='block';
+    } else {
+      document.getElementById('resultadoTitulo').textContent='Erro na Emissao';
+      document.getElementById('resultadoSubtitulo').textContent=data.xMotivo||data.erro||'Verifique os detalhes.';
+      document.getElementById('resultadoBadge').innerHTML='<span class="badge badge-red">'+(data.cStat?'cStat: '+data.cStat:'HTTP '+res.status)+'</span>';
+      document.getElementById('consultarNfeBtn').style.display='none';
+    }
+    document.getElementById('resultadoJson').innerHTML=jsonBonito(data);
+    card.scrollIntoView({behavior:'smooth'});
+  }catch(e){mostrarAlerta('alertaEmitir','error','Erro: '+e.message);}
+  finally{spin('spinEmitir',false);}
+}
+
+async function consultarUltimaNfeSefaz(){
+  if(!estado.ultimaChave){alert('Emita uma NF-e primeiro.');return;}
+  document.getElementById('cs_empresaId').value=estado.empresaId||'';
+  document.getElementById('cs_chave').value=estado.ultimaChave;
+  document.querySelectorAll('.tab-btn').forEach(function(b,i){b.classList.remove('active');if(i===1)b.classList.add('active');});
+  document.querySelectorAll('.tab-pane').forEach(function(p){p.classList.remove('active');});
+  document.getElementById('tab-consultar').classList.add('active');
+  await consultarSefaz();
+}
+
+async function consultarSefaz(){
+  limparAlerta('alertaConsultar');
+  document.getElementById('resultConsultar').style.display='none';
+  var empresaId=v('cs_empresaId'),chave=v('cs_chave');
+  if(!empresaId||!chave){mostrarAlerta('alertaConsultar','error','EmpresaId e ChaveAcesso sao obrigatorios.');return;}
+  if(chave.length!==44){mostrarAlerta('alertaConsultar','error','Chave de acesso deve ter 44 digitos.');return;}
+  spin('spinConsultar',true);
+  try{
+    var res=await fetch(API+'/api/nfe/consultar-sefaz',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresaId:empresaId,chaveAcesso:chave})});
+    var data=await safeJson(res);
+    mostrarResultado('resultConsultar','rcTitulo','rcBadge','rcJson',data,res.ok&&data.sucesso,'NF-e Autorizada na SEFAZ',data.xMotivo||'Rejeitada ou nao encontrada');
+  }catch(e){mostrarAlerta('alertaConsultar','error','Erro: '+e.message);}
+  finally{spin('spinConsultar',false);}
+}
+
+function preencherUltimaChave(){
+  document.getElementById('cs_empresaId').value=estado.empresaId||'';
+  document.getElementById('cs_chave').value=estado.ultimaChave||'';
+}
+
+async function consultarStatus(){
+  limparAlerta('alertaStatus');
+  document.getElementById('resultStatus').style.display='none';
+  var empresaId=v('st_empresaId');
+  if(!empresaId){mostrarAlerta('alertaStatus','error','EmpresaId e obrigatorio.');return;}
+  spin('spinStatus',true);
+  try{
+    var res=await fetch(API+'/api/nfe/status?empresaId='+encodeURIComponent(empresaId));
+    var data=await safeJson(res);
+    mostrarResultado('resultStatus','stTitulo','stBadge','stJson',data,res.ok&&data.sucesso,'Servico Operacional (cStat 107)','Servico com Problema');
+  }catch(e){mostrarAlerta('alertaStatus','error','Erro: '+e.message);}
+  finally{spin('spinStatus',false);}
+}
+
+async function inutilizar(){
+  limparAlerta('alertaInutilizar');
+  document.getElementById('resultInutilizar').style.display='none';
+  var empresaId=v('in_empresaId'),serie=v('in_serie'),ini=parseInt(v('in_ini')),fim=parseInt(v('in_fim')),just=v('in_justificativa');
+  if(!empresaId){mostrarAlerta('alertaInutilizar','error','EmpresaId obrigatorio.');return;}
+  if(!serie){mostrarAlerta('alertaInutilizar','error','Serie obrigatoria.');return;}
+  if(!ini||fim<ini){mostrarAlerta('alertaInutilizar','error','Numeracao invalida.');return;}
+  if(!just||just.length<15){mostrarAlerta('alertaInutilizar','error','Justificativa deve ter ao menos 15 caracteres.');return;}
+  if(!confirm('Confirmar inutilizacao da serie '+serie+' numeros '+ini+' a '+fim+'?\nEsta operacao e IRREVERSIVEL.'))return;
+  spin('spinInutilizar',true);
+  try{
+    var res=await fetch(API+'/api/nfe/inutilizar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresaId:empresaId,serie:serie,numeroInicial:ini,numeroFinal:fim,justificativa:just})});
+    var data=await safeJson(res);
+    mostrarResultado('resultInutilizar','inTitulo','inBadge','inJson',data,res.ok&&data.sucesso,'Inutilizacao Homologada (cStat 102)',data.xMotivo||'Falha na Inutilizacao');
+  }catch(e){mostrarAlerta('alertaInutilizar','error','Erro: '+e.message);}
+  finally{spin('spinInutilizar',false);}
+}
+
+var tipoManifestacao='CienciaOperacao';
+function selecionarTipo(tipo){
+  tipoManifestacao=tipo;
+  var map={CienciaOperacao:'ciencia',ConfirmacaoOperacao:'confirmacao',Desconhecimento:'desconhecimento',OperacaoNaoRealizada:'nrealizada'};
+  Object.values(map).forEach(function(k){document.getElementById('tipo_'+k).className='tipo-btn';});
+  document.getElementById('tipo_'+map[tipo]).className='tipo-btn selected';
+  document.getElementById('mf_justArea').style.display=tipo==='OperacaoNaoRealizada'?'block':'none';
+}
+
+async function manifestar(){
+  limparAlerta('alertaManifestar');
+  document.getElementById('resultManifestar').style.display='none';
+  var empresaId=v('mf_empresaId'),notaId=v('mf_notaId');
+  if(!empresaId||!notaId){mostrarAlerta('alertaManifestar','error','EmpresaId e NotaFiscalId sao obrigatorios.');return;}
+  if(tipoManifestacao==='OperacaoNaoRealizada'&&v('mf_justificativa').length<15){mostrarAlerta('alertaManifestar','error','Justificativa deve ter ao menos 15 caracteres.');return;}
+  spin('spinManifestar',true);
+  try{
+    var body={notaFiscalId:notaId,empresaId:empresaId,tipoManifestacao:tipoManifestacao,justificativa:tipoManifestacao==='OperacaoNaoRealizada'?v('mf_justificativa'):null};
+    var res=await fetch(API+'/api/nfe/manifestar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var data=await safeJson(res);
+    mostrarResultado('resultManifestar','mfTitulo','mfBadge','mfJson',data,res.ok&&data.sucesso,'Manifestacao Registrada',data.xMotivo||'Falha na Manifestacao');
+  }catch(e){mostrarAlerta('alertaManifestar','error','Erro: '+e.message);}
+  finally{spin('spinManifestar',false);}
+}
+
+function preencherUltimaNotaId(){
+  document.getElementById('mf_empresaId').value=estado.empresaId||'';
+  document.getElementById('mf_notaId').value=estado.ultimaNotaId||'';
+}
+
+async function consultarEntrada(){
+  limparAlerta('alertaEntrada');
+  document.getElementById('resultEntrada').style.display='none';
+  var empresaId=v('en_empresaId');
+  if(!empresaId){mostrarAlerta('alertaEntrada','error','EmpresaId obrigatorio.');return;}
+  var nsu=parseInt(v('en_nsu'))||0;
+  spin('spinEntrada',true);
+  try{
+    var res=await fetch(API+'/api/nfe/entrada?empresaId='+encodeURIComponent(empresaId)+'&ultimoNSU='+nsu);
+    var data=await safeJson(res);
+    mostrarResultado('resultEntrada','enTitulo','enBadge','enJson',data,res.ok&&data.sucesso,(data.totalNotas||0)+' nota(s) encontrada(s)','Falha na Consulta');
+  }catch(e){mostrarAlerta('alertaEntrada','error','Erro: '+e.message);}
+  finally{spin('spinEntrada',false);}
+}
+
+async function consultarNuvemFiscal(){
+  limparAlerta('alertaNuvem');
+  document.getElementById('resultNuvem').style.display='none';
+  var cnpj=v('nf_cnpj').replace(/\D/g,'');
+  if(cnpj.length!==14){mostrarAlerta('alertaNuvem','error','CNPJ deve ter 14 digitos.');return;}
+  spin('spinNuvem',true);
+  try{
+    var res=await fetch(API+'/api/nfe/nuvem-fiscal?cnpj='+cnpj);
+    var data=await safeJson(res);
+    document.getElementById('resultNuvem').style.display='block';
+    if(!res.ok||!data.sucesso){
+      document.getElementById('nfTitulo').textContent='Nenhum resultado';
+      document.getElementById('nfBadge').innerHTML='<span class="badge badge-red">Erro</span>';
+      document.getElementById('nfSubtitulo').textContent=data.erro||data.xMotivo||'Erro desconhecido.';
+      document.getElementById('nfTabela').style.display='none';
+      document.getElementById('nfEmpty').style.display='block';
+      return;
+    }
+    document.getElementById('nfTitulo').textContent=data.razaoSocial;
+    document.getElementById('nfBadge').innerHTML='<span class="badge badge-blue">CNPJ: '+data.cnpj+'</span>';
+    document.getElementById('nfSubtitulo').textContent=data.total+' NF-e(s) encontrada(s)';
+    var tbody=document.getElementById('nfLinhas');
+    tbody.innerHTML='';
+    if(!data.notas||data.notas.length===0){
+      document.getElementById('nfTabela').style.display='none';
+      document.getElementById('nfEmpty').style.display='block';
+      return;
+    }
+    document.getElementById('nfTabela').style.display='block';
+    document.getElementById('nfEmpty').style.display='none';
+    var statusColor={'Autorizada':'badge-green','Rejeitada':'badge-red','Rascunho':'badge-gray','Cancelada':'badge-orange'};
+    data.notas.forEach(function(n){
+      var tipoColor=n.tipo==='Entrada'?'badge-blue':'badge-green';
+      var stColor=statusColor[n.status]||'badge-gray';
+      var dt=new Date(n.emitidaEm).toLocaleDateString('pt-BR');
+      var valor='R$ '+n.valorTotal.toFixed(2).replace('.',',');
+      var chave=n.chaveAcesso.substring(0,20)+'...';
+      var manifesta=n.manifestada?'<span class="badge badge-green">Sim</span>':'<span class="badge badge-gray">Nao</span>';
+      var tr=document.createElement('tr');
+      tr.style.borderBottom='1px solid var(--border)';
+      tr.innerHTML='<td style="padding:7px 10px"><span class="badge '+tipoColor+'">'+n.tipo+'</span></td>'
+        +'<td style="padding:7px 10px">'+n.numero+'/'+n.serie+'</td>'
+        +'<td style="padding:7px 10px">'+n.naturezaOperacao+'</td>'
+        +'<td style="padding:7px 10px"><span class="badge '+stColor+'">'+n.status+'</span></td>'
+        +'<td style="padding:7px 10px;white-space:nowrap">'+valor+'</td>'
+        +'<td style="padding:7px 10px;white-space:nowrap">'+dt+'</td>'
+        +'<td style="padding:7px 10px">'+manifesta+'</td>'
+        +'<td style="padding:7px 10px;font-size:.74rem;color:var(--muted)" title="'+n.chaveAcesso+'">'+chave+'</td>';
+      tbody.appendChild(tr);
+    });
+  }catch(e){mostrarAlerta('alertaNuvem','error','Erro: '+e.message);}
+  finally{spin('spinNuvem',false);}
+}
+
+// Init
+estado.empresaId='dd104b57-010a-4458-8699-d63807e205d3';
+estado.clienteId='0865f76e-bff7-48ef-8b02-f24b6a468e3d';
+estado.produtoId='9ae15d08-81e9-4767-911e-8faf96ad2821';
+estado.ultimaChave='25260421362844000152550010000000251311245007';
+estado.ultimaNotaId='20bd6c28-6de2-4c9d-87c6-ca904099cea7';
+
+document.getElementById('empresaIdLabel').textContent='ID: '+estado.empresaId;
+document.getElementById('clienteIdLabel').textContent='ID: '+estado.clienteId;
+document.getElementById('produtoIdLabel').textContent='ID: '+estado.produtoId;
+
+document.getElementById('e_cnpj').value='21362844000152';
+document.getElementById('e_razao').value='Orlando Lucindo de Pontes Neto Materiais de Construcao';
+document.getElementById('e_fantasia').value='Azulzao da Construcao';
+document.getElementById('e_ie').value='162421303';
+document.getElementById('e_fone').value='83998347220';
+document.getElementById('e_logradouro').value='R OTAVIANO D MONTEIRO P FILHO';
+document.getElementById('e_numero').value='19';
+document.getElementById('e_complemento').value='BOX B';
+document.getElementById('e_bairro').value='FUNCIONARIOS';
+document.getElementById('e_municipio').value='JOAO PESSOA';
+document.getElementById('e_uf').value='PB';
+document.getElementById('e_cep').value='58078340';
+
+document.getElementById('c_nome').value='WURTH DO BRASIL PECAS DE FIXACAO LTDA';
+document.getElementById('c_cpfcnpj').value='43648971003170';
+document.getElementById('c_ie').value='161585078';
+document.getElementById('c_fone').value='1146131900';
+document.getElementById('c_logradouro').value='ROD BR-230';
+document.getElementById('c_numero').value='SN';
+document.getElementById('c_complemento').value='KM28 SALA 00003';
+document.getElementById('c_bairro').value='CRISTO REDENTOR';
+document.getElementById('c_municipio').value='JOAO PESSOA';
+document.getElementById('c_codmun').value='2507507';
+document.getElementById('c_uf').value='PB';
+document.getElementById('c_cep').value='58071680';
+
+document.getElementById('cs_empresaId').value=estado.empresaId;
+document.getElementById('cs_chave').value=estado.ultimaChave;
+document.getElementById('st_empresaId').value=estado.empresaId;
+document.getElementById('in_empresaId').value=estado.empresaId;
+document.getElementById('mf_empresaId').value=estado.empresaId;
+document.getElementById('mf_notaId').value=estado.ultimaNotaId;
+document.getElementById('en_empresaId').value=estado.empresaId;
+
+mostrarAlerta('alertaEmpresa','success','Empresa Orlando ja cadastrada no banco. Envie o certificado para emitir novas NF-es.');
+mostrarAlerta('alertaCliente','success','WURTH do Brasil ja cadastrada como destinataria.');
+mostrarAlerta('alertaProduto','success','Produto Teste ja cadastrado. Clique em Proximo: Emitir NF-e.');
+
+atualizarEstadoBar();
+</script>
+</body>
+</html>
