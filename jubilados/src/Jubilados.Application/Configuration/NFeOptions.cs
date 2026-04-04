@@ -49,9 +49,16 @@ public class NFeOptions
     /// <summary>URL do WS SEFAZ para produção — Inutilização (SVRS)</summary>
     public string SefazUrlInutilizacaoProd { get; set; } = "https://nfe.svrs.rs.gov.br/ws/NfeInutilizacao/NfeInutilizacao4.asmx";
 
+    /// <summary>URL do WS SEFAZ para homologação — Recepção de Eventos (CCe, Cancelamento, Manifestação)</summary>
+    public string SefazUrlEventoHom { get; set; } = "https://nfe-homologacao.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx";
+
+    /// <summary>URL do WS SEFAZ para produção — Recepção de Eventos</summary>
+    public string SefazUrlEventoProd { get; set; } = "https://nfe.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx";
+
     public bool IsHomologacao => Ambiente == "2";
 
-    public string UrlConsulta => IsHomologacao ? SefazUrlConsultaHom : SefazUrlConsultaProd;
-    public string UrlStatus   => IsHomologacao ? SefazUrlStatusHom   : SefazUrlStatusProd;
+    public string UrlConsulta    => IsHomologacao ? SefazUrlConsultaHom    : SefazUrlConsultaProd;
+    public string UrlStatus      => IsHomologacao ? SefazUrlStatusHom      : SefazUrlStatusProd;
     public string UrlInutilizacao => IsHomologacao ? SefazUrlInutilizacaoHom : SefazUrlInutilizacaoProd;
+    public string UrlEvento      => IsHomologacao ? SefazUrlEventoHom      : SefazUrlEventoProd;
 }

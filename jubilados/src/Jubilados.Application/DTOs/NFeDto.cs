@@ -2,9 +2,16 @@ namespace Jubilados.Application.DTOs;
 
 // ── Entrada ──────────────────────────────────────────────────────────────────
 
+/// <summary>
+/// DTO para emissão de NF-e.
+/// Para NF-e de SAÍDA (venda ao consumidor): ClienteId pode ser null.
+///   - Nesse caso, informe DestinatarioNome (opcional) e DestinatarioCpfCnpj (opcional).
+///   - Sem identificação: emitido como "CONSUMIDOR NAO IDENTIFICADO".
+/// Para NF-e de ENTRADA: ClienteId é obrigatório (identifica o remetente).
+/// </summary>
 public record EmitirNFeDto(
     Guid EmpresaId,
-    Guid ClienteId,
+    Guid? ClienteId,            // null = consumidor não identificado (NF-e saída)
     string NaturezaOperacao,
     string Serie,
     IList<ItemNFeDto> Itens,
@@ -12,7 +19,10 @@ public record EmitirNFeDto(
     decimal ValorSeguro = 0,
     decimal ValorDesconto = 0,
     decimal ValorOutros = 0,
-    string? InformacaoComplementar = null
+    string? InformacaoComplementar = null,
+    // Destinatário avulso (quando ClienteId é null)
+    string? DestinatarioCpfCnpj = null,
+    string? DestinatarioNome = null
 );
 
 public record ItemNFeDto(
@@ -145,4 +155,28 @@ public record NuvemFiscalNotaDto(
     string? Protocolo,
     string? CStat,
     bool Manifestada
+);
+
+// ── CCe (Carta de Correção Eletrônica) ────────────────────────────────────────
+
+/// <summary>DTO para envio de Carta de Correção Eletrônica (tpEvento=110110).</summary>
+public record CceDto(
+    Guid EmpresaId,
+    Guid NotaFiscalId,
+    string CorrecaoTexto  // min 15, max 1000 chars
+);
+
+public record CceResultDto(
+    bool Sucesso,
+    string CStat,
+    string XMotivo,
+    string? Protocolo = null
+);
+
+// ── SPED ──────────────────────────────────────────────────────────────────────
+
+public record SpedDto(
+    Guid EmpresaId,
+    DateTime DataInicio,
+    DateTime DataFim
 );

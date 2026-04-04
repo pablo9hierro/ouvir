@@ -4,10 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Jubilados.API.Controllers;
 
-/// <summary>
-/// Controller REST para operações de NFe.
-/// Base: /api/nfe
-/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
@@ -16,17 +12,23 @@ public class NFeController : ControllerBase
     private readonly INFeService _nfeService;
     private readonly InotaEntradaService _entradaService;
     private readonly IManifestacaoService _manifestacaoService;
+    private readonly IDanfeService _danfeService;
+    private readonly ISpedService _spedService;
     private readonly ILogger<NFeController> _logger;
 
     public NFeController(
         INFeService nfeService,
         InotaEntradaService entradaService,
         IManifestacaoService manifestacaoService,
+        IDanfeService danfeService,
+        ISpedService spedService,
         ILogger<NFeController> logger)
     {
         _nfeService = nfeService;
         _entradaService = entradaService;
         _manifestacaoService = manifestacaoService;
+        _danfeService = danfeService;
+        _spedService = spedService;
         _logger = logger;
     }
 
@@ -303,6 +305,123 @@ public class NFeController : ControllerBase
             Total: itens.Count,
             Notas: itens
         ));
+    }
+
+    /// <summary>
+    /// GET /api/nfe/{id}/xml — Baixa o XML da NF-e autorizada.
+    /// </summary>
+    [HttpGet("{id:guid}/xml")]
+    public async Task<IActionResult> DownloadXml(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _nfeService.ObterXmlAsync(id, cancellationToken);
+            if (result is null) return NotFound(new { erro = "NF-e não encontrada." });
+
+            var (xml, chave) = result.Value;
+            if (string.IsNullOrWhiteSpace(xml))
+                return NotFound(new { erro = "XML não disponível para esta NF-e." });
+
+            var bytes = System.Text.Encoding.UTF8.GetBytes(xml);
+            var fileName = $"NFe_{chave}.xml";
+            return File(bytes, "application/xml", fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[API] Erro ao baixar XML da NFe {Id}", id);
+            return StatusCode(500, new { erro = "Erro interno." });
+        }
+    }
+
+    /// <summary>
+    /// GET /api/nfe/{id}/danfe — Gera e baixa o DANFE em PDF.
+    /// </summary>
+    [HttpGet("{id:guid}/danfe")]
+    public async Task<IActionResult> DownloadDanfe(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var pdf = await _danfeService.GerarDanfeAsync(id, cancellationToken);
+            return File(pdf, "application/pdf", $"DANFE_{id}.pdf");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { erro = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[API] Erro ao gerar DANFE {Id}", id);
+            return StatusCode(500, new { erro = "Erro interno ao gerar DANFE." });
+        }
+    }
+
+    /// <summary>
+    /// POST /api/nfe/cce — Envia Carta de Correção Eletrônica (CCe) para uma NF-e autorizada.
+    /// Funciona em homologação e produção.
+    /// Body: { "empresaId": "...", "notaFiscalId": "...", "correcaoTexto": "min 15 chars" }
+    /// </summary>
+    [HttpPost("cce")]
+    [ProducesResponseType(typeof(CceResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> EnviarCce([FromBody] CceDto dto, CancellationToken cancellationToken)
+    {
+        if (dto.EmpresaId == Guid.Empty || dto.NotaFiscalId == Guid.Empty)
+            return BadRequest(new { erro = "EmpresaId e NotaFiscalId são obrigatórios." });
+        if (string.IsNullOrWhiteSpace(dto.CorrecaoTexto) || dto.CorrecaoTexto.Trim().Length < 15)
+            return BadRequest(new { erro = "O texto de correção deve ter no mínimo 15 caracteres." });
+        if (dto.CorrecaoTexto.Trim().Length > 1000)
+            return BadRequest(new { erro = "O texto de correção deve ter no máximo 1000 caracteres." });
+
+        try
+        {
+            var resultado = await _nfeService.EnviarCceAsync(dto, cancellationToken);
+            return Ok(resultado);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[API] Erro ao enviar CCe.");
+            return StatusCode(500, new { erro = "Erro interno." });
+        }
+    }
+
+    /// <summary>
+    /// GET /api/nfe/sped?empresaId={id}&amp;dataInicio=2026-01-01&amp;dataFim=2026-01-31
+    /// Gera o arquivo SPED EFD ICMS/IPI para download.
+    /// Prazo: mensal — até dia 15 do mês seguinte (PB/regra geral).
+    /// </summary>
+    [HttpGet("sped")]
+    public async Task<IActionResult> GerarSped(
+        [FromQuery] Guid empresaId,
+        [FromQuery] DateTime dataInicio,
+        [FromQuery] DateTime dataFim,
+        CancellationToken cancellationToken)
+    {
+        if (empresaId == Guid.Empty)
+            return BadRequest(new { erro = "empresaId é obrigatório." });
+        if (dataFim < dataInicio)
+            return BadRequest(new { erro = "dataFim deve ser maior ou igual a dataInicio." });
+
+        try
+        {
+            var conteudo = await _spedService.GerarSpedAsync(
+                new SpedDto(empresaId, dataInicio, dataFim.AddDays(1).AddSeconds(-1)), cancellationToken);
+            var bytes = System.Text.Encoding.UTF8.GetBytes(conteudo);
+            var fileName = $"SPED_EFD_{dataInicio:yyyyMM}_{dataFim:yyyyMM}.txt";
+            return File(bytes, "text/plain; charset=utf-8", fileName);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[API] Erro ao gerar SPED.");
+            return StatusCode(500, new { erro = "Erro interno ao gerar SPED." });
+        }
     }
 }
 

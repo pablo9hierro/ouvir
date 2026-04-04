@@ -52,9 +52,14 @@ public class NFeService : INFeService
         var certificado = _certificadoService.CarregarCertificado(
             empresa.CertificadoBase64, empresa.CertificadoSenha!);
 
-        var cliente = await _db.Clientes.AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == dto.ClienteId && c.EmpresaId == dto.EmpresaId, cancellationToken)
-            ?? throw new InvalidOperationException($"Cliente {dto.ClienteId} não encontrado.");
+        // Destinatário: cliente do banco ou destino avulso
+        Cliente? cliente = null;
+        if (dto.ClienteId.HasValue && dto.ClienteId.Value != Guid.Empty)
+        {
+            cliente = await _db.Clientes.AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == dto.ClienteId.Value && c.EmpresaId == dto.EmpresaId, cancellationToken)
+                ?? throw new InvalidOperationException($"Cliente {dto.ClienteId} não encontrado.");
+        }
 
         var produtoIds = dto.Itens.Select(i => i.ProdutoId).ToList();
         var produtos = await _db.Produtos.AsNoTracking()
@@ -377,15 +382,154 @@ public class NFeService : INFeService
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<(string? Xml, string? ChaveAcesso)?> ObterXmlAsync(
+        Guid notaFiscalId, CancellationToken cancellationToken = default)
+    {
+        var nota = await _db.NotasFiscais.AsNoTracking()
+            .Where(n => n.Id == notaFiscalId)
+            .Select(n => new { n.XmlEnvio, n.ChaveAcesso, n.CStat })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (nota is null) return null;
+        return (nota.XmlEnvio, nota.ChaveAcesso);
+    }
+
+    public async Task<CceResultDto> EnviarCceAsync(CceDto dto, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[CCe] Enviando para NotaId={Id}", dto.NotaFiscalId);
+
+        var nota = await _db.NotasFiscais.AsNoTracking()
+            .FirstOrDefaultAsync(n => n.Id == dto.NotaFiscalId, cancellationToken)
+            ?? throw new InvalidOperationException($"Nota {dto.NotaFiscalId} não encontrada.");
+
+        if (nota.CStat != "100")
+            throw new InvalidOperationException("CCe só pode ser enviada para NF-e autorizada (cStat=100).");
+
+        var empresa = await _db.Empresas.AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == dto.EmpresaId, cancellationToken)
+            ?? throw new InvalidOperationException($"Empresa {dto.EmpresaId} não encontrada.");
+
+        var certificado = _certificadoService.CarregarCertificado(
+            empresa.CertificadoBase64!, empresa.CertificadoSenha!);
+
+        var cnpj = Limpar(empresa.CNPJ).PadLeft(14, '0');
+        var chave = nota.ChaveAcesso;
+        var dhEvento = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:sszzz");
+        const string tpEvento = "110110";
+        const string nSeq = "1";
+        var idEvento = $"ID{tpEvento}{chave}{nSeq.PadLeft(2, '0')}";
+
+        var xCondUso = "A Carta de Correcao e disciplinada pelo paragrafo 1o-A do art. 7o do Convenio S/N, de 15 de dezembro de 1970 e pode ser utilizada para regularizacao de erro ocorrido na emissao de documento fiscal, desde que o erro nao esteja relacionado com: I - as variaveis que determinam o valor do imposto tais como: base de calculo, aliquota, diferenca de preco, quantidade, valor da operacao ou da prestacao; II - a correcao de dados cadastrais que implique mudanca do remetente ou do destinatario; III - a data de emissao ou de saida.";
+
+        var xmlEvento = $@"<envEvento versao=""1.00"" xmlns=""http://www.portalfiscal.inf.br/nfe"">
+  <idLote>1</idLote>
+  <evento versao=""1.00"">
+    <infEvento Id=""{idEvento}"">
+      <cOrgao>{_options.CodigoUF}</cOrgao>
+      <tpAmb>{_options.Ambiente}</tpAmb>
+      <CNPJ>{cnpj}</CNPJ>
+      <chNFe>{chave}</chNFe>
+      <dhEvento>{dhEvento}</dhEvento>
+      <tpEvento>{tpEvento}</tpEvento>
+      <nSeqEvento>{nSeq}</nSeqEvento>
+      <verEvento>1.00</verEvento>
+      <detEvento versao=""1.00"">
+        <descEvento>Carta de Correcao</descEvento>
+        <xCorrecao>{XmlEnc(dto.CorrecaoTexto)}</xCorrecao>
+        <xCondUso>{xCondUso}</xCondUso>
+      </detEvento>
+    </infEvento>
+  </evento>
+</envEvento>";
+
+        var xmlAssinado = AssinarXml(xmlEvento, certificado, "infEvento");
+
+        const string wsdlNs = "http://www.portalfiscal.inf.br/nfe/wsdl/RecepcaoEvento4";
+        const string soapNs = "http://www.w3.org/2003/05/soap-envelope";
+        const string soapAction = "http://www.portalfiscal.inf.br/nfe/wsdl/RecepcaoEvento4/nfeRecepcaoEvento";
+
+        var soapDoc = new XmlDocument();
+        var envelope = soapDoc.CreateElement("soap12", "Envelope", soapNs);
+        envelope.SetAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
+        envelope.SetAttribute("xmlns:xsd", "http://www.w3.org/2001/XMLSchema");
+        soapDoc.AppendChild(envelope);
+
+        var header = soapDoc.CreateElement("soap12", "Header", soapNs);
+        var cabec = soapDoc.CreateElement("nfeCabecMsg", wsdlNs);
+        var elCUF = soapDoc.CreateElement("cUF", wsdlNs); elCUF.InnerText = _options.CodigoUF;
+        var elVer = soapDoc.CreateElement("versaoDados", wsdlNs); elVer.InnerText = "1.00";
+        cabec.AppendChild(elCUF); cabec.AppendChild(elVer);
+        header.AppendChild(cabec);
+        envelope.AppendChild(header);
+
+        var body = soapDoc.CreateElement("soap12", "Body", soapNs);
+        var nfeDadosMsg = soapDoc.CreateElement("nfeDadosMsg", wsdlNs);
+        var eventoDoc = new XmlDocument { PreserveWhitespace = false };
+        eventoDoc.LoadXml(xmlAssinado);
+        nfeDadosMsg.AppendChild(soapDoc.ImportNode(eventoDoc.DocumentElement!, true));
+        body.AppendChild(nfeDadosMsg);
+        envelope.AppendChild(body);
+
+        var soap = soapDoc.OuterXml;
+        _logger.LogInformation("[CCe] SOAP: {Xml}", soap.Length > 2000 ? soap[..2000] : soap);
+
+        try
+        {
+            var handler = new HttpClientHandler();
+            handler.ClientCertificates.Add(certificado);
+            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+            using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
+            var content = new StringContent(soap, Encoding.UTF8);
+            content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(
+                $"application/soap+xml; charset=utf-8; action=\"{soapAction}\"");
+            var response = await http.PostAsync(_options.UrlEvento, content, cancellationToken);
+            var retorno = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogInformation("[CCe] Resposta: {Body}", retorno.Length > 2000 ? retorno[..2000] : retorno);
+            return InterpretarCce(retorno, _logger);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "[CCe] Erro HTTP.");
+            return new CceResultDto(false, "999", $"Erro de comunicação: {ex.Message}");
+        }
+    }
+
+    private static CceResultDto InterpretarCce(string xml, ILogger? log)
+    {
+        try
+        {
+            var doc = new XmlDocument(); doc.LoadXml(xml);
+            var ns = new XmlNamespaceManager(doc.NameTable);
+            ns.AddNamespace("nfe", "http://www.portalfiscal.inf.br/nfe");
+
+            var infEvento = doc.SelectSingleNode("//nfe:infEvento", ns);
+            if (infEvento is not null)
+            {
+                var cs = infEvento.SelectSingleNode("nfe:cStat", ns)?.InnerText ?? "999";
+                var xm = infEvento.SelectSingleNode("nfe:xMotivo", ns)?.InnerText ?? "";
+                var prot = infEvento.SelectSingleNode("nfe:nProt", ns)?.InnerText;
+                return new CceResultDto(cs is "135" or "136", cs, xm, prot);
+            }
+            var csAny = doc.SelectSingleNode("//*[local-name()='cStat']")?.InnerText ?? "999";
+            var xmAny = doc.SelectSingleNode("//*[local-name()='xMotivo']")?.InnerText ?? "Sem resposta";
+            return new CceResultDto(false, csAny, xmAny);
+        }
+        catch (Exception ex)
+        {
+            log?.LogError(ex, "[CCe] Erro ao interpretar resposta.");
+            return new CceResultDto(false, "999", "Erro ao interpretar resposta SEFAZ");
+        }
+    }
+
     // ── Privados ──────────────────────────────────────────────────────────────
 
     private NotaFiscal MontarNotaFiscal(EmitirNFeDto dto, Empresa empresa,
-        Cliente cliente, List<Produto> produtos, int numero)
+        Cliente? cliente, List<Produto> produtos, int numero)
     {
         var nota = new NotaFiscal
         {
             EmpresaId = empresa.Id,
-            ClienteId = cliente.Id,
+            ClienteId = cliente?.Id ?? Guid.Empty,
             Numero = numero,
             Serie = dto.Serie,
             NaturezaOperacao = dto.NaturezaOperacao,
@@ -438,7 +582,7 @@ public class NFeService : INFeService
                         + nota.ValorOutros + nota.ValorIPI;
     }
 
-    private string GerarXmlNFe(NotaFiscal nota, Empresa empresa, Cliente cliente,
+    private string GerarXmlNFe(NotaFiscal nota, Empresa empresa, Cliente? cliente,
         List<Produto> produtos, EmitirNFeDto dto)
     {
         var cUF = _options.CodigoUF;
@@ -497,26 +641,46 @@ public class NFeService : INFeService
         sb.AppendLine("    </emit>");
 
         sb.AppendLine("    <dest>");
-        var cpfCnpj = Limpar(cliente.CPF_CNPJ);
-        sb.AppendLine(cpfCnpj.Length == 14
-            ? $"      <CNPJ>{cpfCnpj}</CNPJ>"
-            : $"      <CPF>{cpfCnpj}</CPF>");
-        sb.AppendLine($"      <xNome>{XmlEnc(ambiente == "2" ? "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL" : cliente.Nome)}</xNome>");
-        sb.AppendLine("      <enderDest>");
-        sb.AppendLine($"        <xLgr>{XmlEnc(cliente.Logradouro)}</xLgr>");
-        sb.AppendLine($"        <nro>{XmlEnc(cliente.Numero)}</nro>");
-        sb.AppendLine($"        <xBairro>{XmlEnc(cliente.Bairro)}</xBairro>");
-        sb.AppendLine($"        <cMun>{cliente.CodigoMunicipio}</cMun>");
-        sb.AppendLine($"        <xMun>{XmlEnc(cliente.Municipio)}</xMun>");
-        sb.AppendLine($"        <UF>{cliente.UF}</UF>");
-        sb.AppendLine($"        <CEP>{Limpar(cliente.CEP)}</CEP>");
-        sb.AppendLine("        <cPais>1058</cPais>");
-        sb.AppendLine("        <xPais>Brasil</xPais>");
-        sb.AppendLine("      </enderDest>");
-        var temIE = !string.IsNullOrWhiteSpace(cliente.InscricaoEstadual);
-        sb.AppendLine($"      <indIEDest>{(temIE ? "1" : "9")}</indIEDest>");
-        if (temIE)
-            sb.AppendLine($"      <IE>{cliente.InscricaoEstadual}</IE>");
+        if (cliente is not null)
+        {
+            // Destinatário identificado (cliente cadastrado)
+            var cpfCnpj = Limpar(cliente.CPF_CNPJ);
+            if (!string.IsNullOrWhiteSpace(cpfCnpj))
+            {
+                sb.AppendLine(cpfCnpj.Length == 14
+                    ? $"      <CNPJ>{cpfCnpj}</CNPJ>"
+                    : $"      <CPF>{cpfCnpj}</CPF>");
+            }
+            sb.AppendLine($"      <xNome>{XmlEnc(ambiente == "2" ? "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL" : cliente.Nome)}</xNome>");
+            sb.AppendLine("      <enderDest>");
+            sb.AppendLine($"        <xLgr>{XmlEnc(cliente.Logradouro)}</xLgr>");
+            sb.AppendLine($"        <nro>{XmlEnc(cliente.Numero)}</nro>");
+            sb.AppendLine($"        <xBairro>{XmlEnc(cliente.Bairro)}</xBairro>");
+            sb.AppendLine($"        <cMun>{cliente.CodigoMunicipio}</cMun>");
+            sb.AppendLine($"        <xMun>{XmlEnc(cliente.Municipio)}</xMun>");
+            sb.AppendLine($"        <UF>{cliente.UF}</UF>");
+            sb.AppendLine($"        <CEP>{Limpar(cliente.CEP)}</CEP>");
+            sb.AppendLine("        <cPais>1058</cPais>");
+            sb.AppendLine("        <xPais>Brasil</xPais>");
+            sb.AppendLine("      </enderDest>");
+            var temIE = !string.IsNullOrWhiteSpace(cliente.InscricaoEstadual);
+            sb.AppendLine($"      <indIEDest>{(temIE ? "1" : "9")}</indIEDest>");
+            if (temIE)
+                sb.AppendLine($"      <IE>{cliente.InscricaoEstadual}</IE>");
+        }
+        else
+        {
+            // Destinatário avulso (consumidor não identificado — NF-e saída balcão)
+            var destCpfCnpj = Limpar(dto.DestinatarioCpfCnpj ?? "");
+            if (destCpfCnpj.Length == 14)
+                sb.AppendLine($"      <CNPJ>{destCpfCnpj}</CNPJ>");
+            else if (destCpfCnpj.Length == 11)
+                sb.AppendLine($"      <CPF>{destCpfCnpj}</CPF>");
+            // else: sem identificação (consumidor final não identificado)
+            var destNome = string.IsNullOrWhiteSpace(dto.DestinatarioNome) ? "CONSUMIDOR NAO IDENTIFICADO" : dto.DestinatarioNome;
+            sb.AppendLine($"      <xNome>{XmlEnc(ambiente == "2" ? "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL" : destNome)}</xNome>");
+            sb.AppendLine("      <indIEDest>9</indIEDest>");
+        }
         sb.AppendLine("    </dest>");
 
         int nItem = 1;

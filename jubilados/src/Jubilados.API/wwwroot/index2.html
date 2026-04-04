@@ -112,6 +112,8 @@
     <button class="tab-btn" onclick="showTab('manifestar',this)">Manifestacao</button>
     <button class="tab-btn" onclick="showTab('entrada',this)">Notas Entrada</button>
     <button class="tab-btn" onclick="showTab('nuvemfiscal',this)">☁️ Nuvem Fiscal</button>
+    <button class="tab-btn" onclick="showTab('cce',this)">CCe</button>
+    <button class="tab-btn" onclick="showTab('sped',this)">SPED EFD</button>
   </div>
 
   <!-- ABA EMITIR -->
@@ -247,6 +249,18 @@
         <h2>4. Emitir Nota Fiscal Eletronica</h2>
         <p class="subtitle">Configure os dados e clique em Emitir NF-e para enviar a SEFAZ.</p>
         <div class="alert alert-warn">Voce esta em AMBIENTE DE HOMOLOGACAO. As notas emitidas nao tem validade fiscal.</div>
+        <div style="margin-bottom:12px;padding:10px 14px;background:var(--step-active);border-radius:8px;border:1px solid #93c5fd">
+          <label style="display:flex;gap:8px;align-items:center;cursor:pointer;font-size:.86rem;font-weight:600;color:var(--text);margin:0">
+            <input type="checkbox" id="consumidorFinal" onchange="toggleConsumidorFinal()">
+            Emitir para Consumidor Final (sem identificacao — CNPJ/CPF opcional)
+          </label>
+          <div id="destAvulsoArea" style="display:none;margin-top:10px">
+            <div class="grid2">
+              <div class="field"><label>Nome do Consumidor (opcional)</label><input id="dest_nome" placeholder="Nome do consumidor"></div>
+              <div class="field"><label>CPF / CNPJ (opcional)</label><input id="dest_cpfcnpj" placeholder="CPF ou CNPJ sem pontuacao"></div>
+            </div>
+          </div>
+        </div>
         <div class="grid2" style="margin-bottom:12px">
           <div class="field"><label>Natureza da Operacao <span class="req">*</span></label><input id="n_natureza" value="Venda de Mercadoria"></div>
           <div class="field"><label>Serie <span class="req">*</span></label><input id="n_serie" value="1" maxlength="3"></div>
@@ -446,12 +460,60 @@
                 <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Data</th>
                 <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Manifesta</th>
                 <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Chave</th>
+                <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Acoes</th>
               </tr>
             </thead>
             <tbody id="nfLinhas"></tbody>
           </table>
         </div>
         <div id="nfEmpty" style="display:none;text-align:center;padding:32px;color:var(--muted)">Nenhuma NF-e encontrada para este CNPJ.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABA CCe -->
+  <div id="tab-cce" class="tab-pane">
+    <div class="card">
+      <h2>Carta de Correcao Eletronica (CCe)</h2>
+      <p class="subtitle">Corrige informacoes de uma NF-e autorizada via evento tpEvento=110110. Valido em homologacao e producao.</p>
+      <div class="alert alert-warn">A CCe NAO pode corrigir: valor total, CFOP, destinatario, data de emissao/saida. Use apenas para correcoes de texto em campos nao-criticos.</div>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field span2"><label>Empresa ID <span class="req">*</span></label><input id="cce_empresaId" placeholder="UUID da empresa"></div>
+        <div class="field span2"><label>Nota Fiscal ID <span class="req">*</span></label><input id="cce_notaId" placeholder="UUID da NF-e (do banco)"></div>
+        <div class="field span2">
+          <label>Texto de Correcao <span class="req">*</span> (15 a 1000 caracteres)</label>
+          <textarea id="cce_texto" style="min-height:100px" placeholder="Descreva a correcao..." oninput="document.getElementById('cce_chars').textContent=this.value.length+'/1000 caracteres'"></textarea>
+          <small id="cce_chars" style="color:var(--muted);font-size:.75rem">0/1000 caracteres</small>
+        </div>
+      </div>
+      <div id="alertaCce"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="enviarCce()"><span id="spinCce" class="spinner" style="display:none"></span> Enviar CCe</button>
+        <button class="btn btn-outline" onclick="document.getElementById('cce_empresaId').value=estado.empresaId||'';document.getElementById('cce_notaId').value=estado.ultimaNotaId||''">Usar ultima NF-e</button>
+      </div>
+    </div>
+    <div id="resultCce" style="display:none" class="card">
+      <h2 id="cceTitulo">Resultado</h2>
+      <div id="cceBadge" style="margin-bottom:10px"></div>
+      <pre class="result-box" id="cceJson"></pre>
+    </div>
+  </div>
+
+  <!-- ABA SPED -->
+  <div id="tab-sped" class="tab-pane">
+    <div class="card">
+      <h2>SPED EFD ICMS/IPI</h2>
+      <p class="subtitle">Gera o arquivo SPED EFD (Registros 0, C e 9) com as NF-e autorizadas no periodo. Prazo mensal: ate o dia 15 do mes seguinte.</p>
+      <div class="alert alert-info">O arquivo gerado cobre as NF-e com cStat=100 (Autorizado) no periodo informado. Formato: texto delimitado por pipe (|).</div>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field span2"><label>Empresa ID <span class="req">*</span></label><input id="sp_empresaId" placeholder="UUID da empresa"></div>
+        <div class="field"><label>Data Inicio <span class="req">*</span></label><input type="date" id="sp_ini"></div>
+        <div class="field"><label>Data Fim <span class="req">*</span></label><input type="date" id="sp_fim"></div>
+      </div>
+      <div id="alertaSped"></div>
+      <div class="actions">
+        <button class="btn btn-success" style="font-size:.96rem;padding:11px 24px" onclick="downloadSped()">&#11015; Baixar SPED EFD</button>
+        <button class="btn btn-outline" onclick="document.getElementById('sp_empresaId').value=estado.empresaId||'';preencherMesAtual()">Usar empresa e mes atual</button>
       </div>
     </div>
   </div>
@@ -633,12 +695,14 @@ async function emitirNFe(){
   limparAlerta('alertaEmitir');
   document.getElementById('resultadoCard').style.display='none';
   if(!estado.empresaId){mostrarAlerta('alertaEmitir','error','Cadastre a empresa primeiro.');return;}
-  if(!estado.clienteId){mostrarAlerta('alertaEmitir','error','Cadastre o destinatario primeiro.');return;}
+  var cf=document.getElementById('consumidorFinal').checked;
+  if(!cf&&!estado.clienteId){mostrarAlerta('alertaEmitir','error','Cadastre o destinatario primeiro (ou marque Consumidor Final acima).');return;}
   var itensList=coletarItens();
   if(itensList.some(function(it){return!it.produtoId;})){mostrarAlerta('alertaEmitir','error','Informe o ID do produto em todos os itens.');return;}
   spin('spinEmitir',true);
   try{
-    var body={empresaId:estado.empresaId,clienteId:estado.clienteId,naturezaOperacao:v('n_natureza')||'Venda de Mercadoria',serie:v('n_serie')||'1',itens:itensList,valorFrete:parseFloat(v('n_frete'))||0,valorSeguro:0,valorDesconto:parseFloat(v('n_desconto'))||0,informacaoComplementar:v('n_info')||null};
+    var body={empresaId:estado.empresaId,clienteId:cf?null:estado.clienteId,naturezaOperacao:v('n_natureza')||'Venda de Mercadoria',serie:v('n_serie')||'1',itens:itensList,valorFrete:parseFloat(v('n_frete'))||0,valorSeguro:0,valorDesconto:parseFloat(v('n_desconto'))||0,informacaoComplementar:v('n_info')||null};
+    if(cf){body.destinatarioCpfCnpj=v('dest_cpfcnpj')||null;body.destinatarioNome=v('dest_nome')||null;}
     var res=await fetch(API+'/api/nfe/emitir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     var data=await safeJson(res);
     var card=document.getElementById('resultadoCard');card.style.display='block';
@@ -814,7 +878,8 @@ async function consultarNuvemFiscal(){
         +'<td style="padding:7px 10px;white-space:nowrap">'+valor+'</td>'
         +'<td style="padding:7px 10px;white-space:nowrap">'+dt+'</td>'
         +'<td style="padding:7px 10px">'+manifesta+'</td>'
-        +'<td style="padding:7px 10px;font-size:.74rem;color:var(--muted)" title="'+n.chaveAcesso+'">'+chave+'</td>';
+        +'<td style="padding:7px 10px;font-size:.74rem;color:var(--muted)" title="'+n.chaveAcesso+'">'+chave+'</td>'
+        +'<td style="padding:7px 10px;white-space:nowrap"><button class="btn btn-outline" style="font-size:.72rem;padding:4px 8px" onclick="downloadXml(\''+n.id+'\')">&#11015; XML</button> <button class="btn btn-outline" style="font-size:.72rem;padding:4px 8px" onclick="downloadDanfe(\''+n.id+'\')">&#128202; DANFE</button></td>';
       tbody.appendChild(tr);
     });
   }catch(e){mostrarAlerta('alertaNuvem','error','Erro: '+e.message);}
@@ -822,6 +887,54 @@ async function consultarNuvemFiscal(){
 }
 
 // Init
+function toggleConsumidorFinal(){
+  var cf=document.getElementById('consumidorFinal').checked;
+  document.getElementById('destAvulsoArea').style.display=cf?'block':'none';
+  var stCliente=document.getElementById('stCliente');
+  if(cf){stCliente.className='badge badge-blue';stCliente.textContent='Consumidor Final';}
+  else{stCliente.className='badge '+(estado.clienteId?'badge-green':'badge-red');stCliente.textContent=estado.clienteId?'WURTH ok':'nao cadastrado';}
+}
+
+function downloadXml(notaId){window.open(API+'/api/nfe/'+notaId+'/xml','_blank');}
+function downloadDanfe(notaId){window.open(API+'/api/nfe/'+notaId+'/danfe','_blank');}
+
+function preencherMesAtual(){
+  var now=new Date();
+  var y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0');
+  var ultimo=new Date(y,now.getMonth()+1,0).getDate();
+  document.getElementById('sp_ini').value=y+'-'+m+'-01';
+  document.getElementById('sp_fim').value=y+'-'+m+'-'+String(ultimo).padStart(2,'0');
+}
+
+function downloadSped(){
+  limparAlerta('alertaSped');
+  var empId=v('sp_empresaId'),ini=v('sp_ini'),fim=v('sp_fim');
+  if(!empId){mostrarAlerta('alertaSped','error','EmpresaId e obrigatorio.');return;}
+  if(!ini||!fim){mostrarAlerta('alertaSped','error','Informe a data de inicio e fim.');return;}
+  window.open(API+'/api/nfe/sped?empresaId='+encodeURIComponent(empId)+'&dataInicio='+ini+'&dataFim='+fim,'_blank');
+}
+
+async function enviarCce(){
+  limparAlerta('alertaCce');
+  document.getElementById('resultCce').style.display='none';
+  var empId=v('cce_empresaId'),notaId=v('cce_notaId'),texto=v('cce_texto');
+  if(!empId||!notaId){mostrarAlerta('alertaCce','error','Informe EmpresaId e NotaFiscalId.');return;}
+  if(texto.length<15){mostrarAlerta('alertaCce','error','Texto de correcao deve ter ao menos 15 caracteres.');return;}
+  if(texto.length>1000){mostrarAlerta('alertaCce','error','Texto de correcao deve ter no maximo 1000 caracteres.');return;}
+  spin('spinCce',true);
+  try{
+    var res=await fetch(API+'/api/nfe/cce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresaId:empId,notaFiscalId:notaId,correcaoTexto:texto})});
+    var data=await safeJson(res);
+    document.getElementById('resultCce').style.display='block';
+    var ok=res.ok&&data.sucesso;
+    document.getElementById('cceTitulo').textContent=ok?'CCe Registrada com sucesso!':'Erro ao enviar CCe';
+    document.getElementById('cceBadge').innerHTML='<span class="badge '+(ok?'badge-green':'badge-red')+'">'+(data.cStat||'HTTP '+res.status)+'</span>'+(data.protocolo?' <span class="badge badge-blue">Protocolo: '+data.protocolo+'</span>':'')+(data.xMotivo?' <span style="color:var(--muted);font-size:.8rem;margin-left:6px">'+data.xMotivo+'</span>':'');
+    document.getElementById('cceJson').innerHTML=jsonBonito(data);
+    document.getElementById('resultCce').scrollIntoView({behavior:'smooth'});
+  }catch(e){mostrarAlerta('alertaCce','error','Erro: '+e.message);}
+  finally{spin('spinCce',false);}
+}
+
 estado.empresaId='dd104b57-010a-4458-8699-d63807e205d3';
 estado.clienteId='0865f76e-bff7-48ef-8b02-f24b6a468e3d';
 estado.produtoId='9ae15d08-81e9-4767-911e-8faf96ad2821';
@@ -865,6 +978,10 @@ document.getElementById('in_empresaId').value=estado.empresaId;
 document.getElementById('mf_empresaId').value=estado.empresaId;
 document.getElementById('mf_notaId').value=estado.ultimaNotaId;
 document.getElementById('en_empresaId').value=estado.empresaId;
+document.getElementById('cce_empresaId').value=estado.empresaId;
+document.getElementById('cce_notaId').value=estado.ultimaNotaId;
+document.getElementById('sp_empresaId').value=estado.empresaId;
+preencherMesAtual();
 
 mostrarAlerta('alertaEmpresa','success','Empresa Orlando ja cadastrada no banco. Envie o certificado para emitir novas NF-es.');
 mostrarAlerta('alertaCliente','success','WURTH do Brasil ja cadastrada como destinataria.');

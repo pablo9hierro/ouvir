@@ -32,6 +32,8 @@ builder.Services.AddScoped<ICertificadoService, CertificadoService>();
 builder.Services.AddScoped<INFeService, NFeService>();
 builder.Services.AddScoped<InotaEntradaService, NotaEntradaService>();
 builder.Services.AddScoped<IManifestacaoService, ManifestacaoService>();
+builder.Services.AddScoped<IDanfeService, DanfeService>();
+builder.Services.AddScoped<ISpedService, SpedService>();
 
 // ── Controllers + Validação ───────────────────────────────────────────────────
 builder.Services.AddControllers()
