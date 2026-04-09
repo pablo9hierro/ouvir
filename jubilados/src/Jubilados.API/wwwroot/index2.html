@@ -101,8 +101,8 @@
     <strong>Estado:</strong>
     <div class="estado-item">Empresa: <span id="stEmpresa" class="badge badge-red">nao selecionada</span></div>
     <div class="estado-item">Certificado: <span id="stCert" class="badge badge-red">nao enviado</span></div>
-    <div class="estado-item">Destinatario: <span id="stCliente" class="badge badge-red">nao cadastrado</span></div>
-    <div class="estado-item">Produto: <span id="stProduto" class="badge badge-red">nao cadastrado</span></div>
+    <div class="estado-item">Destinatario: <span id="stCliente" class="badge badge-red">nao definido</span></div>
+    <div class="estado-item">Produto: <span id="stProduto" class="badge badge-red">nao definido</span></div>
   </div>
   <div class="tabs">
     <button class="tab-btn active" onclick="showTab('emitir',this)">Emitir NF-e</button>
@@ -186,31 +186,111 @@
     <!-- Passo 1 -->
     <div id="passo1" style="display:none">
       <div class="card">
-        <h2>2. Dados do Destinatario</h2>
-        <p class="subtitle">Pessoa fisica ou juridica que recebera a nota fiscal.</p>
-        <div class="grid2" style="margin-bottom:12px">
-          <div class="field"><label>Nome / Razao Social <span class="req">*</span></label><input id="c_nome" placeholder="Cliente Teste"></div>
-          <div class="field"><label>CPF / CNPJ <span class="req">*</span></label><input id="c_cpfcnpj" placeholder="00000000000000"></div>
-          <div class="field"><label>Inscricao Estadual</label><input id="c_ie" placeholder="ISENTO"></div>
-          <div class="field"><label>E-mail</label><input id="c_email" type="email" placeholder="cliente@email.com"></div>
-          <div class="field"><label>Telefone</label><input id="c_fone" placeholder="11999999999"></div>
+        <h2>2. Destinatario da Nota Fiscal</h2>
+        <p class="subtitle">Selecione o tipo de destinatario para a nota.</p>
+
+        <!-- Tipo selector -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px">
+          <button id="tipodest_anon" class="tipo-btn" onclick="selecionarTipoDest('anonimo')">
+            <div style="font-size:1.4rem;margin-bottom:4px">🙈</div>
+            <strong>Consumidor Anonimo</strong><br>
+            <small style="color:var(--muted);font-weight:400">Venda balcao sem identificacao</small>
+          </button>
+          <button id="tipodest_cpf" class="tipo-btn selected" onclick="selecionarTipoDest('cpf')">
+            <div style="font-size:1.4rem;margin-bottom:4px">👤</div>
+            <strong>Pessoa Fisica (CPF)</strong><br>
+            <small style="color:var(--muted);font-weight:400">Venda presencial ou remota</small>
+          </button>
+          <button id="tipodest_cnpj" class="tipo-btn" onclick="selecionarTipoDest('cnpj')">
+            <div style="font-size:1.4rem;margin-bottom:4px">🏢</div>
+            <strong>Empresa (CNPJ)</strong><br>
+            <small style="color:var(--muted);font-weight:400">B2B — exige endereco completo</small>
+          </button>
         </div>
-        <div class="section-title">Endereco</div>
-        <div class="grid3" style="margin-bottom:12px">
-          <div class="field span2"><label>Logradouro <span class="req">*</span></label><input id="c_logradouro"></div>
-          <div class="field"><label>Numero <span class="req">*</span></label><input id="c_numero"></div>
-          <div class="field"><label>Complemento</label><input id="c_complemento"></div>
-          <div class="field"><label>Bairro <span class="req">*</span></label><input id="c_bairro"></div>
-          <div class="field span2"><label>Municipio <span class="req">*</span></label><input id="c_municipio"></div>
-          <div class="field"><label>Cod. Municipio IBGE</label><input id="c_codmun" placeholder="2507507" maxlength="7"></div>
-          <div class="field"><label>UF <span class="req">*</span></label><select id="c_uf"><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option selected>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option></select></div>
-          <div class="field"><label>CEP <span class="req">*</span></label><input id="c_cep" placeholder="58000000" maxlength="9"></div>
+
+        <!-- Anonimo -->
+        <div id="area_anonimo" style="display:none">
+          <div class="alert alert-info">&#9432; Nenhum dado do destinatario e necessario. A nota sera emitida com <strong>CONSUMIDOR NAO IDENTIFICADO</strong>. Permitido por lei para vendas de varejo ate R$ 10.000 (ICMS).</div>
         </div>
-        <div id="alertaCliente"></div>
-        <div class="actions">
-          <button class="btn btn-primary" onclick="cadastrarCliente()"><span id="spinCliente" class="spinner" style="display:none"></span> Cadastrar Destinatario</button>
-          <small id="clienteIdLabel" style="color:var(--muted)"></small>
+
+        <!-- CPF -->
+        <div id="area_cpf" style="display:block">
+          <div class="alert alert-info" style="margin-bottom:12px">&#9432; <strong>Venda presencial a CPF:</strong> endereco <strong>nao e obrigatorio</strong> (NT 2011.003). Informe apenas se quiser identificar o cliente na nota.</div>
+          <!-- Busca cliente existente -->
+          <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:12px;border:1px solid var(--border)">
+            <div class="section-title" style="margin-bottom:8px">Buscar cliente ja cadastrado</div>
+            <div style="display:flex;gap:8px;align-items:flex-end">
+              <div class="field" style="flex:1"><label>Pesquisar por nome ou CPF</label><input id="busca_cliente" placeholder="Digite nome ou CPF..." oninput="filtrarClientes()"></div>
+              <button class="btn btn-outline" onclick="carregarClientes()" style="white-space:nowrap"><span id="spinBuscaCliente" class="spinner" style="display:none"></span> Atualizar lista</button>
+            </div>
+            <div id="lista_clientes" style="margin-top:8px;max-height:150px;overflow-y:auto;display:none"></div>
+          </div>
+          <div class="section-title">Novo destinatario / dados do cliente</div>
+          <div class="grid2" style="margin-bottom:12px">
+            <div class="field"><label>Nome <span class="req">*</span></label><input id="c_nome" placeholder="Maria da Silva"></div>
+            <div class="field"><label>CPF <span class="req">*</span></label><input id="c_cpfcnpj" placeholder="12345678901" maxlength="14"></div>
+            <div class="field"><label>E-mail <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="c_email" type="email" placeholder="maria@email.com"></div>
+            <div class="field"><label>Telefone <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="c_fone" placeholder="11999999999"></div>
+          </div>
+          <details id="detalhes_endereco_cpf">
+            <summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--primary);margin-bottom:10px;user-select:none">&#9660; Endereco (opcional para CPF presencial)</summary>
+            <div class="grid3" style="margin-bottom:12px;padding-top:8px">
+              <div class="field span2"><label>Logradouro</label><input id="c_logradouro" placeholder="Rua das Flores"></div>
+              <div class="field"><label>Numero</label><input id="c_numero" placeholder="100"></div>
+              <div class="field"><label>Complemento</label><input id="c_complemento"></div>
+              <div class="field"><label>Bairro</label><input id="c_bairro" placeholder="Centro"></div>
+              <div class="field span2"><label>Municipio</label><input id="c_municipio" placeholder="Joao Pessoa"></div>
+              <div class="field"><label>Cod. IBGE</label><input id="c_codmun" placeholder="2507507" maxlength="7"></div>
+              <div class="field"><label>UF</label><select id="c_uf"><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option selected>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option></select></div>
+              <div class="field"><label>CEP</label><input id="c_cep" placeholder="58000000" maxlength="9"></div>
+            </div>
+          </details>
+          <div style="display:none"><input id="c_ie" value=""></div>
+          <div id="alertaCliente"></div>
+          <div class="actions">
+            <button class="btn btn-primary" onclick="cadastrarCliente()"><span id="spinCliente" class="spinner" style="display:none"></span> Salvar Cliente</button>
+            <small id="clienteIdLabel" style="color:var(--muted)"></small>
+          </div>
         </div>
+
+        <!-- CNPJ -->
+        <div id="area_cnpj" style="display:none">
+          <div class="alert alert-warn" style="margin-bottom:12px">&#9888; <strong>Venda B2B pra empresa:</strong> endereco completo e <strong>OBRIGATORIO</strong> pela SEFAZ.</div>
+          <!-- Busca cliente existente -->
+          <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:12px;border:1px solid var(--border)">
+            <div class="section-title" style="margin-bottom:8px">Buscar empresa ja cadastrada</div>
+            <div style="display:flex;gap:8px;align-items:flex-end">
+              <div class="field" style="flex:1"><label>Pesquisar por nome ou CNPJ</label><input id="busca_cliente_cnpj" placeholder="Digite nome ou CNPJ..." oninput="filtrarClientesCnpj()"></div>
+              <button class="btn btn-outline" onclick="carregarClientes()" style="white-space:nowrap"><span id="spinBuscaClienteCnpj" class="spinner" style="display:none"></span> Atualizar lista</button>
+            </div>
+            <div id="lista_clientes_cnpj" style="margin-top:8px;max-height:150px;overflow-y:auto;display:none"></div>
+          </div>
+          <div class="section-title">Dados da empresa destinataria</div>
+          <div class="grid2" style="margin-bottom:12px">
+            <div class="field"><label>Razao Social <span class="req">*</span></label><input id="c_nome_cnpj" placeholder="Empresa Ltda"></div>
+            <div class="field"><label>CNPJ <span class="req">*</span></label><input id="c_cpfcnpj_cnpj" placeholder="00000000000000" maxlength="18"></div>
+            <div class="field"><label>Inscricao Estadual <span style="color:var(--muted);font-weight:400">(ou ISENTO)</span></label><input id="c_ie_cnpj" placeholder="ISENTO"></div>
+            <div class="field"><label>E-mail <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="c_email_cnpj" type="email" placeholder="financeiro@empresa.com"></div>
+            <div class="field"><label>Telefone <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="c_fone_cnpj" placeholder="11999999999"></div>
+          </div>
+          <div class="section-title">Endereco <span class="req">*</span> (obrigatorio para CNPJ)</div>
+          <div class="grid3" style="margin-bottom:12px">
+            <div class="field span2"><label>Logradouro <span class="req">*</span></label><input id="c_logradouro_cnpj" placeholder="Rua das Flores"></div>
+            <div class="field"><label>Numero <span class="req">*</span></label><input id="c_numero_cnpj" placeholder="100"></div>
+            <div class="field"><label>Complemento</label><input id="c_complemento_cnpj"></div>
+            <div class="field"><label>Bairro <span class="req">*</span></label><input id="c_bairro_cnpj" placeholder="Centro"></div>
+            <div class="field span2"><label>Municipio <span class="req">*</span></label><input id="c_municipio_cnpj" placeholder="Sao Paulo"></div>
+            <div class="field"><label>Cod. IBGE</label><input id="c_codmun_cnpj" placeholder="3550308" maxlength="7"></div>
+            <div class="field"><label>UF <span class="req">*</span></label><select id="c_uf_cnpj"><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option selected>SP</option><option>SE</option><option>TO</option></select></div>
+            <div class="field"><label>CEP <span class="req">*</span></label><input id="c_cep_cnpj" placeholder="01310100" maxlength="9"></div>
+          </div>
+          <div id="alertaClienteCnpj"></div>
+          <div class="actions">
+            <button class="btn btn-primary" onclick="cadastrarClienteCnpj()"><span id="spinClienteCnpj" class="spinner" style="display:none"></span> Salvar Empresa</button>
+            <small id="clienteIdLabelCnpj" style="color:var(--muted)"></small>
+          </div>
+        </div>
+
       </div>
       <div class="actions" style="justify-content:space-between">
         <button class="btn btn-outline" onclick="irParaPasso(0)">Voltar</button>
@@ -221,22 +301,36 @@
     <div id="passo2" style="display:none">
       <div class="card">
         <h2>3. Produto / Servico</h2>
-        <p class="subtitle">Cadastre o produto que sera incluido na nota.</p>
-        <div class="grid2" style="margin-bottom:12px">
-          <div class="field"><label>Nome do Produto <span class="req">*</span></label><input id="p_nome" value="Produto Teste Homologacao"></div>
-          <div class="field"><label>Descricao</label><input id="p_descricao" value="Produto para teste de emissao NF-e em homologacao"></div>
-          <div class="field"><label>NCM <span class="req">*</span></label><input id="p_ncm" value="84713012" maxlength="8"></div>
-          <div class="field"><label>CFOP <span class="req">*</span></label><input id="p_cfop" value="5102" maxlength="4"></div>
-          <div class="field"><label>CST</label><input id="p_cst" value="00" maxlength="3"></div>
-          <div class="field"><label>CSOSN</label><input id="p_csosn" value="102" maxlength="3"></div>
-          <div class="field"><label>Unidade</label><select id="p_unidade"><option selected>UN</option><option>PC</option><option>KG</option><option>LT</option><option>MT</option><option>CX</option></select></div>
-          <div class="field"><label>Preco Unitario (R$) <span class="req">*</span></label><input id="p_preco" type="number" step="0.01" value="100.00" min="0.01"></div>
+        <p class="subtitle">Selecione um produto existente ou cadastre um novo.</p>
+        <!-- Busca produto existente -->
+        <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:14px;border:1px solid var(--border)">
+          <div class="section-title" style="margin-bottom:8px">Buscar produto ja cadastrado</div>
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <div class="field" style="flex:1"><label>Pesquisar por nome</label><input id="busca_produto" placeholder="Digite o nome do produto..." oninput="filtrarProdutos()"></div>
+            <button class="btn btn-outline" onclick="carregarProdutos()" style="white-space:nowrap"><span id="spinBuscaProduto" class="spinner" style="display:none"></span> Atualizar lista</button>
+          </div>
+          <div id="lista_produtos" style="margin-top:8px;max-height:150px;overflow-y:auto;display:none"></div>
         </div>
-        <div id="alertaProduto"></div>
-        <div class="actions">
-          <button class="btn btn-primary" onclick="cadastrarProduto()"><span id="spinProduto" class="spinner" style="display:none"></span> Cadastrar Produto</button>
-          <small id="produtoIdLabel" style="color:var(--muted)"></small>
-        </div>
+        <details id="detalhes_novo_produto">
+          <summary style="cursor:pointer;font-size:.86rem;font-weight:700;color:var(--primary);margin-bottom:10px;user-select:none">&#9654; Cadastrar novo produto</summary>
+          <div style="padding-top:8px">
+            <div class="grid2" style="margin-bottom:12px">
+              <div class="field"><label>Nome do Produto <span class="req">*</span></label><input id="p_nome" value="Produto Teste Homologacao"></div>
+              <div class="field"><label>Descricao <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="p_descricao" value="Produto para teste de emissao NF-e em homologacao"></div>
+              <div class="field"><label>NCM <span class="req">*</span></label><input id="p_ncm" value="84713012" maxlength="8"></div>
+              <div class="field"><label>CFOP <span class="req">*</span></label><input id="p_cfop" value="5102" maxlength="4"></div>
+              <div class="field"><label>CST</label><input id="p_cst" value="00" maxlength="3"></div>
+              <div class="field"><label>CSOSN</label><input id="p_csosn" value="102" maxlength="3"></div>
+              <div class="field"><label>Unidade</label><select id="p_unidade"><option selected>UN</option><option>PC</option><option>KG</option><option>LT</option><option>MT</option><option>CX</option></select></div>
+              <div class="field"><label>Preco Unitario (R$) <span class="req">*</span></label><input id="p_preco" type="number" step="0.01" value="100.00" min="0.01"></div>
+            </div>
+            <div id="alertaProduto"></div>
+            <div class="actions">
+              <button class="btn btn-primary" onclick="cadastrarProduto()"><span id="spinProduto" class="spinner" style="display:none"></span> Cadastrar Produto</button>
+              <small id="produtoIdLabel" style="color:var(--muted)"></small>
+            </div>
+          </div>
+        </details>
       </div>
       <div class="actions" style="justify-content:space-between">
         <button class="btn btn-outline" onclick="irParaPasso(1)">Voltar</button>
@@ -247,29 +341,21 @@
     <div id="passo3" style="display:none">
       <div class="card">
         <h2>4. Emitir Nota Fiscal Eletronica</h2>
-        <p class="subtitle">Configure os dados e clique em Emitir NF-e para enviar a SEFAZ.</p>
+        <p class="subtitle">Confirme os dados e clique em Emitir NF-e.</p>
         <div class="alert alert-warn">Voce esta em AMBIENTE DE HOMOLOGACAO. As notas emitidas nao tem validade fiscal.</div>
-        <div style="margin-bottom:12px;padding:10px 14px;background:var(--step-active);border-radius:8px;border:1px solid #93c5fd">
-          <label style="display:flex;gap:8px;align-items:center;cursor:pointer;font-size:.86rem;font-weight:600;color:var(--text);margin:0">
-            <input type="checkbox" id="consumidorFinal" onchange="toggleConsumidorFinal()">
-            Emitir para Consumidor Final (sem identificacao — CNPJ/CPF opcional)
-          </label>
-          <div id="destAvulsoArea" style="display:none;margin-top:10px">
-            <div class="grid2">
-              <div class="field"><label>Nome do Consumidor (opcional)</label><input id="dest_nome" placeholder="Nome do consumidor"></div>
-              <div class="field"><label>CPF / CNPJ (opcional)</label><input id="dest_cpfcnpj" placeholder="CPF ou CNPJ sem pontuacao"></div>
-            </div>
-          </div>
-        </div>
+
+        <!-- Resumo do destinatario selecionado -->
+        <div id="resumoDestinatario" style="background:var(--step-active);border:1px solid #93c5fd;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.86rem"></div>
+
         <div class="grid2" style="margin-bottom:12px">
           <div class="field"><label>Natureza da Operacao <span class="req">*</span></label><input id="n_natureza" value="Venda de Mercadoria"></div>
           <div class="field"><label>Serie <span class="req">*</span></label><input id="n_serie" value="1" maxlength="3"></div>
-          <div class="field"><label>Frete (R$)</label><input id="n_frete" type="number" step="0.01" value="0" min="0"></div>
-          <div class="field"><label>Desconto Geral (R$)</label><input id="n_desconto" type="number" step="0.01" value="0" min="0"></div>
-          <div class="field span2"><label>Informacoes Complementares</label><input id="n_info" placeholder="Observacoes adicionais. NOTA SEM VALOR FISCAL - EMITIDA PARA FINS DE TESTE" value="NOTA SEM VALOR FISCAL - EMITIDA PARA FINS DE TESTE"></div>
+          <div class="field"><label>Frete (R$) <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="n_frete" type="number" step="0.01" value="0" min="0"></div>
+          <div class="field"><label>Desconto Geral (R$) <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="n_desconto" type="number" step="0.01" value="0" min="0"></div>
+          <div class="field span2"><label>Informacoes Complementares <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="n_info" value="NOTA SEM VALOR FISCAL - EMITIDA PARA FINS DE TESTE"></div>
         </div>
         <div class="section-title" style="display:flex;justify-content:space-between;align-items:center">
-          Itens da Nota
+          Itens da Nota <span class="req">*</span>
           <button class="btn btn-outline" style="font-size:.78rem;padding:5px 12px" onclick="adicionarItem()">+ Item</button>
         </div>
         <div id="itensContainer" style="margin-bottom:12px"></div>
@@ -520,7 +606,9 @@
 
 </div>
 <script>
-const estado = { empresaId:null, clienteId:null, produtoId:null, certEnviado:false, pfxBase64:null, pfxNome:null, ultimaChave:null, ultimaNotaId:null };
+const estado = { empresaId:null, clienteId:null, clienteNome:null, tipoDest:'cpf', produtoId:null, produtoNome:null, certEnviado:false, pfxBase64:null, pfxNome:null, ultimaChave:null, ultimaNotaId:null };
+var clientesCadastrados = [];
+var produtosCadastrados = [];
 const API = window.location.origin;
 
 function showTab(name,btn){
@@ -543,7 +631,9 @@ function irParaPasso(n){
     else if(i===passoAtual){nav.classList.add('active');num.textContent=i+1;}
     else{num.textContent=i+1;}
   }
-  if(n===3)renderItens();
+  if(n===1&&estado.empresaId){carregarClientes();}
+  if(n===2&&estado.empresaId){carregarProdutos();}
+  if(n===3){atualizarResumoDestinatario();renderItens();}
 }
 
 const v=id=>(document.getElementById(id)||{}).value?.trim()||'';
@@ -579,13 +669,18 @@ function mostrarResultado(cardId,tituloId,badgeId,jsonId,data,ok,tOk,tErr){
 }
 
 function atualizarEstadoBar(){
-  var s=function(id,ok,texto){var el=document.getElementById(id);el.className='badge '+(ok?'badge-green':'badge-red');el.textContent=ok?texto:'nao cadastrado';};
-  s('stEmpresa',!!estado.empresaId,estado.empresaId?'Orlando ok':'');
+  var s=function(id,ok,texto,tipo){var el=document.getElementById(id);el.className='badge '+(ok?(tipo||'badge-green'):'badge-red');el.textContent=ok?texto:(id==='stCliente'?'nao definido':'nao definido');};
+  s('stEmpresa',!!estado.empresaId,estado.empresaId?'Empresa ok':'');
   var cert=document.getElementById('stCert');
   cert.className='badge '+(estado.certEnviado?'badge-green':'badge-red');
   cert.textContent=estado.certEnviado?'enviado ok':'nao enviado';
-  s('stCliente',!!estado.clienteId,estado.clienteId?'WURTH ok':'');
-  s('stProduto',!!estado.produtoId,estado.produtoId?'Produto ok':'');
+  // Destinatario: varia por tipo
+  var stCl=document.getElementById('stCliente');
+  if(estado.tipoDest==='anonimo'){stCl.className='badge badge-blue';stCl.textContent='Anonimo';}
+  else if(estado.tipoDest==='cpf'&&estado.clienteNome){stCl.className='badge badge-green';stCl.textContent=estado.clienteNome;}
+  else if(estado.tipoDest==='cnpj'&&estado.clienteNome){stCl.className='badge badge-green';stCl.textContent=estado.clienteNome;}
+  else{stCl.className='badge badge-red';stCl.textContent='nao definido';}
+  s('stProduto',!!estado.produtoId,estado.produtoNome||'Produto ok');
 }
 
 async function cadastrarEmpresa(){
@@ -632,33 +727,186 @@ async function enviarCertificado(){
   finally{spin('spinCert',false);}
 }
 
+// -------- DESTINATARIO --------
+var tipoDest = 'cpf';
+function selecionarTipoDest(tipo){
+  tipoDest=tipo; estado.tipoDest=tipo;
+  ['anonimo','cpf','cnpj'].forEach(function(t){
+    document.getElementById('tipodest_'+t).className='tipo-btn'+(t===tipo?' selected':'');
+    document.getElementById('area_'+t).style.display=t===tipo?'block':'none';
+  });
+  if(tipo==='anonimo'){
+    estado.clienteId=null; estado.clienteNome='Consumidor Anonimo';
+    document.getElementById('stCliente').className='badge badge-blue';
+    document.getElementById('stCliente').textContent='Anonimo';
+  } else if(tipo==='cpf') {
+    estado.clienteId=null; estado.clienteNome=null; atualizarEstadoBar();
+  } else {
+    estado.clienteId=null; estado.clienteNome=null; atualizarEstadoBar();
+  }
+  atualizarResumoDestinatario();
+}
+
+function atualizarResumoDestinatario(){
+  var el=document.getElementById('resumoDestinatario');
+  if(!el)return;
+  if(tipoDest==='anonimo'){
+    el.innerHTML='<strong>Destinatario:</strong> <span class="badge badge-blue">Consumidor Anonimo</span> — nenhum dado necessario.';
+  } else if(tipoDest==='cpf'&&estado.clienteNome){
+    el.innerHTML='<strong>Destinatario:</strong> <span class="badge badge-green">'+estado.clienteNome+'</span> (CPF) — ID: '+estado.clienteId;
+  } else if(tipoDest==='cnpj'&&estado.clienteNome){
+    el.innerHTML='<strong>Destinatario:</strong> <span class="badge badge-green">'+estado.clienteNome+'</span> (CNPJ) — ID: '+estado.clienteId;
+  } else {
+    el.innerHTML='<span style="color:var(--danger)">Nenhum destinatario definido. Volte ao Passo 2.</span>';
+  }
+}
+
+async function carregarClientes(){
+  if(!estado.empresaId){return;}
+  spin('spinBuscaCliente',true);spin('spinBuscaClienteCnpj',true);
+  try{
+    var res=await fetch(API+'/api/cliente?empresaId='+encodeURIComponent(estado.empresaId));
+    if(res.ok){clientesCadastrados=await res.json();filtrarClientes();filtrarClientesCnpj();}
+  }catch(e){}
+  finally{spin('spinBuscaCliente',false);spin('spinBuscaClienteCnpj',false);}
+}
+
+function renderListaClientes(lista, containerEl, onSelect){
+  if(!containerEl)return;
+  if(!lista||!lista.length){containerEl.style.display='none';return;}
+  containerEl.style.display='block';
+  containerEl.innerHTML='';
+  lista.forEach(function(c){
+    var el=document.createElement('div');
+    el.style.cssText='padding:7px 10px;cursor:pointer;border-bottom:1px solid var(--border);border-radius:4px;display:flex;justify-content:space-between;align-items:center';
+    el.innerHTML='<span><strong>'+c.nome+'</strong> <small style="color:var(--muted)">'+c.cpf_CNPJ+'</small></span><span class="badge badge-blue" style="font-size:.7rem">Selecionar</span>';
+    el.onmouseenter=function(){this.style.background='var(--step-active)';};
+    el.onmouseleave=function(){this.style.background='';};
+    el.onclick=function(){onSelect(c);};
+    containerEl.appendChild(el);
+  });
+}
+
+function filtrarClientes(){
+  var q=(document.getElementById('busca_cliente').value||'').toLowerCase();
+  var lista=clientesCadastrados.filter(function(c){return!q||c.nome.toLowerCase().includes(q)||(c.cpf_CNPJ||'').includes(q);});
+  renderListaClientes(lista.slice(0,8), document.getElementById('lista_clientes'), function(c){
+    document.getElementById('c_nome').value=c.nome;
+    document.getElementById('c_cpfcnpj').value=c.cpf_CNPJ||'';
+    estado.clienteId=c.id; estado.clienteNome=c.nome;
+    document.getElementById('clienteIdLabel').textContent='ID: '+c.id;
+    mostrarAlerta('alertaCliente','success','Cliente selecionado: '+c.nome);
+    atualizarEstadoBar();
+  });
+}
+
+function filtrarClientesCnpj(){
+  var q=(document.getElementById('busca_cliente_cnpj').value||'').toLowerCase();
+  var lista=clientesCadastrados.filter(function(c){return!q||c.nome.toLowerCase().includes(q)||(c.cpf_CNPJ||'').includes(q);});
+  renderListaClientes(lista.slice(0,8), document.getElementById('lista_clientes_cnpj'), function(c){
+    document.getElementById('c_nome_cnpj').value=c.nome;
+    document.getElementById('c_cpfcnpj_cnpj').value=c.cpf_CNPJ||'';
+    estado.clienteId=c.id; estado.clienteNome=c.nome;
+    document.getElementById('clienteIdLabelCnpj').textContent='ID: '+c.id;
+    mostrarAlerta('alertaClienteCnpj','success','Empresa selecionada: '+c.nome);
+    atualizarEstadoBar();
+  });
+}
+
 async function cadastrarCliente(){
   limparAlerta('alertaCliente');
   if(!estado.empresaId){mostrarAlerta('alertaCliente','warn','Cadastre a empresa primeiro.');return;}
-  if(!v('c_nome')||!v('c_cpfcnpj')){mostrarAlerta('alertaCliente','error','Nome e CPF/CNPJ sao obrigatorios.');return;}
+  if(!v('c_nome')){mostrarAlerta('alertaCliente','error','Nome e obrigatorio.');return;}
   spin('spinCliente',true);
   try{
     var res=await fetch(API+'/api/cliente',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({empresaId:estado.empresaId,nome:v('c_nome'),cpf_CNPJ:v('c_cpfcnpj'),inscricaoEstadual:v('c_ie'),email:v('c_email'),telefone:v('c_fone'),logradouro:v('c_logradouro'),numero:v('c_numero'),complemento:v('c_complemento'),bairro:v('c_bairro'),municipio:v('c_municipio'),codigoMunicipio:v('c_codmun'),uf:v('c_uf'),cep:v('c_cep'),pais:'Brasil',codigoPais:'1058'})});
+      body:JSON.stringify({empresaId:estado.empresaId,nome:v('c_nome'),cpf_CNPJ:v('c_cpfcnpj')||null,inscricaoEstadual:'',email:v('c_email'),telefone:v('c_fone'),logradouro:v('c_logradouro'),numero:v('c_numero'),complemento:v('c_complemento'),bairro:v('c_bairro'),municipio:v('c_municipio'),codigoMunicipio:v('c_codmun'),uf:v('c_uf'),cep:v('c_cep'),pais:'Brasil',codigoPais:'1058'})});
     var data=await safeJson(res);
     if(!res.ok)throw new Error(data.erro||'HTTP '+res.status);
-    estado.clienteId=data.id;document.getElementById('clienteIdLabel').textContent='ID: '+data.id;
-    mostrarAlerta('alertaCliente','success','Destinatario cadastrado! ID: '+data.id);
+    estado.clienteId=data.id; estado.clienteNome=data.nome||v('c_nome');
+    document.getElementById('clienteIdLabel').textContent='ID: '+data.id;
+    mostrarAlerta('alertaCliente','success','Cliente salvo! ID: '+data.id);
+    clientesCadastrados.push({id:data.id,nome:estado.clienteNome,cpf_CNPJ:v('c_cpfcnpj')});
     atualizarEstadoBar();
   }catch(e){mostrarAlerta('alertaCliente','error',e.message);}
   finally{spin('spinCliente',false);}
 }
 
+async function cadastrarClienteCnpj(){
+  limparAlerta('alertaClienteCnpj');
+  if(!estado.empresaId){mostrarAlerta('alertaClienteCnpj','warn','Cadastre a empresa primeiro.');return;}
+  if(!v('c_nome_cnpj')||!v('c_cpfcnpj_cnpj')){mostrarAlerta('alertaClienteCnpj','error','Razao Social e CNPJ sao obrigatorios.');return;}
+  if(!v('c_logradouro_cnpj')||!v('c_numero_cnpj')||!v('c_bairro_cnpj')||!v('c_municipio_cnpj')||!v('c_cep_cnpj')){
+    mostrarAlerta('alertaClienteCnpj','error','Endereco completo e obrigatorio para CNPJ (SEFAZ rejeita sem endereco).');return;}
+  spin('spinClienteCnpj',true);
+  try{
+    var res=await fetch(API+'/api/cliente',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({empresaId:estado.empresaId,nome:v('c_nome_cnpj'),cpf_CNPJ:v('c_cpfcnpj_cnpj'),inscricaoEstadual:v('c_ie_cnpj')||'ISENTO',email:v('c_email_cnpj'),telefone:v('c_fone_cnpj'),logradouro:v('c_logradouro_cnpj'),numero:v('c_numero_cnpj'),complemento:v('c_complemento_cnpj'),bairro:v('c_bairro_cnpj'),municipio:v('c_municipio_cnpj'),codigoMunicipio:v('c_codmun_cnpj'),uf:v('c_uf_cnpj'),cep:v('c_cep_cnpj'),pais:'Brasil',codigoPais:'1058'})});
+    var data=await safeJson(res);
+    if(!res.ok)throw new Error(data.erro||'HTTP '+res.status);
+    estado.clienteId=data.id; estado.clienteNome=data.nome||v('c_nome_cnpj');
+    document.getElementById('clienteIdLabelCnpj').textContent='ID: '+data.id;
+    mostrarAlerta('alertaClienteCnpj','success','Empresa salva! ID: '+data.id);
+    clientesCadastrados.push({id:data.id,nome:estado.clienteNome,cpf_CNPJ:v('c_cpfcnpj_cnpj')});
+    atualizarEstadoBar();
+  }catch(e){mostrarAlerta('alertaClienteCnpj','error',e.message);}
+  finally{spin('spinClienteCnpj',false);}
+}
+
+// -------- PRODUTO --------
+async function carregarProdutos(){
+  if(!estado.empresaId){return;}
+  spin('spinBuscaProduto',true);
+  try{
+    var res=await fetch(API+'/api/produto?empresaId='+encodeURIComponent(estado.empresaId));
+    if(res.ok){produtosCadastrados=await res.json();filtrarProdutos();}
+  }catch(e){}
+  finally{spin('spinBuscaProduto',false);}
+}
+
+function filtrarProdutos(){
+  var q=(document.getElementById('busca_produto').value||'').toLowerCase();
+  var lista=produtosCadastrados.filter(function(p){return!q||p.nome.toLowerCase().includes(q);});
+  var containerEl=document.getElementById('lista_produtos');
+  if(!containerEl)return;
+  if(!lista||!lista.length){containerEl.style.display='none';return;}
+  containerEl.style.display='block';
+  containerEl.innerHTML='';
+  lista.slice(0,8).forEach(function(p){
+    var el=document.createElement('div');
+    el.style.cssText='padding:7px 10px;cursor:pointer;border-bottom:1px solid var(--border);border-radius:4px;display:flex;justify-content:space-between;align-items:center';
+    var preco='R$ '+(p.preco||0).toFixed(2).replace('.',',');
+    el.innerHTML='<span><strong>'+p.nome+'</strong> <small style="color:var(--muted)">'+p.unidade+' — '+preco+'</small></span><span class="badge badge-blue" style="font-size:.7rem">Selecionar</span>';
+    el.onmouseenter=function(){this.style.background='var(--step-active)';};
+    el.onmouseleave=function(){this.style.background='';};
+    el.onclick=function(){
+      estado.produtoId=p.id; estado.produtoNome=p.nome;
+      document.getElementById('produtoIdLabel').textContent='ID: '+p.id;
+      // atualiza item[0] com este produto
+      if(itens.length>0){itens[0].produtoId=p.id;itens[0].valor=p.preco||itens[0].valor;}
+      renderItens();
+      mostrarAlerta('alertaProduto','success','Produto selecionado: '+p.nome+' — '+preco);
+      atualizarEstadoBar();
+    };
+    containerEl.appendChild(el);
+  });
+}
+
 async function cadastrarProduto(){
   limparAlerta('alertaProduto');
   if(!estado.empresaId){mostrarAlerta('alertaProduto','warn','Cadastre a empresa primeiro.');return;}
+  if(!v('p_nome')){mostrarAlerta('alertaProduto','error','Nome do produto e obrigatorio.');return;}
   spin('spinProduto',true);
   try{
     var res=await fetch(API+'/api/produto',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({empresaId:estado.empresaId,nome:v('p_nome'),descricao:v('p_descricao'),ncm:v('p_ncm'),cfop:v('p_cfop'),cst:v('p_cst'),csosn:v('p_csosn'),unidade:v('p_unidade'),preco:parseFloat(v('p_preco'))||0,aliquotaICMS:0,aliquotaIPI:0,aliquotaPIS:0.65,aliquotaCOFINS:3})});
     var data=await safeJson(res);
     if(!res.ok)throw new Error(data.erro||'HTTP '+res.status);
-    estado.produtoId=data.id;document.getElementById('produtoIdLabel').textContent='ID: '+data.id;
+    estado.produtoId=data.id; estado.produtoNome=data.nome||v('p_nome');
+    document.getElementById('produtoIdLabel').textContent='ID: '+data.id;
+    produtosCadastrados.push({id:data.id,nome:estado.produtoNome,preco:parseFloat(v('p_preco'))||0,unidade:v('p_unidade')||'UN'});
+    if(itens.length>0){itens[0].produtoId=data.id;itens[0].valor=parseFloat(v('p_preco'))||itens[0].valor;}
+    renderItens();
     mostrarAlerta('alertaProduto','success','Produto cadastrado! ID: '+data.id);
     atualizarEstadoBar();
   }catch(e){mostrarAlerta('alertaProduto','error',e.message);}
@@ -672,13 +920,32 @@ function renderItens(){
   var container=document.getElementById('itensContainer');container.innerHTML='';
   itens.forEach(function(item,i){
     var div=document.createElement('div');div.className='item-linha';
-    div.innerHTML='<button class="remover" onclick="removerItem('+i+')" title="Remover">x</button>'
-      +'<div class="grid3"><div class="field span3"><label>Produto ID *</label><input id="item_pid_'+i+'" value="'+(item.produtoId||'')+'" placeholder="UUID do produto"></div>'
-      +'<div class="field"><label>Quantidade</label><input id="item_qtd_'+i+'" type="number" step="0.001" min="0.001" value="'+item.qtd+'"></div>'
-      +'<div class="field"><label>Valor Unitario (R$)</label><input id="item_val_'+i+'" type="number" step="0.01" min="0.01" value="'+item.valor+'"></div>'
-      +'<div class="field"><label>Desconto (R$)</label><input id="item_desc_'+i+'" type="number" step="0.01" value="'+item.desc+'"></div></div>';
+    var opts='<option value="">-- Selecione --</option>';
+    produtosCadastrados.forEach(function(p){
+      opts+='<option value="'+p.id+'"'+(item.produtoId===p.id?' selected':'')+'>'+p.nome+' (R$ '+p.preco.toFixed(2)+')</option>';
+    });
+    if(produtosCadastrados.length){
+      div.innerHTML='<button class="remover" onclick="removerItem('+i+')" title="Remover">x</button>'
+        +'<div class="grid3"><div class="field span3"><label>Produto <span class="req">*</span></label>'
+        +'<select id="item_pid_'+i+'" onchange="selecionarProdutoItem('+i+')">'+opts+'</select></div>'
+        +'<div class="field"><label>Quantidade</label><input id="item_qtd_'+i+'" type="number" step="0.001" min="0.001" value="'+item.qtd+'"></div>'
+        +'<div class="field"><label>Valor Unitario (R$)</label><input id="item_val_'+i+'" type="number" step="0.01" min="0.01" value="'+item.valor+'"></div>'
+        +'<div class="field"><label>Desconto (R$)</label><input id="item_desc_'+i+'" type="number" step="0.01" value="'+item.desc+'"></div></div>';
+    } else {
+      div.innerHTML='<button class="remover" onclick="removerItem('+i+')" title="Remover">x</button>'
+        +'<div class="grid3"><div class="field span3"><label>Produto ID <span class="req">*</span></label>'
+        +'<input id="item_pid_'+i+'" value="'+(item.produtoId||'')+'" placeholder="UUID do produto (va ao Passo 3 para selecionar)"></div>'
+        +'<div class="field"><label>Quantidade</label><input id="item_qtd_'+i+'" type="number" step="0.001" min="0.001" value="'+item.qtd+'"></div>'
+        +'<div class="field"><label>Valor Unitario (R$)</label><input id="item_val_'+i+'" type="number" step="0.01" min="0.01" value="'+item.valor+'"></div>'
+        +'<div class="field"><label>Desconto (R$)</label><input id="item_desc_'+i+'" type="number" step="0.01" value="'+item.desc+'"></div></div>';
+    }
     container.appendChild(div);
   });
+}
+function selecionarProdutoItem(i){
+  var sel=document.getElementById('item_pid_'+i);
+  var prod=produtosCadastrados.find(function(p){return p.id===sel.value;});
+  if(prod){var valEl=document.getElementById('item_val_'+i);if(valEl)valEl.value=prod.preco.toFixed(2);}
 }
 function adicionarItem(){itens.push({produtoId:estado.produtoId||'',qtd:1,valor:100,desc:0});renderItens();}
 function removerItem(i){if(itens.length>1){itens.splice(i,1);renderItens();}}
@@ -695,14 +962,14 @@ async function emitirNFe(){
   limparAlerta('alertaEmitir');
   document.getElementById('resultadoCard').style.display='none';
   if(!estado.empresaId){mostrarAlerta('alertaEmitir','error','Cadastre a empresa primeiro.');return;}
-  var cf=document.getElementById('consumidorFinal').checked;
-  if(!cf&&!estado.clienteId){mostrarAlerta('alertaEmitir','error','Cadastre o destinatario primeiro (ou marque Consumidor Final acima).');return;}
+  var td=tipoDest;
+  if(td!=='anonimo'&&!estado.clienteId){mostrarAlerta('alertaEmitir','error','Defina o destinatario no Passo 2.');return;}
   var itensList=coletarItens();
-  if(itensList.some(function(it){return!it.produtoId;})){mostrarAlerta('alertaEmitir','error','Informe o ID do produto em todos os itens.');return;}
+  if(itensList.some(function(it){return!it.produtoId;})){mostrarAlerta('alertaEmitir','error','Selecione o produto em todos os itens.');return;}
   spin('spinEmitir',true);
   try{
-    var body={empresaId:estado.empresaId,clienteId:cf?null:estado.clienteId,naturezaOperacao:v('n_natureza')||'Venda de Mercadoria',serie:v('n_serie')||'1',itens:itensList,valorFrete:parseFloat(v('n_frete'))||0,valorSeguro:0,valorDesconto:parseFloat(v('n_desconto'))||0,informacaoComplementar:v('n_info')||null};
-    if(cf){body.destinatarioCpfCnpj=v('dest_cpfcnpj')||null;body.destinatarioNome=v('dest_nome')||null;}
+    var body={empresaId:estado.empresaId,clienteId:td==='anonimo'?null:estado.clienteId,naturezaOperacao:v('n_natureza')||'Venda de Mercadoria',serie:v('n_serie')||'1',itens:itensList,valorFrete:parseFloat(v('n_frete'))||0,valorSeguro:0,valorDesconto:parseFloat(v('n_desconto'))||0,informacaoComplementar:v('n_info')||null};
+    if(td==='anonimo'){body.destinatarioCpfCnpj=null;body.destinatarioNome=null;}
     var res=await fetch(API+'/api/nfe/emitir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     var data=await safeJson(res);
     var card=document.getElementById('resultadoCard');card.style.display='block';
@@ -887,13 +1154,7 @@ async function consultarNuvemFiscal(){
 }
 
 // Init
-function toggleConsumidorFinal(){
-  var cf=document.getElementById('consumidorFinal').checked;
-  document.getElementById('destAvulsoArea').style.display=cf?'block':'none';
-  var stCliente=document.getElementById('stCliente');
-  if(cf){stCliente.className='badge badge-blue';stCliente.textContent='Consumidor Final';}
-  else{stCliente.className='badge '+(estado.clienteId?'badge-green':'badge-red');stCliente.textContent=estado.clienteId?'WURTH ok':'nao cadastrado';}
-}
+function toggleConsumidorFinal(){/* legado — nao usado mais */}
 
 function downloadXml(notaId){window.open(API+'/api/nfe/'+notaId+'/xml','_blank');}
 function downloadDanfe(notaId){window.open(API+'/api/nfe/'+notaId+'/danfe','_blank');}
@@ -937,12 +1198,19 @@ async function enviarCce(){
 
 estado.empresaId='dd104b57-010a-4458-8699-d63807e205d3';
 estado.clienteId='0865f76e-bff7-48ef-8b02-f24b6a468e3d';
+estado.clienteNome='WURTH DO BRASIL';
+estado.tipoDest='cnpj';
+tipoDest='cnpj';
 estado.produtoId='9ae15d08-81e9-4767-911e-8faf96ad2821';
+estado.produtoNome='Produto Teste Homologacao';
+produtosCadastrados=[{id:estado.produtoId,nome:estado.produtoNome,preco:100,unidade:'UN'}];
+clientesCadastrados=[{id:estado.clienteId,nome:estado.clienteNome,cpf_CNPJ:'43648971003170'}];
 estado.ultimaChave='25260421362844000152550010000000251311245007';
 estado.ultimaNotaId='20bd6c28-6de2-4c9d-87c6-ca904099cea7';
 
 document.getElementById('empresaIdLabel').textContent='ID: '+estado.empresaId;
 document.getElementById('clienteIdLabel').textContent='ID: '+estado.clienteId;
+document.getElementById('clienteIdLabelCnpj').textContent='ID: '+estado.clienteId;
 document.getElementById('produtoIdLabel').textContent='ID: '+estado.produtoId;
 
 document.getElementById('e_cnpj').value='21362844000152';
@@ -958,18 +1226,24 @@ document.getElementById('e_municipio').value='JOAO PESSOA';
 document.getElementById('e_uf').value='PB';
 document.getElementById('e_cep').value='58078340';
 
-document.getElementById('c_nome').value='WURTH DO BRASIL PECAS DE FIXACAO LTDA';
-document.getElementById('c_cpfcnpj').value='43648971003170';
-document.getElementById('c_ie').value='161585078';
-document.getElementById('c_fone').value='1146131900';
-document.getElementById('c_logradouro').value='ROD BR-230';
-document.getElementById('c_numero').value='SN';
-document.getElementById('c_complemento').value='KM28 SALA 00003';
-document.getElementById('c_bairro').value='CRISTO REDENTOR';
-document.getElementById('c_municipio').value='JOAO PESSOA';
-document.getElementById('c_codmun').value='2507507';
-document.getElementById('c_uf').value='PB';
-document.getElementById('c_cep').value='58071680';
+document.getElementById('c_nome').value='';
+document.getElementById('c_cpfcnpj').value='';
+
+document.getElementById('c_nome_cnpj').value='WURTH DO BRASIL PECAS DE FIXACAO LTDA';
+document.getElementById('c_cpfcnpj_cnpj').value='43648971003170';
+document.getElementById('c_ie_cnpj').value='161585078';
+document.getElementById('c_fone_cnpj').value='1146131900';
+document.getElementById('c_logradouro_cnpj').value='ROD BR-230';
+document.getElementById('c_numero_cnpj').value='SN';
+document.getElementById('c_complemento_cnpj').value='KM28 SALA 00003';
+document.getElementById('c_bairro_cnpj').value='CRISTO REDENTOR';
+document.getElementById('c_municipio_cnpj').value='JOAO PESSOA';
+document.getElementById('c_codmun_cnpj').value='2507507';
+document.getElementById('c_uf_cnpj').value='PB';
+document.getElementById('c_cep_cnpj').value='58071680';
+
+// inicializa tipo de destinatario no UI (cnpj por padrao com WURTH pre-preenchida)
+selecionarTipoDest('cnpj');
 
 document.getElementById('cs_empresaId').value=estado.empresaId;
 document.getElementById('cs_chave').value=estado.ultimaChave;
@@ -984,8 +1258,8 @@ document.getElementById('sp_empresaId').value=estado.empresaId;
 preencherMesAtual();
 
 mostrarAlerta('alertaEmpresa','success','Empresa Orlando ja cadastrada no banco. Envie o certificado para emitir novas NF-es.');
-mostrarAlerta('alertaCliente','success','WURTH do Brasil ja cadastrada como destinataria.');
-mostrarAlerta('alertaProduto','success','Produto Teste ja cadastrado. Clique em Proximo: Emitir NF-e.');
+mostrarAlerta('alertaClienteCnpj','success','WURTH do Brasil ja cadastrada como destinataria. Clique em Proximo ou selecione outro tipo de destinatario acima.');
+mostrarAlerta('alertaProduto','success','Produto Teste ja registrado. Selecione-o na parte superior da tela.');
 
 atualizarEstadoBar();
 </script>
