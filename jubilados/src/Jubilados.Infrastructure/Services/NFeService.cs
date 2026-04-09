@@ -671,20 +671,40 @@ public class NFeService : INFeService
         }
         else
         {
-            // Destinatário avulso (com CPF/CNPJ mas sem cadastro)
+            // Destinatário avulso (com ou sem CPF/CNPJ — consumidor não cadastrado)
             var destCpfCnpj = Limpar(dto.DestinatarioCpfCnpj ?? "");
-            if (destCpfCnpj.Length == 14 || destCpfCnpj.Length == 11)
+            sb.AppendLine("    <dest>");
+            if (destCpfCnpj.Length == 14)
             {
-                sb.AppendLine("    <dest>");
-                sb.AppendLine(destCpfCnpj.Length == 14
-                    ? $"      <CNPJ>{destCpfCnpj}</CNPJ>"
-                    : $"      <CPF>{destCpfCnpj}</CPF>");
+                sb.AppendLine($"      <CNPJ>{destCpfCnpj}</CNPJ>");
                 var destNome = string.IsNullOrWhiteSpace(dto.DestinatarioNome) ? "CONSUMIDOR" : dto.DestinatarioNome;
                 sb.AppendLine($"      <xNome>{XmlEnc(ambiente == "2" ? "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL" : destNome)}</xNome>");
-                sb.AppendLine("      <indIEDest>9</indIEDest>");
-                sb.AppendLine("    </dest>");
             }
-            // else: consumidor final não identificado — omitir <dest> conforme NF-e 4.00
+            else if (destCpfCnpj.Length == 11)
+            {
+                sb.AppendLine($"      <CPF>{destCpfCnpj}</CPF>");
+                var destNome = string.IsNullOrWhiteSpace(dto.DestinatarioNome) ? "CONSUMIDOR" : dto.DestinatarioNome;
+                sb.AppendLine($"      <xNome>{XmlEnc(ambiente == "2" ? "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL" : destNome)}</xNome>");
+            }
+            else
+            {
+                // Consumidor anônimo: CPF fictício com dígitos válidos (padrão para dest não identificado)
+                sb.AppendLine("      <CPF>00000000191</CPF>");
+                sb.AppendLine($"      <xNome>{XmlEnc(ambiente == "2" ? "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL" : "CONSUMIDOR NAO IDENTIFICADO")}</xNome>");
+                sb.AppendLine("      <enderDest>");
+                sb.AppendLine("        <xLgr>NAO IDENTIFICADO</xLgr>");
+                sb.AppendLine("        <nro>S/N</nro>");
+                sb.AppendLine("        <xBairro>NAO IDENTIFICADO</xBairro>");
+                sb.AppendLine($"        <cMun>{_options.CodigoMunicipio}</cMun>");
+                sb.AppendLine($"        <xMun>{XmlEnc(empresa.Municipio)}</xMun>");
+                sb.AppendLine($"        <UF>{empresa.UF}</UF>");
+                sb.AppendLine($"        <CEP>{Limpar(empresa.CEP)}</CEP>");
+                sb.AppendLine("        <cPais>1058</cPais>");
+                sb.AppendLine("        <xPais>Brasil</xPais>");
+                sb.AppendLine("      </enderDest>");
+            }
+            sb.AppendLine("      <indIEDest>9</indIEDest>");
+            sb.AppendLine("    </dest>");
         }
 
         int nItem = 1;
