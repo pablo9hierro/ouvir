@@ -32,10 +32,10 @@ public class DanfeService : IDanfeService
             .FirstOrDefaultAsync(e => e.Id == nota.EmpresaId, cancellationToken);
 
         Entidades.ClienteNome? cliente = null;
-        if (nota.ClienteId != Guid.Empty)
+        if (nota.ClienteId.HasValue)
         {
             cliente = await _db.Clientes.AsNoTracking()
-                .Where(c => c.Id == nota.ClienteId)
+                .Where(c => c.Id == nota.ClienteId.Value)
                 .Select(c => new Entidades.ClienteNome(c.Nome, c.CPF_CNPJ, c.Logradouro, c.Numero, c.Bairro, c.Municipio, c.UF, c.CEP, c.InscricaoEstadual))
                 .FirstOrDefaultAsync(cancellationToken);
         }

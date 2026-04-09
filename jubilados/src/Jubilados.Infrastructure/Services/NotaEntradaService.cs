@@ -195,7 +195,7 @@ public class NotaEntradaService : InotaEntradaService
                 var nota = new NotaFiscal
                 {
                     EmpresaId = empresaId,
-                    ClienteId = Guid.Empty,
+                    ClienteId = null,
                     ChaveAcesso = chaveAcesso,
                     NSU = long.TryParse(nsuAttr, out var n) ? n : 0,
                     XmlRetorno = xmlDoc,

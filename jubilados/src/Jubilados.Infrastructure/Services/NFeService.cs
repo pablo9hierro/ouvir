@@ -529,7 +529,7 @@ public class NFeService : INFeService
         var nota = new NotaFiscal
         {
             EmpresaId = empresa.Id,
-            ClienteId = cliente?.Id ?? Guid.Empty,
+            ClienteId = cliente?.Id,
             Numero = numero,
             Serie = dto.Serie,
             NaturezaOperacao = dto.NaturezaOperacao,
@@ -640,10 +640,10 @@ public class NFeService : INFeService
         sb.AppendLine("      <CRT>1</CRT>");
         sb.AppendLine("    </emit>");
 
-        sb.AppendLine("    <dest>");
         if (cliente is not null)
         {
             // Destinatário identificado (cliente cadastrado)
+            sb.AppendLine("    <dest>");
             var cpfCnpj = Limpar(cliente.CPF_CNPJ);
             if (!string.IsNullOrWhiteSpace(cpfCnpj))
             {
@@ -667,21 +667,25 @@ public class NFeService : INFeService
             sb.AppendLine($"      <indIEDest>{(temIE ? "1" : "9")}</indIEDest>");
             if (temIE)
                 sb.AppendLine($"      <IE>{cliente.InscricaoEstadual}</IE>");
+            sb.AppendLine("    </dest>");
         }
         else
         {
-            // Destinatário avulso (consumidor não identificado — NF-e saída balcão)
+            // Destinatário avulso (com CPF/CNPJ mas sem cadastro)
             var destCpfCnpj = Limpar(dto.DestinatarioCpfCnpj ?? "");
-            if (destCpfCnpj.Length == 14)
-                sb.AppendLine($"      <CNPJ>{destCpfCnpj}</CNPJ>");
-            else if (destCpfCnpj.Length == 11)
-                sb.AppendLine($"      <CPF>{destCpfCnpj}</CPF>");
-            // else: sem identificação (consumidor final não identificado)
-            var destNome = string.IsNullOrWhiteSpace(dto.DestinatarioNome) ? "CONSUMIDOR NAO IDENTIFICADO" : dto.DestinatarioNome;
-            sb.AppendLine($"      <xNome>{XmlEnc(ambiente == "2" ? "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL" : destNome)}</xNome>");
-            sb.AppendLine("      <indIEDest>9</indIEDest>");
+            if (destCpfCnpj.Length == 14 || destCpfCnpj.Length == 11)
+            {
+                sb.AppendLine("    <dest>");
+                sb.AppendLine(destCpfCnpj.Length == 14
+                    ? $"      <CNPJ>{destCpfCnpj}</CNPJ>"
+                    : $"      <CPF>{destCpfCnpj}</CPF>");
+                var destNome = string.IsNullOrWhiteSpace(dto.DestinatarioNome) ? "CONSUMIDOR" : dto.DestinatarioNome;
+                sb.AppendLine($"      <xNome>{XmlEnc(ambiente == "2" ? "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL" : destNome)}</xNome>");
+                sb.AppendLine("      <indIEDest>9</indIEDest>");
+                sb.AppendLine("    </dest>");
+            }
+            // else: consumidor final não identificado — omitir <dest> conforme NF-e 4.00
         }
-        sb.AppendLine("    </dest>");
 
         int nItem = 1;
         foreach (var item in nota.Itens)

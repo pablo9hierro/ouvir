@@ -50,7 +50,7 @@ public class SpedService : ISpedService
             .Where(p => produtoIds.Contains(p.Id))
             .ToDictionaryAsync(p => p.Id, cancellationToken);
 
-        var clienteIds = notas.Where(n => n.ClienteId != Guid.Empty).Select(n => n.ClienteId).Distinct().ToList();
+        var clienteIds = notas.Where(n => n.ClienteId.HasValue).Select(n => n.ClienteId!.Value).Distinct().ToList();
         var clientes = await _db.Clientes.AsNoTracking()
             .Where(c => clienteIds.Contains(c.Id))
             .ToDictionaryAsync(c => c.Id, cancellationToken);
@@ -164,7 +164,7 @@ public class SpedService : ISpedService
         foreach (var nota in notas)
         {
             var indOp  = nota.TipoOperacao == "0" ? "0" : "1"; // 0=entrada, 1=saída
-            var cliCnpj = nota.ClienteId != Guid.Empty && clientes.TryGetValue(nota.ClienteId, out var cliN)
+            var cliCnpj = nota.ClienteId.HasValue && clientes.TryGetValue(nota.ClienteId.Value, out var cliN)
                 ? Limpar(cliN.CPF_CNPJ)
                 : "";
             var partKey = cliCnpj.Length > 0 && participanteIdx.ContainsKey(cliCnpj)

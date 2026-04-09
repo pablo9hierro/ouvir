@@ -191,7 +191,7 @@
 
         <!-- Tipo selector -->
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px">
-          <button id="tipodest_anon" class="tipo-btn" onclick="selecionarTipoDest('anonimo')">
+          <button id="tipodest_anonimo" class="tipo-btn" onclick="selecionarTipoDest('anonimo')">
             <div style="font-size:1.4rem;margin-bottom:4px">🙈</div>
             <strong>Consumidor Anonimo</strong><br>
             <small style="color:var(--muted);font-weight:400">Venda balcao sem identificacao</small>
@@ -1244,6 +1244,12 @@ document.getElementById('c_cep_cnpj').value='58071680';
 
 // inicializa tipo de destinatario no UI (cnpj por padrao com WURTH pre-preenchida)
 selecionarTipoDest('cnpj');
+// restaura cliente/produto apos selecionarTipoDest (que limpa clienteId/clienteNome)
+estado.clienteId='0865f76e-bff7-48ef-8b02-f24b6a468e3d';
+estado.clienteNome='WURTH DO BRASIL';
+estado.produtoId='9ae15d08-81e9-4767-911e-8faf96ad2821';
+estado.produtoNome='Produto Teste Homologacao';
+atualizarEstadoBar();
 
 document.getElementById('cs_empresaId').value=estado.empresaId;
 document.getElementById('cs_chave').value=estado.ultimaChave;

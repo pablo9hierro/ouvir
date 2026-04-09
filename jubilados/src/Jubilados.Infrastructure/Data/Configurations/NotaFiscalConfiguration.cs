@@ -13,7 +13,7 @@ public class NotaFiscalConfiguration : IEntityTypeConfiguration<NotaFiscal>
         builder.HasKey(n => n.Id);
         builder.Property(n => n.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
         builder.Property(n => n.EmpresaId).HasColumnName("empresa_id").IsRequired();
-        builder.Property(n => n.ClienteId).HasColumnName("cliente_id").IsRequired();
+        builder.Property(n => n.ClienteId).HasColumnName("cliente_id").IsRequired(false);
         builder.Property(n => n.Numero).HasColumnName("numero").IsRequired();
         builder.Property(n => n.Serie).HasColumnName("serie").HasMaxLength(3).IsRequired();
         builder.Property(n => n.ChaveAcesso).HasColumnName("chave_acesso").HasMaxLength(44);
@@ -51,7 +51,8 @@ public class NotaFiscalConfiguration : IEntityTypeConfiguration<NotaFiscal>
         builder.HasOne(n => n.Cliente)
                .WithMany(c => c.NotasFiscais)
                .HasForeignKey(n => n.ClienteId)
-               .OnDelete(DeleteBehavior.Restrict);
+               .IsRequired(false)
+               .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(n => n.ChaveAcesso);
         builder.HasIndex(n => new { n.EmpresaId, n.Numero, n.Serie }).IsUnique();

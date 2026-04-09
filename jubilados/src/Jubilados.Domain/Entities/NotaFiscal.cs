@@ -6,7 +6,7 @@ public class NotaFiscal
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid EmpresaId { get; set; }
-    public Guid ClienteId { get; set; }
+    public Guid? ClienteId { get; set; }
 
     public int Numero { get; set; }
     public string Serie { get; set; } = "1";
