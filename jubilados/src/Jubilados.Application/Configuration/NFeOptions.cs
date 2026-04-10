@@ -57,8 +57,8 @@ public class NFeOptions
 
     public bool IsHomologacao => Ambiente == "2";
 
-    public string UrlConsulta    => IsHomologacao ? SefazUrlConsultaHom    : SefazUrlConsultaProd;
-    public string UrlStatus      => IsHomologacao ? SefazUrlStatusHom      : SefazUrlStatusProd;
+    public string UrlConsulta     => IsHomologacao ? SefazUrlConsultaHom     : SefazUrlConsultaProd;
+    public string UrlStatus       => IsHomologacao ? SefazUrlStatusHom       : SefazUrlStatusProd;
     public string UrlInutilizacao => IsHomologacao ? SefazUrlInutilizacaoHom : SefazUrlInutilizacaoProd;
-    public string UrlEvento      => IsHomologacao ? SefazUrlEventoHom      : SefazUrlEventoProd;
+    public string UrlEvento       => IsHomologacao ? SefazUrlEventoHom       : SefazUrlEventoProd;
 }

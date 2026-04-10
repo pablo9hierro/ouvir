@@ -23,7 +23,7 @@ public class ClienteController : ControllerBase
         var clientes = await _db.Clientes
             .AsNoTracking()
             .Where(c => c.EmpresaId == empresaId)
-            .Select(c => new { c.Id, c.Nome, c.CPF_CNPJ, c.Email })
+            .Select(c => new { c.Id, c.Nome, cpf_CNPJ = c.CPF_CNPJ, c.Email })
             .ToListAsync(ct);
 
         return Ok(clientes);
@@ -32,8 +32,8 @@ public class ClienteController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CriarAsync([FromBody] Cliente cliente, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(cliente.Nome) || string.IsNullOrWhiteSpace(cliente.CPF_CNPJ))
-            return BadRequest(new { erro = "Nome e CPF/CNPJ são obrigatórios." });
+        if (string.IsNullOrWhiteSpace(cliente.Nome))
+            return BadRequest(new { erro = "Nome é obrigatório." });
 
         if (cliente.EmpresaId == Guid.Empty)
             return BadRequest(new { erro = "EmpresaId é obrigatório." });

@@ -27,6 +27,6 @@ public class Cliente
     public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;
 
     // Relacionamentos
-    public Empresa Empresa { get; set; } = null!;
+    public Empresa? Empresa { get; set; }
     public ICollection<NotaFiscal> NotasFiscais { get; set; } = new List<NotaFiscal>();
 }

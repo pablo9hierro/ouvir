@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Cryptography.Xml;
 using System.Text;
@@ -16,7 +16,7 @@ using Microsoft.Extensions.Options;
 namespace Jubilados.Infrastructure.Services;
 
 /// <summary>
-/// Serviço de emissão de NFe.
+/// ServiÃ§o de emissÃ£o de NFe.
 /// Implementa INFeService da camada Application.
 /// </summary>
 public class NFeService : INFeService
@@ -40,25 +40,25 @@ public class NFeService : INFeService
 
     public async Task<NFeResultDto> EmitirNFeAsync(EmitirNFeDto dto, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("[NFe] Iniciando emissão para EmpresaId={EmpresaId}", dto.EmpresaId);
+        _logger.LogInformation("[NFe] Iniciando emissÃ£o para EmpresaId={EmpresaId}", dto.EmpresaId);
 
         var empresa = await _db.Empresas.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == dto.EmpresaId, cancellationToken)
-            ?? throw new InvalidOperationException($"Empresa {dto.EmpresaId} não encontrada.");
+            ?? throw new InvalidOperationException($"Empresa {dto.EmpresaId} nÃ£o encontrada.");
 
         if (string.IsNullOrEmpty(empresa.CertificadoBase64))
-            throw new InvalidOperationException("Empresa não possui certificado digital configurado.");
+            throw new InvalidOperationException("Empresa nÃ£o possui certificado digital configurado.");
 
         var certificado = _certificadoService.CarregarCertificado(
             empresa.CertificadoBase64, empresa.CertificadoSenha!);
 
-        // Destinatário: cliente do banco ou destino avulso
+        // DestinatÃ¡rio: cliente do banco ou destino avulso
         Cliente? cliente = null;
         if (dto.ClienteId.HasValue && dto.ClienteId.Value != Guid.Empty)
         {
             cliente = await _db.Clientes.AsNoTracking()
                 .FirstOrDefaultAsync(c => c.Id == dto.ClienteId.Value && c.EmpresaId == dto.EmpresaId, cancellationToken)
-                ?? throw new InvalidOperationException($"Cliente {dto.ClienteId} não encontrado.");
+                ?? throw new InvalidOperationException($"Cliente {dto.ClienteId} nÃ£o encontrado.");
         }
 
         var produtoIds = dto.Itens.Select(i => i.ProdutoId).ToList();
@@ -131,7 +131,7 @@ public class NFeService : INFeService
 
         var empresa = await _db.Empresas.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == dto.EmpresaId, cancellationToken)
-            ?? throw new InvalidOperationException($"Empresa {dto.EmpresaId} não encontrada.");
+            ?? throw new InvalidOperationException($"Empresa {dto.EmpresaId} nÃ£o encontrada.");
 
         var certificado = _certificadoService.CarregarCertificado(
             empresa.CertificadoBase64!, empresa.CertificadoSenha!);
@@ -188,7 +188,7 @@ public class NFeService : INFeService
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "[NFe] ConsultarSefaz erro HTTP.");
-            return new ConsultarSefazResultDto(false, "999", $"Erro de comunicação: {ex.Message}");
+            return new ConsultarSefazResultDto(false, "999", $"Erro de comunicaÃ§Ã£o: {ex.Message}");
         }
     }
 
@@ -199,7 +199,7 @@ public class NFeService : INFeService
 
         var empresa = await _db.Empresas.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == empresaId, cancellationToken)
-            ?? throw new InvalidOperationException($"Empresa {empresaId} não encontrada.");
+            ?? throw new InvalidOperationException($"Empresa {empresaId} nÃ£o encontrada.");
 
         var certificado = _certificadoService.CarregarCertificado(
             empresa.CertificadoBase64!, empresa.CertificadoSenha!);
@@ -255,7 +255,7 @@ public class NFeService : INFeService
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "[NFe] ConsultarStatus erro HTTP.");
-            return new StatusServicoResultDto(false, "999", $"Erro de comunicação: {ex.Message}");
+            return new StatusServicoResultDto(false, "999", $"Erro de comunicaÃ§Ã£o: {ex.Message}");
         }
     }
 
@@ -270,7 +270,7 @@ public class NFeService : INFeService
 
         var empresa = await _db.Empresas.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == dto.EmpresaId, cancellationToken)
-            ?? throw new InvalidOperationException($"Empresa {dto.EmpresaId} não encontrada.");
+            ?? throw new InvalidOperationException($"Empresa {dto.EmpresaId} nÃ£o encontrada.");
 
         var certificado = _certificadoService.CarregarCertificado(
             empresa.CertificadoBase64!, empresa.CertificadoSenha!);
@@ -346,7 +346,7 @@ public class NFeService : INFeService
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "[NFe] Inutilizar erro HTTP.");
-            return new InutilizarResultDto(false, "999", $"Erro de comunicação: {ex.Message}");
+            return new InutilizarResultDto(false, "999", $"Erro de comunicaÃ§Ã£o: {ex.Message}");
         }
     }
 
@@ -400,14 +400,14 @@ public class NFeService : INFeService
 
         var nota = await _db.NotasFiscais.AsNoTracking()
             .FirstOrDefaultAsync(n => n.Id == dto.NotaFiscalId, cancellationToken)
-            ?? throw new InvalidOperationException($"Nota {dto.NotaFiscalId} não encontrada.");
+            ?? throw new InvalidOperationException($"Nota {dto.NotaFiscalId} nÃ£o encontrada.");
 
         if (nota.CStat != "100")
-            throw new InvalidOperationException("CCe só pode ser enviada para NF-e autorizada (cStat=100).");
+            throw new InvalidOperationException("CCe sÃ³ pode ser enviada para NF-e autorizada (cStat=100).");
 
         var empresa = await _db.Empresas.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == dto.EmpresaId, cancellationToken)
-            ?? throw new InvalidOperationException($"Empresa {dto.EmpresaId} não encontrada.");
+            ?? throw new InvalidOperationException($"Empresa {dto.EmpresaId} nÃ£o encontrada.");
 
         var certificado = _certificadoService.CarregarCertificado(
             empresa.CertificadoBase64!, empresa.CertificadoSenha!);
@@ -490,7 +490,7 @@ public class NFeService : INFeService
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "[CCe] Erro HTTP.");
-            return new CceResultDto(false, "999", $"Erro de comunicação: {ex.Message}");
+            return new CceResultDto(false, "999", $"Erro de comunicaÃ§Ã£o: {ex.Message}");
         }
     }
 
@@ -521,7 +521,7 @@ public class NFeService : INFeService
         }
     }
 
-    // ── Privados ──────────────────────────────────────────────────────────────
+    // â”€â”€ Privados â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private NotaFiscal MontarNotaFiscal(EmitirNFeDto dto, Empresa empresa,
         Cliente? cliente, List<Produto> produtos, int numero)
@@ -544,7 +544,7 @@ public class NFeService : INFeService
         foreach (var itemDto in dto.Itens)
         {
             var produto = produtos.FirstOrDefault(p => p.Id == itemDto.ProdutoId)
-                ?? throw new InvalidOperationException($"Produto {itemDto.ProdutoId} não encontrado.");
+                ?? throw new InvalidOperationException($"Produto {itemDto.ProdutoId} nÃ£o encontrado.");
 
             var valorTotal = (itemDto.Quantidade * itemDto.ValorUnitario) - itemDto.ValorDesconto;
             nota.Itens.Add(new NotaItem
@@ -642,7 +642,7 @@ public class NFeService : INFeService
 
         if (cliente is not null)
         {
-            // Destinatário identificado (cliente cadastrado)
+            // DestinatÃ¡rio identificado (cliente cadastrado)
             sb.AppendLine("    <dest>");
             var cpfCnpj = Limpar(cliente.CPF_CNPJ);
             if (!string.IsNullOrWhiteSpace(cpfCnpj))
@@ -653,13 +653,13 @@ public class NFeService : INFeService
             }
             sb.AppendLine($"      <xNome>{XmlEnc(ambiente == "2" ? "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL" : cliente.Nome)}</xNome>");
             sb.AppendLine("      <enderDest>");
-            sb.AppendLine($"        <xLgr>{XmlEnc(cliente.Logradouro)}</xLgr>");
-            sb.AppendLine($"        <nro>{XmlEnc(cliente.Numero)}</nro>");
-            sb.AppendLine($"        <xBairro>{XmlEnc(cliente.Bairro)}</xBairro>");
-            sb.AppendLine($"        <cMun>{cliente.CodigoMunicipio}</cMun>");
-            sb.AppendLine($"        <xMun>{XmlEnc(cliente.Municipio)}</xMun>");
-            sb.AppendLine($"        <UF>{cliente.UF}</UF>");
-            sb.AppendLine($"        <CEP>{Limpar(cliente.CEP)}</CEP>");
+            sb.AppendLine($"        <xLgr>{XmlEnc(string.IsNullOrWhiteSpace(cliente.Logradouro) ? "NAO INFORMADO" : cliente.Logradouro)}</xLgr>");
+            sb.AppendLine($"        <nro>{XmlEnc(string.IsNullOrWhiteSpace(cliente.Numero) ? "S/N" : cliente.Numero)}</nro>");
+            sb.AppendLine($"        <xBairro>{XmlEnc(string.IsNullOrWhiteSpace(cliente.Bairro) ? "NAO INFORMADO" : cliente.Bairro)}</xBairro>");
+            sb.AppendLine($"        <cMun>{(string.IsNullOrWhiteSpace(cliente.CodigoMunicipio) ? _options.CodigoMunicipio : cliente.CodigoMunicipio)}</cMun>");
+            sb.AppendLine($"        <xMun>{XmlEnc(string.IsNullOrWhiteSpace(cliente.Municipio) ? empresa.Municipio : cliente.Municipio)}</xMun>");
+            sb.AppendLine($"        <UF>{(string.IsNullOrWhiteSpace(cliente.UF) ? empresa.UF : cliente.UF)}</UF>");
+            sb.AppendLine($"        <CEP>{(string.IsNullOrWhiteSpace(cliente.CEP) ? Limpar(empresa.CEP) : Limpar(cliente.CEP))}</CEP>");
             sb.AppendLine("        <cPais>1058</cPais>");
             sb.AppendLine("        <xPais>Brasil</xPais>");
             sb.AppendLine("      </enderDest>");
@@ -671,7 +671,7 @@ public class NFeService : INFeService
         }
         else
         {
-            // Destinatário avulso (com ou sem CPF/CNPJ — consumidor não cadastrado)
+            // DestinatÃ¡rio avulso (com ou sem CPF/CNPJ â€” consumidor nÃ£o cadastrado)
             var destCpfCnpj = Limpar(dto.DestinatarioCpfCnpj ?? "");
             sb.AppendLine("    <dest>");
             if (destCpfCnpj.Length == 14)
@@ -688,7 +688,7 @@ public class NFeService : INFeService
             }
             else
             {
-                // Consumidor anônimo: CPF fictício com dígitos válidos (padrão para dest não identificado)
+                // Consumidor anÃ´nimo: CPF fictÃ­cio com dÃ­gitos vÃ¡lidos (padrÃ£o para dest nÃ£o identificado)
                 sb.AppendLine("      <CPF>00000000191</CPF>");
                 sb.AppendLine($"      <xNome>{XmlEnc(ambiente == "2" ? "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL" : "CONSUMIDOR NAO IDENTIFICADO")}</xNome>");
                 sb.AppendLine("      <enderDest>");
@@ -821,7 +821,7 @@ public class NFeService : INFeService
                 var dh = infProt.SelectSingleNode("nfe:dhRecbto", ns)?.InnerText;
                 return new ConsultarSefazResultDto(cs == "100", cs, xm, prot, dh);
             }
-            // Rejeição no nível do retConsSitNFe
+            // RejeiÃ§Ã£o no nÃ­vel do retConsSitNFe
             var cStat = doc.SelectSingleNode("//nfe:retConsSitNFe/nfe:cStat", ns)?.InnerText;
             var xMotivo = doc.SelectSingleNode("//nfe:retConsSitNFe/nfe:xMotivo", ns)?.InnerText;
             if (cStat is not null) return new ConsultarSefazResultDto(false, cStat, xMotivo ?? string.Empty);
@@ -888,7 +888,7 @@ public class NFeService : INFeService
         }
         catch (Exception ex)
         {
-            log?.LogError(ex, "[NFe] Erro interpretar Inutilização.");
+            log?.LogError(ex, "[NFe] Erro interpretar InutilizaÃ§Ã£o.");
             return new InutilizarResultDto(false, "999", "Erro ao interpretar resposta SEFAZ");
         }
     }
@@ -926,7 +926,7 @@ public class NFeService : INFeService
         cabecMsg.AppendChild(elVersao);
         header.AppendChild(cabecMsg);
 
-        // Body — document/literal: nfeDadosMsg goes DIRECTLY in the body (no nfeAutorizacaoLote wrapper)
+        // Body â€” document/literal: nfeDadosMsg goes DIRECTLY in the body (no nfeAutorizacaoLote wrapper)
         var body = soapDoc.CreateElement("soap12", "Body", soapNs);
         envelope.AppendChild(body);
         var nfeDadosMsg = soapDoc.CreateElement("nfeDadosMsg", wsdlNs);
@@ -974,7 +974,7 @@ public class NFeService : INFeService
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "[NFe] Erro HTTP SEFAZ.");
-            return ("999", $"Erro de comunicação: {ex.Message}", string.Empty);
+            return ("999", $"Erro de comunicaÃ§Ã£o: {ex.Message}", string.Empty);
         }
     }
 
@@ -986,14 +986,14 @@ public class NFeService : INFeService
             var ns = new XmlNamespaceManager(doc.NameTable);
             ns.AddNamespace("nfe", "http://www.portalfiscal.inf.br/nfe");
 
-            // Resposta síncrona OK: protNFe/infProt (note: é protNFe, não retProt)
+            // Resposta sÃ­ncrona OK: protNFe/infProt (note: Ã© protNFe, nÃ£o retProt)
             var prot = doc.SelectSingleNode("//nfe:protNFe/nfe:infProt", ns);
             if (prot is not null)
                 return (prot.SelectSingleNode("nfe:cStat", ns)?.InnerText ?? "999",
                         prot.SelectSingleNode("nfe:xMotivo", ns)?.InnerText ?? "Sem resposta",
                         prot.SelectSingleNode("nfe:nProt", ns)?.InnerText ?? string.Empty);
 
-            // Rejeição a nível de lote: retEnviNFe/cStat sem protNFe
+            // RejeiÃ§Ã£o a nÃ­vel de lote: retEnviNFe/cStat sem protNFe
             var cStatLote = doc.SelectSingleNode("//nfe:retEnviNFe/nfe:cStat", ns)?.InnerText;
             var xMotivoLote = doc.SelectSingleNode("//nfe:retEnviNFe/nfe:xMotivo", ns)?.InnerText;
             if (cStatLote is not null)
@@ -1005,12 +1005,12 @@ public class NFeService : INFeService
             if (cStatAny is not null)
                 return (cStatAny, xMotivoAny ?? "Erro desconhecido", string.Empty);
 
-            log?.LogWarning("[NFe] Não encontrou cStat no XML da SEFAZ. XML: {Xml}", xml.Length > 500 ? xml[..500] : xml);
+            log?.LogWarning("[NFe] NÃ£o encontrou cStat no XML da SEFAZ. XML: {Xml}", xml.Length > 500 ? xml[..500] : xml);
             return ("999", "Resposta SEFAZ sem cStat", string.Empty);
         }
         catch (Exception ex)
         {
-            log?.LogError(ex, "[NFe] Falha ao parsear XML SEFAZ. Conteúdo: {Xml}", xml.Length > 500 ? xml[..500] : xml);
+            log?.LogError(ex, "[NFe] Falha ao parsear XML SEFAZ. ConteÃºdo: {Xml}", xml.Length > 500 ? xml[..500] : xml);
             return ("999", "Erro ao interpretar resposta SEFAZ", string.Empty);
         }
     }
@@ -1035,4 +1035,5 @@ public class NFeService : INFeService
 
     private static string Limpar(string v) => new(v?.Where(char.IsDigit).ToArray() ?? Array.Empty<char>());
     private static string XmlEnc(string v) => System.Security.SecurityElement.Escape(v ?? string.Empty)!;
+
 }

@@ -30,6 +30,7 @@ public interface INFeService
 
     /// <summary>Lista todas as notas (entrada + saída) de uma empresa.</summary>
     Task<IList<NuvemFiscalNotaDto>> ListarNotasPorEmpresaAsync(Guid empresaId, CancellationToken cancellationToken = default);
+
 }
 
 public interface InotaEntradaService

@@ -85,6 +85,7 @@ public class EmpresaController : ControllerBase
         await _db.SaveChangesAsync(ct);
         return NoContent();
     }
+
 }
 
 public record AtualizarCertificadoRequest(string Base64, string Senha, DateTime? Validade);
