@@ -758,12 +758,13 @@ public class NFeService : INFeService
             }
             else
             {
-                // Simples Nacional fallback: CSOSN 400 (não tributado pelo SN)
+                // Simples Nacional fallback: CSOSN 400 usa ICMSSN102 (não tributado pelo SN)
+                // NF-e 4.00: CSOSN 102/103/300/400 → elemento ICMSSN102 (não existe ICMSSN400)
                 // CST não pode ser usado com CRT=1 — SEFAZ rejeita com cStat 590
-                sb.AppendLine("        <ICMS><ICMSSN400>");
+                sb.AppendLine("        <ICMS><ICMSSN102>");
                 sb.AppendLine("          <orig>0</orig>");
                 sb.AppendLine("          <CSOSN>400</CSOSN>");
-                sb.AppendLine("        </ICMSSN400></ICMS>");
+                sb.AppendLine("        </ICMSSN102></ICMS>");
             }
             sb.AppendLine("        <PIS><PISNT><CST>07</CST></PISNT></PIS>");
             sb.AppendLine("        <COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS>");
