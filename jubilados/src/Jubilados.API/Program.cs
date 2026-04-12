@@ -110,12 +110,18 @@ app.MapControllers();
 app.MapHealthChecks("/health");
 
 // Endpoint de diagnóstico temporário
-app.MapGet("/diag", () => new {
-    dbPasswordSet = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DB_PASSWORD")),
-    connMasked = System.Text.RegularExpressions.Regex.Replace(
-        builder.Configuration.GetConnectionString("DefaultConnection") ?? "",
-        @"Password=[^;]+", "Password=***"),
-    hasPlaceholder = (builder.Configuration.GetConnectionString("DefaultConnection") ?? "").Contains("${DB_PASSWORD}")
+app.MapGet("/diag", () => {
+    var dbPwd = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? "";
+    var rawConn = builder.Configuration.GetConnectionString("DefaultConnection") ?? "";
+    var resolved = rawConn.Replace("${DB_PASSWORD}", dbPwd);
+    var masked = System.Text.RegularExpressions.Regex.Replace(resolved, @"Password=[^;]+", "Password=***");
+    return new {
+        dbPasswordSet = !string.IsNullOrEmpty(dbPwd),
+        dbPasswordLength = dbPwd.Length,
+        dbPasswordFirst3 = dbPwd.Length >= 3 ? dbPwd.Substring(0, 3) + "***" : "(curta demais)",
+        connMasked = masked,
+        placeholderSubstituted = !resolved.Contains("${DB_PASSWORD}")
+    };
 });
 
 app.Run();
