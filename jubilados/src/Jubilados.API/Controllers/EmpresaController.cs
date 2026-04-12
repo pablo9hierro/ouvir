@@ -25,11 +25,19 @@ public class EmpresaController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> ListarAsync(CancellationToken ct)
     {
-        var empresas = await _db.Empresas
-            .AsNoTracking()
-            .Select(e => new { e.Id, e.CNPJ, e.RazaoSocial, e.Email, e.CertificadoValidade })
-            .ToListAsync(ct);
-        return Ok(empresas);
+        try
+        {
+            var empresas = await _db.Empresas
+                .AsNoTracking()
+                .Select(e => new { e.Id, e.CNPJ, e.RazaoSocial, e.Email, e.CertificadoValidade })
+                .ToListAsync(ct);
+            return Ok(empresas);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao listar empresas");
+            return StatusCode(500, new { erro = ex.Message, detalhe = ex.InnerException?.Message, tipo = ex.GetType().FullName });
+        }
     }
 
     [HttpGet("{id:guid}")]
