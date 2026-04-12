@@ -756,21 +756,14 @@ public class NFeService : INFeService
                 sb.AppendLine($"          <vICMS>{vICMS:F2}</vICMS>");
                 sb.AppendLine("        </ICMS00></ICMS>");
             }
-            else if (cst == "40" || cst == "41" || cst == "50")
-            {
-                // Isento / não tributado
-                sb.AppendLine("        <ICMS><ICMS40>");
-                sb.AppendLine("          <orig>0</orig>");
-                sb.AppendLine($"          <CST>{cst!.PadLeft(2, '0')}</CST>");
-                sb.AppendLine("        </ICMS40></ICMS>");
-            }
             else
             {
-                // Fallback: não tributado CST 40
-                sb.AppendLine("        <ICMS><ICMS40>");
+                // Simples Nacional fallback: CSOSN 400 (não tributado pelo SN)
+                // CST não pode ser usado com CRT=1 — SEFAZ rejeita com cStat 590
+                sb.AppendLine("        <ICMS><ICMSSN400>");
                 sb.AppendLine("          <orig>0</orig>");
-                sb.AppendLine("          <CST>40</CST>");
-                sb.AppendLine("        </ICMS40></ICMS>");
+                sb.AppendLine("          <CSOSN>400</CSOSN>");
+                sb.AppendLine("        </ICMSSN400></ICMS>");
             }
             sb.AppendLine("        <PIS><PISNT><CST>07</CST></PISNT></PIS>");
             sb.AppendLine("        <COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS>");
