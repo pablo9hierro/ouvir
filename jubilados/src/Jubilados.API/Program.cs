@@ -23,8 +23,11 @@ string connectionString;
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 if (!string.IsNullOrEmpty(databaseUrl))
 {
-    connectionString = databaseUrl;
-    Console.WriteLine("[STARTUP] Usando DATABASE_URL (Railway PostgreSQL nativo)");
+    // Converte postgresql://user:pass@host:port/db para formato Npgsql key-value
+    var uri = new Uri(databaseUrl);
+    var userInfo = uri.UserInfo.Split(':');
+    connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={Uri.UnescapeDataString(userInfo[1])};SSL Mode=Require;Trust Server Certificate=true";
+    Console.WriteLine($"[STARTUP] Usando DATABASE_URL Railway → Host={uri.Host}:{uri.Port}");
 }
 else
 {
