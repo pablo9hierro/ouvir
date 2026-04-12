@@ -35,6 +35,7 @@ builder.Services.AddDbContext<JubiladosDbContext>(options =>
     options.UseNpgsql(connectionString, npgsql =>
     {
         npgsql.CommandTimeout(60);
+        npgsql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(3), null);
     }));
 
 // ── Serviços da Aplicação (DI) ────────────────────────────────────────────────
