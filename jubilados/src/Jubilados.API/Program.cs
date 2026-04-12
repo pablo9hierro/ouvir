@@ -21,6 +21,11 @@ builder.Services.Configure<NFeOptions>(builder.Configuration.GetSection(NFeOptio
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' não configurada.");
 
+// Substitui ${DB_PASSWORD} pelo valor da variável de ambiente DB_PASSWORD (Railway/Docker)
+var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
+if (!string.IsNullOrEmpty(dbPassword))
+    connectionString = connectionString.Replace("${DB_PASSWORD}", dbPassword);
+
 builder.Services.AddDbContext<JubiladosDbContext>(options =>
     options.UseNpgsql(connectionString, npgsql =>
     {
