@@ -26,6 +26,11 @@ var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
 if (!string.IsNullOrEmpty(dbPassword))
     connectionString = connectionString.Replace("${DB_PASSWORD}", dbPassword);
 
+// Log da connection string mascarada para diagnóstico em produção
+var maskedConn = System.Text.RegularExpressions.Regex.Replace(
+    connectionString, @"Password=[^;]+", "Password=***");
+Console.WriteLine($"[STARTUP] ConnectionString: {maskedConn}");
+
 builder.Services.AddDbContext<JubiladosDbContext>(options =>
     options.UseNpgsql(connectionString, npgsql =>
     {

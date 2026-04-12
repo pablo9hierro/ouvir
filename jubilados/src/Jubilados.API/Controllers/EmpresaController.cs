@@ -76,14 +76,22 @@ public class EmpresaController : ControllerBase
     public async Task<IActionResult> AtualizarCertificadoAsync(
         Guid id, [FromBody] AtualizarCertificadoRequest req, CancellationToken ct)
     {
-        var empresa = await _db.Empresas.FindAsync(new object[] { id }, ct);
-        if (empresa is null) return NotFound();
+        try
+        {
+            var empresa = await _db.Empresas.FindAsync(new object[] { id }, ct);
+            if (empresa is null) return NotFound();
 
-        empresa.CertificadoBase64 = req.Base64;
-        empresa.CertificadoSenha = req.Senha;
-        empresa.CertificadoValidade = req.Validade;
-        await _db.SaveChangesAsync(ct);
-        return NoContent();
+            empresa.CertificadoBase64 = req.Base64;
+            empresa.CertificadoSenha = req.Senha;
+            empresa.CertificadoValidade = req.Validade;
+            await _db.SaveChangesAsync(ct);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao salvar certificado empresa {Id}", id);
+            return StatusCode(500, new { erro = ex.Message, detalhe = ex.InnerException?.Message });
+        }
     }
 
 }
