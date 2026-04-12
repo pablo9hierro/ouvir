@@ -729,10 +729,49 @@ public class NFeService : INFeService
             sb.AppendLine("        <indTot>1</indTot>");
             sb.AppendLine("      </prod>");
             sb.AppendLine("      <imposto>");
-            sb.AppendLine("        <ICMS><ICMSSN102>");
-            sb.AppendLine("          <orig>0</orig>");
-            sb.AppendLine($"          <CSOSN>{produto.CSOSN.PadLeft(3, '0')}</CSOSN>");
-            sb.AppendLine("        </ICMSSN102></ICMS>");
+            // Decide grupo de ICMS: Simples Nacional (CSOSN) ou Regime Normal (CST)
+            var csosn = produto.CSOSN?.Trim();
+            var cst   = produto.CST?.Trim();
+            if (!string.IsNullOrEmpty(csosn))
+            {
+                // Simples Nacional — ICMSSN102 (sem crédito) ou ICMSSN400 (não tributado)
+                var csosnVal = csosn.PadLeft(3, '0');
+                sb.AppendLine("        <ICMS><ICMSSN102>");
+                sb.AppendLine("          <orig>0</orig>");
+                sb.AppendLine($"          <CSOSN>{csosnVal}</CSOSN>");
+                sb.AppendLine("        </ICMSSN102></ICMS>");
+            }
+            else if (cst == "00")
+            {
+                // Regime Normal tributado — ICMS00
+                var vBC   = item.ValorTotal;
+                var pICMS = produto.AliquotaICMS;
+                var vICMS = Math.Round(vBC * pICMS / 100m, 2);
+                sb.AppendLine("        <ICMS><ICMS00>");
+                sb.AppendLine("          <orig>0</orig>");
+                sb.AppendLine("          <CST>00</CST>");
+                sb.AppendLine("          <modBC>3</modBC>");
+                sb.AppendLine($"          <vBC>{vBC:F2}</vBC>");
+                sb.AppendLine($"          <pICMS>{pICMS:F2}</pICMS>");
+                sb.AppendLine($"          <vICMS>{vICMS:F2}</vICMS>");
+                sb.AppendLine("        </ICMS00></ICMS>");
+            }
+            else if (cst == "40" || cst == "41" || cst == "50")
+            {
+                // Isento / não tributado
+                sb.AppendLine("        <ICMS><ICMS40>");
+                sb.AppendLine("          <orig>0</orig>");
+                sb.AppendLine($"          <CST>{cst!.PadLeft(2, '0')}</CST>");
+                sb.AppendLine("        </ICMS40></ICMS>");
+            }
+            else
+            {
+                // Fallback: não tributado CST 40
+                sb.AppendLine("        <ICMS><ICMS40>");
+                sb.AppendLine("          <orig>0</orig>");
+                sb.AppendLine("          <CST>40</CST>");
+                sb.AppendLine("        </ICMS40></ICMS>");
+            }
             sb.AppendLine("        <PIS><PISNT><CST>07</CST></PISNT></PIS>");
             sb.AppendLine("        <COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS>");
             sb.AppendLine("      </imposto>");
