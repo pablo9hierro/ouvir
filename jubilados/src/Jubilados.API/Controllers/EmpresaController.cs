@@ -46,10 +46,26 @@ public class EmpresaController : ControllerBase
         var empresa = await _db.Empresas.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == id, ct);
         if (empresa is null) return NotFound();
-        // Não retornar o certificado em GET público
-        empresa.CertificadoBase64 = null;
-        empresa.CertificadoSenha = null;
-        return Ok(empresa);
+        return Ok(new {
+            empresa.Id,
+            empresa.CNPJ,
+            empresa.RazaoSocial,
+            empresa.NomeFantasia,
+            empresa.InscricaoEstadual,
+            empresa.Logradouro,
+            empresa.Numero,
+            empresa.Complemento,
+            empresa.Bairro,
+            empresa.Municipio,
+            empresa.UF,
+            empresa.CEP,
+            empresa.Telefone,
+            empresa.Email,
+            empresa.CertificadoValidade,
+            empresa.CriadoEm,
+            empresa.AtualizadoEm,
+            certificadoSalvo = empresa.CertificadoBase64 != null
+        });
     }
 
     [HttpPost]

@@ -711,6 +711,23 @@ function lerArquivoPfx(file){
   reader.readAsArrayBuffer(file);
 }
 
+async function verificarCertificadoSalvo(){
+  if(!estado.empresaId) return;
+  try{
+    var res=await fetch(API+'/api/empresa/'+estado.empresaId);
+    if(!res.ok) return;
+    var data=await res.json();
+    if(data.certificadoSalvo){
+      estado.certEnviado=true;
+      atualizarEstadoBar();
+      var zone=document.getElementById('fileZone');
+      zone.classList.add('ok');
+      document.getElementById('fileZoneText').textContent='Certificado ja salvo no servidor. Envie novamente para atualizar.';
+      mostrarAlerta('alertaCert','success','Certificado digital ja esta salvo. Nao precisa enviar novamente.');
+    }
+  }catch(e){}
+}
+
 async function enviarCertificado(){
   limparAlerta('alertaCert');
   if(!estado.empresaId){mostrarAlerta('alertaCert','error','Cadastre a empresa primeiro.');return;}
@@ -1282,11 +1299,12 @@ document.getElementById('cce_notaId').value=estado.ultimaNotaId;
 document.getElementById('sp_empresaId').value=estado.empresaId;
 preencherMesAtual();
 
-mostrarAlerta('alertaEmpresa','success','Empresa Orlando ja cadastrada no banco. Envie o certificado para emitir novas NF-es.');
+mostrarAlerta('alertaEmpresa','success','Empresa Orlando ja cadastrada no banco.');
 mostrarAlerta('alertaClienteCnpj','success','WURTH do Brasil ja cadastrada como destinataria. Clique em Proximo ou selecione outro tipo de destinatario acima.');
 mostrarAlerta('alertaProduto','success','Produto Teste ja registrado. Selecione-o na parte superior da tela.');
 
 atualizarEstadoBar();
+verificarCertificadoSalvo();
 </script>
 </body>
 </html>
