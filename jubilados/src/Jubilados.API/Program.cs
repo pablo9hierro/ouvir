@@ -17,19 +17,26 @@ var builder = WebApplication.CreateBuilder(args);
 // ── Configuração ──────────────────────────────────────────────────────────────
 builder.Services.Configure<NFeOptions>(builder.Configuration.GetSection(NFeOptions.Section));
 
-// ── Banco de Dados (Supabase PostgreSQL via EF Core) ─────────────────────────
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' não configurada.");
-
-// Substitui ${DB_PASSWORD} pelo valor da variável de ambiente DB_PASSWORD (Railway/Docker)
-var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
-if (!string.IsNullOrEmpty(dbPassword))
-    connectionString = connectionString.Replace("${DB_PASSWORD}", dbPassword);
-
-// Log da connection string mascarada para diagnóstico em produção
-var maskedConn = System.Text.RegularExpressions.Regex.Replace(
-    connectionString, @"Password=[^;]+", "Password=***");
-Console.WriteLine($"[STARTUP] ConnectionString: {maskedConn}");
+// ── Banco de Dados ───────────────────────────────────────────────────────────
+// Suporte a DATABASE_URL (Railway native PostgreSQL) OU appsettings (Supabase)
+string connectionString;
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+if (!string.IsNullOrEmpty(databaseUrl))
+{
+    connectionString = databaseUrl;
+    Console.WriteLine("[STARTUP] Usando DATABASE_URL (Railway PostgreSQL nativo)");
+}
+else
+{
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' não configurada.");
+    var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
+    if (!string.IsNullOrEmpty(dbPassword))
+        connectionString = connectionString.Replace("${DB_PASSWORD}", dbPassword);
+    var maskedConn = System.Text.RegularExpressions.Regex.Replace(
+        connectionString, @"Password=[^;]+", "Password=***");
+    Console.WriteLine($"[STARTUP] Usando appsettings: {maskedConn}");
+}
 
 builder.Services.AddDbContext<JubiladosDbContext>(options =>
     options.UseNpgsql(connectionString, npgsql =>
@@ -85,12 +92,85 @@ builder.Services.AddHealthChecks()
 // ── Build App ─────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
-// ── Migrations automáticas (opcional — recomendado só em dev) ─────────────────
-if (app.Environment.IsDevelopment())
+// ── Schema + Seed automático (sempre, para Railway e Supabase) ───────────────
+using (var startupScope = app.Services.CreateScope())
 {
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<JubiladosDbContext>();
-    await db.Database.MigrateAsync();
+    var db = startupScope.ServiceProvider.GetRequiredService<JubiladosDbContext>();
+    try
+    {
+        // EnsureCreated cria as tabelas se não existirem (Railway Postgres vazio)
+        var criado = await db.Database.EnsureCreatedAsync();
+        Console.WriteLine(criado ? "[STARTUP] Tabelas criadas." : "[STARTUP] Tabelas já existem.");
+
+        // Seed: insere dados iniciais se a empresa de Orlando não existir
+        var empresaId = Guid.Parse("dd104b57-010a-4458-8699-d63807e205d3");
+        if (!await db.Empresas.AnyAsync(e => e.Id == empresaId))
+        {
+            var empresa = new Jubilados.Domain.Entities.Empresa
+            {
+                Id             = empresaId,
+                CNPJ           = "21362844000152",
+                RazaoSocial    = "Orlando Lucindo de Pontes Neto Materiais de Construcao",
+                NomeFantasia   = "Azulzao da Construcao",
+                InscricaoEstadual = "162421303",
+                Logradouro     = "R OTAVIANO D MONTEIRO P FILHO",
+                Numero         = "19",
+                Bairro         = "FUNCIONARIOS",
+                Municipio      = "JOAO PESSOA",
+                UF             = "PB",
+                CEP            = "58078340",
+                Telefone       = "83998347220",
+                Email          = "",
+                CriadoEm      = DateTime.UtcNow,
+                AtualizadoEm  = DateTime.UtcNow
+            };
+            db.Empresas.Add(empresa);
+
+            var produto = new Jubilados.Domain.Entities.Produto
+            {
+                Id          = Guid.Parse("9ae15d08-81e9-4767-911e-8faf96ad2821"),
+                EmpresaId   = empresaId,
+                Nome        = "Produto Teste Homologacao",
+                NCM         = "84713012",
+                CFOP        = "5102",
+                CST         = "00",
+                Unidade     = "UN",
+                Preco       = 100.00m,
+                AliquotaICMS = 0m,
+                AliquotaPIS  = 0.65m,
+                AliquotaCOFINS = 3.00m,
+                Ativo       = true,
+                CriadoEm   = DateTime.UtcNow,
+                AtualizadoEm = DateTime.UtcNow
+            };
+            db.Produtos.Add(produto);
+
+            var cliente = new Jubilados.Domain.Entities.Cliente
+            {
+                Id               = Guid.Parse("0865f76e-bff7-48ef-8b02-f24b6a468e3d"),
+                EmpresaId        = empresaId,
+                Nome             = "WURTH DO BRASIL PECAS DE FIXACAO LTDA",
+                CPF_CNPJ         = "43648971003170",
+                InscricaoEstadual = "161585078",
+                Logradouro       = "ROD BR-230",
+                Numero           = "SN",
+                Bairro           = "CRISTO REDENTOR",
+                Municipio        = "JOAO PESSOA",
+                UF               = "PB",
+                CEP              = "58071680",
+                CriadoEm        = DateTime.UtcNow,
+                AtualizadoEm    = DateTime.UtcNow
+            };
+            db.Clientes.Add(cliente);
+
+            await db.SaveChangesAsync();
+            Console.WriteLine("[STARTUP] Seed inicial inserido.");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[STARTUP] Erro schema/seed: {ex.Message}");
+    }
 }
 
 // ── Middleware Pipeline ───────────────────────────────────────────────────────
