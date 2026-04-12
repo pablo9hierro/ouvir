@@ -40,25 +40,25 @@ public class NFeService : INFeService
 
     public async Task<NFeResultDto> EmitirNFeAsync(EmitirNFeDto dto, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("[NFe] Iniciando emissÃ£o para EmpresaId={EmpresaId}", dto.EmpresaId);
+        _logger.LogInformation("[NFe] Iniciando emissão para EmpresaId={EmpresaId}", dto.EmpresaId);
 
         var empresa = await _db.Empresas.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == dto.EmpresaId, cancellationToken)
-            ?? throw new InvalidOperationException($"Empresa {dto.EmpresaId} nÃ£o encontrada.");
+            ?? throw new InvalidOperationException($"Empresa {dto.EmpresaId} não encontrada.");
 
         if (string.IsNullOrEmpty(empresa.CertificadoBase64))
-            throw new InvalidOperationException("Empresa nÃ£o possui certificado digital configurado.");
+            throw new InvalidOperationException("Empresa não possui certificado digital configurado.");
 
         var certificado = _certificadoService.CarregarCertificado(
             empresa.CertificadoBase64, empresa.CertificadoSenha!);
 
-        // DestinatÃ¡rio: cliente do banco ou destino avulso
+        // Destinatário: cliente do banco ou destino avulso
         Cliente? cliente = null;
         if (dto.ClienteId.HasValue && dto.ClienteId.Value != Guid.Empty)
         {
             cliente = await _db.Clientes.AsNoTracking()
                 .FirstOrDefaultAsync(c => c.Id == dto.ClienteId.Value && c.EmpresaId == dto.EmpresaId, cancellationToken)
-                ?? throw new InvalidOperationException($"Cliente {dto.ClienteId} nÃ£o encontrado.");
+                ?? throw new InvalidOperationException($"Cliente {dto.ClienteId} não encontrado.");
         }
 
         var produtoIds = dto.Itens.Select(i => i.ProdutoId).ToList();
@@ -66,50 +66,78 @@ public class NFeService : INFeService
             .Where(p => produtoIds.Contains(p.Id) && p.EmpresaId == dto.EmpresaId)
             .ToListAsync(cancellationToken);
 
-        var ultimoNumero = await _db.NotasFiscais
-            .Where(n => n.EmpresaId == dto.EmpresaId && n.Serie == dto.Serie)
-            .MaxAsync(n => (int?)n.Numero, cancellationToken) ?? 0;
+        // Retry loop: se SEFAZ retornar 539 (duplicidade de numero com chave diferente),
+        // significa que esse numero já foi enviado em sessão anterior com cNF diferente.
+        // Salvamos a nota como rejeitada (para consumir o numero no DB) e tentamos com numero+1.
+        const int maxTentativas = 15;
+        NFeResultDto? resultado = null;
 
-        var nota = MontarNotaFiscal(dto, empresa, cliente, produtos, ultimoNumero + 1);
-        CalcularTotais(nota, dto);
-
-        var xmlNFe = GerarXmlNFe(nota, empresa, cliente, produtos, dto);
-        _logger.LogInformation("[NFe] XML gerado (primeiros 2000 chars): {Xml}",
-            xmlNFe.Length > 2000 ? xmlNFe[..2000] : xmlNFe);
-        var xmlAssinado = AssinarXml(xmlNFe, certificado);
-        _logger.LogInformation("[NFe] XML assinado (primeiros 500 chars): {Xml}",
-            xmlAssinado.Length > 500 ? xmlAssinado[..500] : xmlAssinado);
-        nota.XmlEnvio = xmlAssinado;
-
-        var (cStat, xMotivo, protocolo) = await EnviarParaSefazAsync(
-            xmlAssinado, empresa.CNPJ, certificado, cancellationToken);
-
-        nota.CStat = cStat;
-        nota.XMotivo = xMotivo;
-        nota.Protocolo = protocolo;
-
-        if (cStat == "100")
+        for (int tentativa = 0; tentativa < maxTentativas; tentativa++)
         {
-            nota.Status = StatusNota.Autorizada;
-            nota.AutorizadaEm = DateTime.UtcNow;
-            _logger.LogInformation("[NFe] Autorizada! Protocolo={Protocolo}", protocolo);
-        }
-        else
-        {
-            nota.Status = StatusNota.Rejeitada;
-            _logger.LogWarning("[NFe] Rejeitada. cStat={CStat} | {XMotivo}", cStat, xMotivo);
+            var ultimoNumero = await _db.NotasFiscais
+                .Where(n => n.EmpresaId == dto.EmpresaId && n.Serie == dto.Serie)
+                .MaxAsync(n => (int?)n.Numero, cancellationToken) ?? 0;
+
+            var nota = MontarNotaFiscal(dto, empresa, cliente, produtos, ultimoNumero + 1);
+            CalcularTotais(nota, dto);
+
+            var xmlNFe = GerarXmlNFe(nota, empresa, cliente, produtos, dto);
+            _logger.LogInformation("[NFe] Tentativa {T}, numero={N}, XML gerado (primeiros 500 chars): {Xml}",
+                tentativa + 1, nota.Numero, xmlNFe.Length > 500 ? xmlNFe[..500] : xmlNFe);
+            var xmlAssinado = AssinarXml(xmlNFe, certificado);
+            nota.XmlEnvio = xmlAssinado;
+
+            var (cStat, xMotivo, protocolo) = await EnviarParaSefazAsync(
+                xmlAssinado, empresa.CNPJ, certificado, cancellationToken);
+
+            nota.CStat   = cStat;
+            nota.XMotivo = xMotivo;
+            nota.Protocolo = protocolo;
+
+            if (cStat == "100")
+            {
+                nota.Status       = StatusNota.Autorizada;
+                nota.AutorizadaEm = DateTime.UtcNow;
+                _logger.LogInformation("[NFe] Autorizada! Numero={N} Protocolo={P}", nota.Numero, protocolo);
+            }
+            else if (cStat == "539")
+            {
+                // 539 = numero já existe no SEFAZ com chave diferente (sessão anterior).
+                // Extrair a chave conflitante do xMotivo para registrar corretamente.
+                nota.Status = StatusNota.Rejeitada;
+                var chaveMatch = System.Text.RegularExpressions.Regex.Match(
+                    xMotivo, @"chNFe:(\d{44})");
+                if (chaveMatch.Success)
+                    nota.ChaveAcesso = chaveMatch.Groups[1].Value;
+
+                _logger.LogWarning("[NFe] 539 Duplicidade no numero {N}, pulando para {N1}. Chave conflitante: {Chave}",
+                    nota.Numero, nota.Numero + 1, nota.ChaveAcesso);
+
+                _db.NotasFiscais.Add(nota);
+                await _db.SaveChangesAsync(cancellationToken);
+                continue; // tenta com proximo numero
+            }
+            else
+            {
+                nota.Status = StatusNota.Rejeitada;
+                _logger.LogWarning("[NFe] Rejeitada. cStat={CStat} | {XMotivo}", cStat, xMotivo);
+            }
+
+            _db.NotasFiscais.Add(nota);
+            await _db.SaveChangesAsync(cancellationToken);
+
+            resultado = new NFeResultDto(
+                Sucesso: cStat == "100",
+                CStat: cStat,
+                XMotivo: xMotivo,
+                NotaFiscalId: nota.Id,
+                ChaveAcesso: nota.ChaveAcesso,
+                Protocolo: protocolo);
+            break;
         }
 
-        _db.NotasFiscais.Add(nota);
-        await _db.SaveChangesAsync(cancellationToken);
-
-        return new NFeResultDto(
-            Sucesso: cStat == "100",
-            CStat: cStat,
-            XMotivo: xMotivo,
-            NotaFiscalId: nota.Id,
-            ChaveAcesso: nota.ChaveAcesso,
-            Protocolo: protocolo);
+        return resultado
+            ?? throw new InvalidOperationException($"Não foi possível emitir a NF-e após {maxTentativas} tentativas (números já registrados no SEFAZ).");
     }
 
     public async Task<NFeDetalheDto?> ConsultarNotaAsync(Guid notaFiscalId, CancellationToken cancellationToken = default)

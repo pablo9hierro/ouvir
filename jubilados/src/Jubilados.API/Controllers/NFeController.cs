@@ -158,14 +158,18 @@ public class NFeController : ControllerBase
         {
             return BadRequest(new { erro = ex.Message });
         }
-        catch (UnauthorizedAccessException ex)
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+        catch (UnauthorizedAccessException)
         {
             return Forbid();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[API] Erro ao manifestar NFe.");
-            return StatusCode(500, new { erro = "Erro interno." });
+            return StatusCode(500, new { erro = "Erro interno.", detalhe = ex.Message });
         }
     }
 

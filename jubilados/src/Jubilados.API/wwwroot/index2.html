@@ -480,7 +480,7 @@
       <div id="alertaManifestar"></div>
       <div class="actions">
         <button class="btn btn-primary" onclick="manifestar()"><span id="spinManifestar" class="spinner" style="display:none"></span> Registrar Manifestacao</button>
-        <button class="btn btn-outline" onclick="preencherUltimaNotaId()">Usar ultima NF-e emitida</button>
+        <button class="btn btn-outline" onclick="preencherUltimaNotaAutorizada()">Usar ultima NF-e autorizada</button>
       </div>
     </div>
     <div id="resultManifestar" style="display:none" class="card">
@@ -606,7 +606,7 @@
 
 </div>
 <script>
-const estado = { empresaId:null, clienteId:null, clienteNome:null, tipoDest:'cpf', produtoId:null, produtoNome:null, certEnviado:false, pfxBase64:null, pfxNome:null, ultimaChave:null, ultimaNotaId:null };
+const estado = { empresaId:null, cnpj:null, clienteId:null, clienteNome:null, tipoDest:'cpf', produtoId:null, produtoNome:null, certEnviado:false, pfxBase64:null, pfxNome:null, ultimaChave:null, ultimaNotaId:null };
 var clientesCadastrados = [];
 var produtosCadastrados = [];
 const API = window.location.origin;
@@ -693,6 +693,7 @@ async function cadastrarEmpresa(){
     var data=await safeJson(res);
     if(!res.ok)throw new Error(data.erro||'HTTP '+res.status);
     estado.empresaId=data.id;
+    estado.cnpj=v('e_cnpj');
     document.getElementById('empresaIdLabel').textContent='ID: '+data.id;
     mostrarAlerta('alertaEmpresa','success','Empresa cadastrada! ID: '+data.id);
     atualizarEstadoBar();
@@ -1083,6 +1084,23 @@ function preencherUltimaNotaId(){
   document.getElementById('mf_notaId').value=estado.ultimaNotaId||'';
 }
 
+async function preencherUltimaNotaAutorizada(){
+  var empresaId=estado.empresaId;
+  if(!empresaId){mostrarAlerta('alertaManifestar','error','Cadastre a empresa primeiro (Passo 1).');return;}
+  var cnpj=estado.cnpj;
+  if(!cnpj){mostrarAlerta('alertaManifestar','error','CNPJ da empresa nao encontrado no estado.');return;}
+  try{
+    var res=await fetch(API+'/api/nfe/nuvem-fiscal?cnpj='+cnpj.replace(/\D/g,''));
+    var data=await safeJson(res);
+    if(!res.ok||!data.sucesso){mostrarAlerta('alertaManifestar','error','Nao foi possivel buscar notas: '+(data.erro||''));return;}
+    var autorizada=data.notas.find(function(n){return n.cStat==='100'||n.status==='Autorizada';});
+    if(!autorizada){mostrarAlerta('alertaManifestar','warn','Nenhuma NF-e autorizada encontrada. Emita uma NF-e primeiro.');return;}
+    document.getElementById('mf_empresaId').value=empresaId;
+    document.getElementById('mf_notaId').value=autorizada.id;
+    mostrarAlerta('alertaManifestar','info','Preenchido com NF-e autorizada numero '+autorizada.numero+' (cStat 100).');
+  }catch(e){mostrarAlerta('alertaManifestar','error','Erro ao buscar notas: '+e.message);}
+}
+
 async function consultarEntrada(){
   limparAlerta('alertaEntrada');
   document.getElementById('resultEntrada').style.display='none';
@@ -1197,6 +1215,7 @@ async function enviarCce(){
 }
 
 estado.empresaId='dd104b57-010a-4458-8699-d63807e205d3';
+estado.cnpj='21362844000152';
 estado.clienteId='0865f76e-bff7-48ef-8b02-f24b6a468e3d';
 estado.clienteNome='WURTH DO BRASIL';
 estado.tipoDest='cnpj';
@@ -1205,8 +1224,8 @@ estado.produtoId='9ae15d08-81e9-4767-911e-8faf96ad2821';
 estado.produtoNome='Produto Teste Homologacao';
 produtosCadastrados=[{id:estado.produtoId,nome:estado.produtoNome,preco:100,unidade:'UN'}];
 clientesCadastrados=[{id:estado.clienteId,nome:estado.clienteNome,cpf_CNPJ:'43648971003170'}];
-estado.ultimaChave='25260421362844000152550010000000251311245007';
-estado.ultimaNotaId='20bd6c28-6de2-4c9d-87c6-ca904099cea7';
+estado.ultimaChave='25260421362844000152550010000000241754171544';
+estado.ultimaNotaId='3e7fc1b1-1306-4793-aba0-b1a76ac58207';
 
 document.getElementById('empresaIdLabel').textContent='ID: '+estado.empresaId;
 document.getElementById('clienteIdLabel').textContent='ID: '+estado.clienteId;
