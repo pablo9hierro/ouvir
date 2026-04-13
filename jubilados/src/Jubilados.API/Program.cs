@@ -18,28 +18,16 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<NFeOptions>(builder.Configuration.GetSection(NFeOptions.Section));
 
 // ── Banco de Dados ───────────────────────────────────────────────────────────
-// Suporte a DATABASE_URL (Railway native PostgreSQL) OU appsettings (Supabase)
+// Usa sempre Supabase (appsettings.json) com senha injetada via env DB_PASSWORD
 string connectionString;
-var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-if (!string.IsNullOrEmpty(databaseUrl))
-{
-    // Converte postgresql://user:pass@host:port/db para formato Npgsql key-value
-    var uri = new Uri(databaseUrl);
-    var userInfo = uri.UserInfo.Split(':');
-    connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={Uri.UnescapeDataString(userInfo[1])};SSL Mode=Require;Trust Server Certificate=true";
-    Console.WriteLine($"[STARTUP] Usando DATABASE_URL Railway → Host={uri.Host}:{uri.Port}");
-}
-else
-{
-    connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' não configurada.");
-    var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
-    if (!string.IsNullOrEmpty(dbPassword))
-        connectionString = connectionString.Replace("${DB_PASSWORD}", dbPassword);
-    var maskedConn = System.Text.RegularExpressions.Regex.Replace(
-        connectionString, @"Password=[^;]+", "Password=***");
-    Console.WriteLine($"[STARTUP] Usando appsettings: {maskedConn}");
-}
+connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' não configurada.");
+var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
+if (!string.IsNullOrEmpty(dbPassword))
+    connectionString = connectionString.Replace("${DB_PASSWORD}", dbPassword);
+var maskedConn = System.Text.RegularExpressions.Regex.Replace(
+    connectionString, @"Password=[^;]+", "Password=***");
+Console.WriteLine($"[STARTUP] Usando Supabase: {maskedConn}");
 
 builder.Services.AddDbContext<JubiladosDbContext>(options =>
     options.UseNpgsql(connectionString, npgsql =>
