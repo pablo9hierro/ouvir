@@ -177,6 +177,9 @@ public class NFeService : INFeService
             .FirstOrDefaultAsync(e => e.Id == dto.EmpresaId, cancellationToken)
             ?? throw new InvalidOperationException($"Empresa {dto.EmpresaId} nÃ£o encontrada.");
 
+        if (string.IsNullOrEmpty(empresa.CertificadoBase64))
+            throw new InvalidOperationException("Certificado digital não configurado para esta empresa. Envie o arquivo .pfx na aba Emitir NF-e.");
+
         var certificado = _certificadoService.CarregarCertificado(
             empresa.CertificadoBase64!, empresa.CertificadoSenha!);
 
@@ -244,6 +247,9 @@ public class NFeService : INFeService
         var empresa = await _db.Empresas.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == empresaId, cancellationToken)
             ?? throw new InvalidOperationException($"Empresa {empresaId} nÃ£o encontrada.");
+
+        if (string.IsNullOrEmpty(empresa.CertificadoBase64))
+            throw new InvalidOperationException("Certificado digital não configurado para esta empresa. Envie o arquivo .pfx na aba Emitir NF-e.");
 
         var certificado = _certificadoService.CarregarCertificado(
             empresa.CertificadoBase64!, empresa.CertificadoSenha!);
@@ -315,6 +321,9 @@ public class NFeService : INFeService
         var empresa = await _db.Empresas.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == dto.EmpresaId, cancellationToken)
             ?? throw new InvalidOperationException($"Empresa {dto.EmpresaId} nÃ£o encontrada.");
+
+        if (string.IsNullOrEmpty(empresa.CertificadoBase64))
+            throw new InvalidOperationException("Certificado digital não configurado para esta empresa.");
 
         var certificado = _certificadoService.CarregarCertificado(
             empresa.CertificadoBase64!, empresa.CertificadoSenha!);
@@ -452,6 +461,9 @@ public class NFeService : INFeService
         var empresa = await _db.Empresas.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == dto.EmpresaId, cancellationToken)
             ?? throw new InvalidOperationException($"Empresa {dto.EmpresaId} nÃ£o encontrada.");
+
+        if (string.IsNullOrEmpty(empresa.CertificadoBase64))
+            throw new InvalidOperationException("Certificado digital não configurado para esta empresa.");
 
         var certificado = _certificadoService.CarregarCertificado(
             empresa.CertificadoBase64!, empresa.CertificadoSenha!);
