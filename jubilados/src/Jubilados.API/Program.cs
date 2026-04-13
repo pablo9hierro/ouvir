@@ -18,16 +18,27 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<NFeOptions>(builder.Configuration.GetSection(NFeOptions.Section));
 
 // ── Banco de Dados ───────────────────────────────────────────────────────────
-// Usa sempre Supabase (appsettings.json) com senha injetada via env DB_PASSWORD
+// Suporte a DATABASE_URL (Railway native PostgreSQL) OU appsettings (Supabase)
 string connectionString;
-connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' não configurada.");
-var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
-if (!string.IsNullOrEmpty(dbPassword))
-    connectionString = connectionString.Replace("${DB_PASSWORD}", dbPassword);
-var maskedConn = System.Text.RegularExpressions.Regex.Replace(
-    connectionString, @"Password=[^;]+", "Password=***");
-Console.WriteLine($"[STARTUP] Usando Supabase: {maskedConn}");
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+if (!string.IsNullOrEmpty(databaseUrl))
+{
+    var uri = new Uri(databaseUrl);
+    var userInfo = uri.UserInfo.Split(':');
+    connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={Uri.UnescapeDataString(userInfo[1])};SSL Mode=Require;Trust Server Certificate=true";
+    Console.WriteLine($"[STARTUP] Usando DATABASE_URL Railway → Host={uri.Host}:{uri.Port}");
+}
+else
+{
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' não configurada.");
+    var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
+    if (!string.IsNullOrEmpty(dbPassword))
+        connectionString = connectionString.Replace("${DB_PASSWORD}", dbPassword);
+    var maskedConn = System.Text.RegularExpressions.Regex.Replace(
+        connectionString, @"Password=[^;]+", "Password=***");
+    Console.WriteLine($"[STARTUP] Usando Supabase: {maskedConn}");
+}
 
 builder.Services.AddDbContext<JubiladosDbContext>(options =>
     options.UseNpgsql(connectionString, npgsql =>
@@ -92,6 +103,16 @@ using (var startupScope = app.Services.CreateScope())
         // EnsureCreated cria as tabelas se não existirem (Railway Postgres vazio)
         var criado = await db.Database.EnsureCreatedAsync();
         Console.WriteLine(criado ? "[STARTUP] Tabelas criadas." : "[STARTUP] Tabelas já existem.");
+
+        // Migrations manuais: garante colunas adicionadas após EnsureCreated
+        await db.Database.ExecuteSqlRawAsync(@"
+            ALTER TABLE empresas
+                ADD COLUMN IF NOT EXISTS nfce_csc_id    VARCHAR(10)  NULL,
+                ADD COLUMN IF NOT EXISTS nfce_csc_token VARCHAR(64)  NULL;");
+        await db.Database.ExecuteSqlRawAsync(@"
+            ALTER TABLE notas_fiscais
+                ADD COLUMN IF NOT EXISTS modelo VARCHAR(2) NULL;");
+        Console.WriteLine("[STARTUP] Migrations manuais aplicadas.");
 
         // Seed: insere dados iniciais se a empresa de Orlando não existir
         var empresaId = Guid.Parse("dd104b57-010a-4458-8699-d63807e205d3");
