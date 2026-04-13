@@ -401,8 +401,9 @@
       <h2>Consultar NF-e na SEFAZ</h2>
       <p class="subtitle">Consulta direta ao WebService NFeConsultaProtocolo4 da SEFAZ homologacao usando a chave de acesso.</p>
       <div class="grid2">
-        <div class="field span2"><label>Empresa ID <span class="req">*</span></label><input id="cs_empresaId" placeholder="UUID da empresa"></div>
-        <div class="field span2"><label>Chave de Acesso (44 digitos) <span class="req">*</span></label><input id="cs_chave" placeholder="25260421362844000152550010000000201876103102" maxlength="44"></div>
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="cs_empresaId"><option value="">-- Selecione --</option></select></div>
+        <div class="field span2"><label>Nota emitida (preenche a chave automaticamente)</label><select id="cs_nota_sel" onchange="selecionarNotaConsultar()"><option value="">-- Selecione uma nota --</option></select></div>
+        <div class="field span2"><label>Chave de Acesso (44 digitos) <span class="req">*</span></label><input id="cs_chave" placeholder="Ou informe manualmente" maxlength="44"></div>
       </div>
       <div id="alertaConsultar"></div>
       <div class="actions">
@@ -423,13 +424,12 @@
       <h2>Status do Servico SEFAZ</h2>
       <p class="subtitle">Consulta o NFeStatusServico4 — verifica se os servidores da SEFAZ SVRS estao operacionais.</p>
       <div class="field" style="max-width:400px">
-        <label>Empresa ID <span class="req">*</span></label>
-        <input id="st_empresaId" placeholder="UUID da empresa">
+        <label>Empresa <span class="req">*</span></label>
+        <select id="st_empresaId"><option value="">-- Selecione --</option></select>
       </div>
       <div id="alertaStatus"></div>
       <div class="actions">
         <button class="btn btn-primary" onclick="consultarStatus()"><span id="spinStatus" class="spinner" style="display:none"></span> Consultar Status</button>
-        <button class="btn btn-outline" onclick="document.getElementById('st_empresaId').value=estado.empresaId||''">Usar empresa cadastrada</button>
       </div>
     </div>
     <div id="resultStatus" style="display:none" class="card">
@@ -446,7 +446,7 @@
       <p class="subtitle">Inutiliza uma faixa de numeros no NFeInutilizacao4. Use apenas quando necessario.</p>
       <div class="alert alert-warn">A inutilizacao e IRREVERSIVEL. Os numeros inutilizados nao poderao ser reutilizados.</div>
       <div class="grid2" style="margin-bottom:12px">
-        <div class="field span2"><label>Empresa ID <span class="req">*</span></label><input id="in_empresaId" placeholder="UUID da empresa"></div>
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="in_empresaId"><option value="">-- Selecione --</option></select></div>
         <div class="field"><label>Serie <span class="req">*</span></label><input id="in_serie" value="1" maxlength="3"></div>
         <div class="field"><!-- spacer --></div>
         <div class="field"><label>Numero Inicial <span class="req">*</span></label><input id="in_ini" type="number" min="1" value="1"></div>
@@ -459,7 +459,6 @@
       <div id="alertaInutilizar"></div>
       <div class="actions">
         <button class="btn btn-danger" onclick="inutilizar()"><span id="spinInutilizar" class="spinner" style="display:none"></span> Inutilizar Numeracao</button>
-        <button class="btn btn-outline" onclick="document.getElementById('in_empresaId').value=estado.empresaId||''">Usar empresa cadastrada</button>
       </div>
     </div>
     <div id="resultInutilizar" style="display:none" class="card">
@@ -475,8 +474,8 @@
       <h2>Manifestacao do Destinatario</h2>
       <p class="subtitle">Registra a ciencia ou confirmacao de uma NF-e no NFeRecepcaoEvento4 (SEFAZ Nacional).</p>
       <div class="grid2" style="margin-bottom:12px">
-        <div class="field span2"><label>Empresa ID <span class="req">*</span></label><input id="mf_empresaId" placeholder="UUID da empresa"></div>
-        <div class="field span2"><label>ID da Nota Fiscal (UUID do banco) <span class="req">*</span></label><input id="mf_notaId" placeholder="UUID da nota no banco"></div>
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="mf_empresaId"><option value="">-- Selecione --</option></select></div>
+        <div class="field span2"><label>Nota Fiscal <span class="req">*</span></label><select id="mf_notaId"><option value="">-- Selecione a nota --</option></select></div>
       </div>
       <div class="section-title">Tipo de Manifestacao</div>
       <div class="tipo-grid" style="margin-bottom:14px">
@@ -510,13 +509,12 @@
       <h2>Consultar NF-es de Entrada</h2>
       <p class="subtitle">Busca NF-es destinadas a empresa via NFeDistribuicaoDFe (SEFAZ Nacional). NSU=0 busca todas.</p>
       <div class="grid2">
-        <div class="field"><label>Empresa ID <span class="req">*</span></label><input id="en_empresaId" placeholder="UUID da empresa"></div>
+        <div class="field"><label>Empresa <span class="req">*</span></label><select id="en_empresaId"><option value="">-- Selecione --</option></select></div>
         <div class="field"><label>Ultimo NSU (0=buscar tudo)</label><input id="en_nsu" type="number" min="0" value="0"></div>
       </div>
       <div id="alertaEntrada"></div>
       <div class="actions">
         <button class="btn btn-primary" onclick="consultarEntrada()"><span id="spinEntrada" class="spinner" style="display:none"></span> Buscar Notas de Entrada</button>
-        <button class="btn btn-outline" onclick="document.getElementById('en_empresaId').value=estado.empresaId||''">Usar empresa cadastrada</button>
       </div>
     </div>
     <div id="resultEntrada" style="display:none" class="card">
@@ -578,8 +576,8 @@
       <p class="subtitle">Corrige informacoes de uma NF-e autorizada via evento tpEvento=110110. Valido em homologacao e producao.</p>
       <div class="alert alert-warn">A CCe NAO pode corrigir: valor total, CFOP, destinatario, data de emissao/saida. Use apenas para correcoes de texto em campos nao-criticos.</div>
       <div class="grid2" style="margin-bottom:12px">
-        <div class="field span2"><label>Empresa ID <span class="req">*</span></label><input id="cce_empresaId" placeholder="UUID da empresa"></div>
-        <div class="field span2"><label>Nota Fiscal ID <span class="req">*</span></label><input id="cce_notaId" placeholder="UUID da NF-e (do banco)"></div>
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="cce_empresaId"><option value="">-- Selecione --</option></select></div>
+        <div class="field span2"><label>Nota Fiscal <span class="req">*</span></label><select id="cce_notaId"><option value="">-- Selecione a nota --</option></select></div>
         <div class="field span2">
           <label>Texto de Correcao <span class="req">*</span> (15 a 1000 caracteres)</label>
           <textarea id="cce_texto" style="min-height:100px" placeholder="Descreva a correcao..." oninput="document.getElementById('cce_chars').textContent=this.value.length+'/1000 caracteres'"></textarea>
@@ -589,7 +587,6 @@
       <div id="alertaCce"></div>
       <div class="actions">
         <button class="btn btn-primary" onclick="enviarCce()"><span id="spinCce" class="spinner" style="display:none"></span> Enviar CCe</button>
-        <button class="btn btn-outline" onclick="document.getElementById('cce_empresaId').value=estado.empresaId||'';document.getElementById('cce_notaId').value=estado.ultimaNotaId||''">Usar ultima NF-e</button>
       </div>
     </div>
     <div id="resultCce" style="display:none" class="card">
@@ -606,14 +603,14 @@
       <p class="subtitle">Gera o arquivo SPED EFD (Registros 0, C e 9) com as NF-e autorizadas no periodo. Prazo mensal: ate o dia 15 do mes seguinte.</p>
       <div class="alert alert-info">O arquivo gerado cobre as NF-e com cStat=100 (Autorizado) no periodo informado. Formato: texto delimitado por pipe (|).</div>
       <div class="grid2" style="margin-bottom:12px">
-        <div class="field span2"><label>Empresa ID <span class="req">*</span></label><input id="sp_empresaId" placeholder="UUID da empresa"></div>
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="sp_empresaId"><option value="">-- Selecione --</option></select></div>
         <div class="field"><label>Data Inicio <span class="req">*</span></label><input type="date" id="sp_ini"></div>
         <div class="field"><label>Data Fim <span class="req">*</span></label><input type="date" id="sp_fim"></div>
       </div>
       <div id="alertaSped"></div>
       <div class="actions">
         <button class="btn btn-success" style="font-size:.96rem;padding:11px 24px" onclick="downloadSped()">&#11015; Baixar SPED EFD</button>
-        <button class="btn btn-outline" onclick="document.getElementById('sp_empresaId').value=estado.empresaId||'';preencherMesAtual()">Usar empresa e mes atual</button>
+        <button class="btn btn-outline" onclick="preencherMesAtual()">Preencher mes atual</button>
       </div>
     </div>
   </div>
@@ -669,7 +666,56 @@
 const estado = { empresaId:null, cnpj:null, clienteId:null, clienteNome:null, tipoDest:'cpf', produtoId:null, produtoNome:null, certEnviado:false, cscSalvo:false, pfxBase64:null, pfxNome:null, ultimaChave:null, ultimaNotaId:null };
 var clientesCadastrados = [];
 var produtosCadastrados = [];
+var empresasCadastradas = [];
+var notasCarregadas = [];
 const API = window.location.origin;
+
+async function carregarEmpresasSelects(){
+  try{
+    var res=await fetch(API+'/api/empresa');
+    if(!res.ok)return;
+    empresasCadastradas=await res.json();
+    var ids=['cs_empresaId','st_empresaId','in_empresaId','mf_empresaId','en_empresaId','cce_empresaId','sp_empresaId'];
+    ids.forEach(function(id){
+      var sel=document.getElementById(id);if(!sel)return;
+      sel.innerHTML='<option value="">-- Selecione a empresa --</option>';
+      empresasCadastradas.forEach(function(e){
+        var opt=document.createElement('option');opt.value=e.id;opt.textContent=e.razaoSocial;sel.appendChild(opt);
+      });
+      if(estado.empresaId)sel.value=estado.empresaId;
+    });
+  }catch(e){}
+}
+
+async function carregarNotasParaSelect(selectId){
+  var sel=document.getElementById(selectId);if(!sel||!estado.cnpj)return;
+  sel.innerHTML='<option value="">Carregando...</option>';
+  try{
+    var cnpj=estado.cnpj.replace(/\D/g,'');
+    var res=await fetch(API+'/api/nfe/nuvem-fiscal?cnpj='+cnpj);
+    var data=await res.json();
+    sel.innerHTML='<option value="">-- Selecione a nota --</option>';
+    if(data.sucesso&&data.notas&&data.notas.length){
+      notasCarregadas=data.notas;
+      data.notas.forEach(function(n){
+        var opt=document.createElement('option');opt.value=n.id;
+        var dt=new Date(n.emitidaEm).toLocaleDateString('pt-BR');
+        opt.textContent='NF '+n.numero+'/'+n.serie+' – '+n.status+' – '+dt+' – '+n.chaveAcesso.substring(0,20)+'...';
+        opt.dataset.chave=n.chaveAcesso;opt.dataset.id=n.id;
+        sel.appendChild(opt);
+      });
+      if(estado.ultimaNotaId)sel.value=estado.ultimaNotaId;
+    }else{
+      sel.innerHTML='<option value="">Nenhuma nota encontrada</option>';
+    }
+  }catch(e){sel.innerHTML='<option value="">Erro ao carregar</option>';}
+}
+
+function selecionarNotaConsultar(){
+  var sel=document.getElementById('cs_nota_sel');
+  var opt=sel&&sel.options[sel.selectedIndex];
+  if(opt&&opt.dataset.chave)document.getElementById('cs_chave').value=opt.dataset.chave;
+}
 
 function showTab(name,btn){
   document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
@@ -677,6 +723,9 @@ function showTab(name,btn){
   document.getElementById('tab-'+name).classList.add('active');
   btn.classList.add('active');
   if(name==='nfce'){renderItensNfce();}
+  if(name==='consultar'){carregarNotasParaSelect('cs_nota_sel');}
+  if(name==='manifestar'){carregarNotasParaSelect('mf_notaId');}
+  if(name==='cce'){carregarNotasParaSelect('cce_notaId');}
 }
 
 let passoAtual=0;
@@ -1436,16 +1485,7 @@ estado.produtoId='9ae15d08-81e9-4767-911e-8faf96ad2821';
 estado.produtoNome='Produto Teste Homologacao';
 atualizarEstadoBar();
 
-document.getElementById('cs_empresaId').value=estado.empresaId;
 document.getElementById('cs_chave').value=estado.ultimaChave;
-document.getElementById('st_empresaId').value=estado.empresaId;
-document.getElementById('in_empresaId').value=estado.empresaId;
-document.getElementById('mf_empresaId').value=estado.empresaId;
-document.getElementById('mf_notaId').value=estado.ultimaNotaId;
-document.getElementById('en_empresaId').value=estado.empresaId;
-document.getElementById('cce_empresaId').value=estado.empresaId;
-document.getElementById('cce_notaId').value=estado.ultimaNotaId;
-document.getElementById('sp_empresaId').value=estado.empresaId;
 preencherMesAtual();
 
 mostrarAlerta('alertaEmpresa','success','Empresa Orlando ja cadastrada no banco.');
@@ -1456,6 +1496,7 @@ atualizarEstadoBar();
 verificarCertificadoSalvo();
 verificarCscSalvo();
 renderItensNfce();
+carregarEmpresasSelects();
 </script>
 </body>
 </html>
