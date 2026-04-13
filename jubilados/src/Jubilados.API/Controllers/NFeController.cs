@@ -64,6 +64,34 @@ public class NFeController : ControllerBase
     }
 
     /// <summary>
+    /// POST /api/nfe/emitir-nfce — Emite um NFC-e (Cupom Fiscal Eletrônico mod=65) na SEFAZ.
+    /// </summary>
+    [HttpPost("emitir-nfce")]
+    [ProducesResponseType(typeof(NfceResultDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> EmitirNFCe(
+        [FromBody] EmitirNFCeDto dto,
+        CancellationToken cancellationToken)
+    {
+        if (dto.Itens is null || dto.Itens.Count == 0)
+            return BadRequest(new { erro = "O cupom fiscal deve possuir ao menos 1 item." });
+        try
+        {
+            var resultado = await _nfeService.EmitirNFCeAsync(dto, cancellationToken);
+            return Ok(resultado);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "[API] Erro de negócio ao emitir NFC-e.");
+            return BadRequest(new { erro = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[API] Erro inesperado ao emitir NFC-e.");
+            return StatusCode(500, new { erro = "Erro interno. Consulte os logs.", detalhe = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// GET /api/nfe/{id} — Consulta detalhes de uma NFe pelo ID.
     /// </summary>
     [HttpGet("{id:guid}")]

@@ -19,6 +19,7 @@ public class NotaFiscalConfiguration : IEntityTypeConfiguration<NotaFiscal>
         builder.Property(n => n.ChaveAcesso).HasColumnName("chave_acesso").HasMaxLength(44);
         builder.Property(n => n.Status).HasColumnName("status").HasConversion<int>();
         builder.Property(n => n.TipoOperacao).HasColumnName("tipo_operacao").HasMaxLength(1);
+        builder.Property(n => n.Modelo).HasColumnName("modelo").HasMaxLength(2).HasDefaultValue("55");
         builder.Property(n => n.NaturezaOperacao).HasColumnName("natureza_operacao").HasMaxLength(60);
         builder.Property(n => n.ValorProdutos).HasColumnName("valor_produtos").HasPrecision(18, 2);
         builder.Property(n => n.ValorDesconto).HasColumnName("valor_desconto").HasPrecision(18, 2);
@@ -55,6 +56,6 @@ public class NotaFiscalConfiguration : IEntityTypeConfiguration<NotaFiscal>
                .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(n => n.ChaveAcesso);
-        builder.HasIndex(n => new { n.EmpresaId, n.Numero, n.Serie }).IsUnique();
+        builder.HasIndex(n => new { n.EmpresaId, n.Numero, n.Serie, n.Modelo }).IsUnique();
     }
 }

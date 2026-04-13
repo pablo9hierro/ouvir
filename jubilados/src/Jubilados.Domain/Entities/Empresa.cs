@@ -22,6 +22,10 @@ public class Empresa
     public string? CertificadoSenha { get; set; }
     public DateTime? CertificadoValidade { get; set; }
 
+    // NFC-e: Código de Segurança do Contribuinte (CSC)
+    public string? NfceCscId { get; set; }
+    public string? NfceCscToken { get; set; }
+
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
     public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;
 

@@ -28,6 +28,9 @@ public interface INFeService
     /// <summary>Busca empresa por CNPJ (14 dígitos limpos). Retorna Id + RazaoSocial ou null.</summary>
     Task<(Guid Id, string RazaoSocial)?> BuscarEmpresaPorCnpjAsync(string cnpj14Digitos, CancellationToken cancellationToken = default);
 
+    /// <summary>Emite uma NFC-e (Cupom Fiscal Eletrônico mod=65) na SEFAZ.</summary>
+    Task<NfceResultDto> EmitirNFCeAsync(EmitirNFCeDto dto, CancellationToken cancellationToken = default);
+
     /// <summary>Lista todas as notas (entrada + saída) de uma empresa.</summary>
     Task<IList<NuvemFiscalNotaDto>> ListarNotasPorEmpresaAsync(Guid empresaId, CancellationToken cancellationToken = default);
 

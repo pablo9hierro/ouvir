@@ -55,10 +55,33 @@ public class NFeOptions
     /// <summary>URL do WS SEFAZ para produção — Recepção de Eventos</summary>
     public string SefazUrlEventoProd { get; set; } = "https://nfe.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx";
 
+    // ── Contingência SVC-AN (SEFAZ Virtual do Ambiente Nacional) ─────────────
+    /// <summary>URL SVC-AN homologação — fallback quando SVRS está inoperante</summary>
+    public string UrlSvcAnHom { get; set; } = "https://hom.nfe.fazenda.gov.br/NFeAutorizacao4/NFeAutorizacao4.asmx";
+
+    /// <summary>URL SVC-AN produção</summary>
+    public string UrlSvcAnProd { get; set; } = "https://www.nfe.fazenda.gov.br/NFeAutorizacao4/NFeAutorizacao4.asmx";
+
+    // ── NFC-e (Cupom Fiscal Eletrônico — mod=65) ──────────────────────────────
+    /// <summary>URL WS SVRS NFC-e homologação — Autorização</summary>
+    public string UrlNfceAutorizacaoHom { get; set; } = "https://nfce-homologacao.svrs.rs.gov.br/ws/NfceAutorizacao/NFCeAutorizacao4.asmx";
+
+    /// <summary>URL WS SVRS NFC-e produção — Autorização</summary>
+    public string UrlNfceAutorizacaoProd { get; set; } = "https://nfce.svrs.rs.gov.br/ws/NfceAutorizacao/NFCeAutorizacao4.asmx";
+
+    /// <summary>URL base para consulta QR Code NFC-e (homologação)</summary>
+    public string UrlNfceQrCodeHom { get; set; } = "https://nfce-homologacao.svrs.rs.gov.br/consulta.aspx";
+
+    /// <summary>URL base para consulta QR Code NFC-e (produção)</summary>
+    public string UrlNfceQrCodeProd { get; set; } = "https://nfce.svrs.rs.gov.br/consulta.aspx";
+
     public bool IsHomologacao => Ambiente == "2";
 
-    public string UrlConsulta     => IsHomologacao ? SefazUrlConsultaHom     : SefazUrlConsultaProd;
-    public string UrlStatus       => IsHomologacao ? SefazUrlStatusHom       : SefazUrlStatusProd;
-    public string UrlInutilizacao => IsHomologacao ? SefazUrlInutilizacaoHom : SefazUrlInutilizacaoProd;
-    public string UrlEvento       => IsHomologacao ? SefazUrlEventoHom       : SefazUrlEventoProd;
+    public string UrlConsulta       => IsHomologacao ? SefazUrlConsultaHom       : SefazUrlConsultaProd;
+    public string UrlStatus         => IsHomologacao ? SefazUrlStatusHom         : SefazUrlStatusProd;
+    public string UrlInutilizacao   => IsHomologacao ? SefazUrlInutilizacaoHom   : SefazUrlInutilizacaoProd;
+    public string UrlEvento         => IsHomologacao ? SefazUrlEventoHom         : SefazUrlEventoProd;
+    public string UrlSvcAn          => IsHomologacao ? UrlSvcAnHom               : UrlSvcAnProd;
+    public string UrlNfceAutorizacao => IsHomologacao ? UrlNfceAutorizacaoHom    : UrlNfceAutorizacaoProd;
+    public string UrlNfceQrCode     => IsHomologacao ? UrlNfceQrCodeHom          : UrlNfceQrCodeProd;
 }

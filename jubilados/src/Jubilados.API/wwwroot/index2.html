@@ -103,6 +103,7 @@
     <div class="estado-item">Certificado: <span id="stCert" class="badge badge-red">nao enviado</span></div>
     <div class="estado-item">Destinatario: <span id="stCliente" class="badge badge-red">nao definido</span></div>
     <div class="estado-item">Produto: <span id="stProduto" class="badge badge-red">nao definido</span></div>
+    <div class="estado-item">CSC NFC-e: <span id="stCsc" class="badge badge-gray">nao verificado</span></div>
   </div>
   <div class="tabs">
     <button class="tab-btn active" onclick="showTab('emitir',this)">Emitir NF-e</button>
@@ -114,6 +115,7 @@
     <button class="tab-btn" onclick="showTab('nuvemfiscal',this)">☁️ Nuvem Fiscal</button>
     <button class="tab-btn" onclick="showTab('cce',this)">CCe</button>
     <button class="tab-btn" onclick="showTab('sped',this)">SPED EFD</button>
+    <button class="tab-btn" onclick="showTab('nfce',this)">Emitir NFC-e</button>
   </div>
 
   <!-- ABA EMITIR -->
@@ -177,6 +179,18 @@
         <div id="alertaCert"></div>
         <div class="actions">
           <button class="btn btn-primary" onclick="enviarCertificado()"><span id="spinCert" class="spinner" style="display:none"></span> Enviar Certificado</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>CSC NFC-e (Codigo de Seguranca do Contribuinte)</h2>
+        <p class="subtitle">Necessario para emitir NFC-e (cupom fiscal). O CSC e fornecido pela SEFAZ para cada empresa emitente.</p>
+        <div class="grid2">
+          <div class="field"><label>CSC ID (ex: 000001)</label><input id="csc_id" placeholder="000001" maxlength="8"></div>
+          <div class="field"><label>CSC Token</label><input id="csc_token" placeholder="Token CSC da SEFAZ" maxlength="64"></div>
+        </div>
+        <div id="alertaCsc"></div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="salvarCsc()"><span id="spinCsc" class="spinner" style="display:none"></span> Salvar CSC</button>
         </div>
       </div>
       <div class="actions" style="justify-content:flex-end">
@@ -604,9 +618,55 @@
     </div>
   </div>
 
+  <!-- ABA NFC-e -->
+  <div id="tab-nfce" class="tab-pane">
+    <div class="card">
+      <h2>Emitir NFC-e (Cupom Fiscal)</h2>
+      <p class="subtitle">Emite cupom fiscal eletronico (modelo 65) para venda ao consumidor. Requer CSC configurado no Passo 1 (Empresa).</p>
+      <div class="alert alert-warn">Voce esta em AMBIENTE DE HOMOLOGACAO. Os cupons emitidos nao tem validade fiscal.</div>
+      <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+        Itens do Cupom <span class="req">*</span>
+        <button class="btn btn-outline" style="font-size:.78rem;padding:5px 12px" onclick="adicionarItemNfce()">+ Item</button>
+      </div>
+      <div id="itensContainerNfce" style="margin-bottom:12px"></div>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field"><label>CPF do Consumidor (opcional)</label><input id="nfce_cpf" placeholder="Deixe vazio para consumidor anonimo" maxlength="11"></div>
+        <div class="field"><label>Forma de Pagamento</label>
+          <select id="nfce_pag">
+            <option value="01">01 - Dinheiro</option>
+            <option value="02">02 - Cheque</option>
+            <option value="03">03 - Cartao de Credito</option>
+            <option value="04">04 - Cartao de Debito</option>
+            <option value="05">05 - Credito Loja</option>
+            <option value="10">10 - Vale Alimentacao</option>
+            <option value="99">99 - Outros</option>
+          </select>
+        </div>
+        <div class="field"><label>Frete (R$)</label><input id="nfce_frete" type="number" step="0.01" value="0" min="0"></div>
+        <div class="field"><label>Serie</label><input id="nfce_serie" value="1" maxlength="3"></div>
+        <div class="field span2"><label>Informacoes Complementares (opcional)</label><input id="nfce_info" placeholder="Opcional"></div>
+      </div>
+      <div id="alertaNfce"></div>
+      <div class="actions">
+        <button class="btn btn-success" style="font-size:.96rem;padding:11px 28px" onclick="emitirNFCe()">
+          <span id="spinNfce" class="spinner" style="display:none"></span> Emitir NFC-e em Homologacao
+        </button>
+      </div>
+    </div>
+    <div id="resultNfce" style="display:none" class="card">
+      <h2 id="nfceTitulo">Resultado</h2>
+      <div id="nfceBadge" style="margin-bottom:10px"></div>
+      <div id="nfceQrArea" style="display:none;margin-bottom:12px;padding:12px;background:var(--step-active);border-radius:8px;border:1px solid #93c5fd">
+        <div style="font-size:.85rem;font-weight:600;margin-bottom:6px">URL do QR Code NFC-e:</div>
+        <a id="nfceQrLink" href="#" target="_blank" style="font-size:.78rem;word-break:break-all;color:var(--primary)"></a>
+      </div>
+      <pre class="result-box" id="nfceJson"></pre>
+    </div>
+  </div>
+
 </div>
 <script>
-const estado = { empresaId:null, cnpj:null, clienteId:null, clienteNome:null, tipoDest:'cpf', produtoId:null, produtoNome:null, certEnviado:false, pfxBase64:null, pfxNome:null, ultimaChave:null, ultimaNotaId:null };
+const estado = { empresaId:null, cnpj:null, clienteId:null, clienteNome:null, tipoDest:'cpf', produtoId:null, produtoNome:null, certEnviado:false, cscSalvo:false, pfxBase64:null, pfxNome:null, ultimaChave:null, ultimaNotaId:null };
 var clientesCadastrados = [];
 var produtosCadastrados = [];
 const API = window.location.origin;
@@ -616,6 +676,7 @@ function showTab(name,btn){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   btn.classList.add('active');
+  if(name==='nfce'){renderItensNfce();}
 }
 
 let passoAtual=0;
@@ -681,6 +742,8 @@ function atualizarEstadoBar(){
   else if(estado.tipoDest==='cnpj'&&estado.clienteNome){stCl.className='badge badge-green';stCl.textContent=estado.clienteNome;}
   else{stCl.className='badge badge-red';stCl.textContent='nao definido';}
   s('stProduto',!!estado.produtoId,estado.produtoNome||'Produto ok');
+  var stCsc=document.getElementById('stCsc');
+  if(stCsc){stCsc.className='badge '+(estado.cscSalvo?'badge-green':'badge-gray');stCsc.textContent=estado.cscSalvo?'configurado':'nao configurado';}
 }
 
 async function cadastrarEmpresa(){
@@ -995,7 +1058,7 @@ async function emitirNFe(){
       estado.ultimaChave=data.chaveAcesso;estado.ultimaNotaId=data.notaFiscalId;
       document.getElementById('resultadoTitulo').textContent='NF-e Autorizada!';
       document.getElementById('resultadoSubtitulo').textContent=data.xMotivo||'Autorizado o uso da NF-e';
-      document.getElementById('resultadoBadge').innerHTML='<span class="badge badge-green">cStat: '+data.cStat+'</span>'+(data.protocolo?' <span class="badge badge-blue">Protocolo: '+data.protocolo+'</span>':'');
+      document.getElementById('resultadoBadge').innerHTML='<span class="badge badge-green">cStat: '+data.cStat+'</span>'+(data.protocolo?' <span class="badge badge-blue">Protocolo: '+data.protocolo+'</span>':'')+(data.contingencia?' <span class="badge badge-orange">CONTINGENCIA SVC-AN</span>':'');
       document.getElementById('consultarNfeBtn').style.display='block';
     } else {
       document.getElementById('resultadoTitulo').textContent='Erro na Emissao';
@@ -1188,6 +1251,92 @@ async function consultarNuvemFiscal(){
   finally{spin('spinNuvem',false);}
 }
 
+// -------- NFC-e --------
+var itensNfce=[];
+function renderItensNfce(){
+  if(!itensNfce.length)itensNfce=[{produtoId:estado.produtoId||'',qtd:1,valor:100,desc:0}];
+  if(estado.produtoId&&itensNfce.length===1&&!itensNfce[0].produtoId)itensNfce[0].produtoId=estado.produtoId;
+  var container=document.getElementById('itensContainerNfce');if(!container)return;container.innerHTML='';
+  itensNfce.forEach(function(item,i){
+    var div=document.createElement('div');div.className='item-linha';
+    var opts='<option value="">-- Selecione --</option>';
+    produtosCadastrados.forEach(function(p){opts+='<option value="'+p.id+'"'+(item.produtoId===p.id?' selected':'')+'>'+p.nome+' (R$ '+p.preco.toFixed(2)+')</option>';});
+    if(produtosCadastrados.length){
+      div.innerHTML='<button class="remover" onclick="removerItemNfce('+i+')" title="Remover">x</button>'
+        +'<div class="grid3"><div class="field span3"><label>Produto <span class="req">*</span></label>'
+        +'<select id="nfce_pid_'+i+'" onchange="selecionarProdutoItemNfce('+i+')">'+opts+'</select></div>'
+        +'<div class="field"><label>Quantidade</label><input id="nfce_qtd_'+i+'" type="number" step="0.001" min="0.001" value="'+item.qtd+'"></div>'
+        +'<div class="field"><label>Valor Unitario (R$)</label><input id="nfce_val_'+i+'" type="number" step="0.01" min="0.01" value="'+item.valor+'"></div>'
+        +'<div class="field"><label>Desconto (R$)</label><input id="nfce_desc_'+i+'" type="number" step="0.01" value="'+item.desc+'"></div></div>';
+    } else {
+      div.innerHTML='<button class="remover" onclick="removerItemNfce('+i+')" title="Remover">x</button>'
+        +'<div class="grid3"><div class="field span3"><label>Produto ID <span class="req">*</span></label>'
+        +'<input id="nfce_pid_'+i+'" value="'+(item.produtoId||'')+'" placeholder="UUID do produto"></div>'
+        +'<div class="field"><label>Quantidade</label><input id="nfce_qtd_'+i+'" type="number" step="0.001" min="0.001" value="'+item.qtd+'"></div>'
+        +'<div class="field"><label>Valor Unitario (R$)</label><input id="nfce_val_'+i+'" type="number" step="0.01" min="0.01" value="'+item.valor+'"></div>'
+        +'<div class="field"><label>Desconto (R$)</label><input id="nfce_desc_'+i+'" type="number" step="0.01" value="'+item.desc+'"></div></div>';
+    }
+    container.appendChild(div);
+  });
+}
+function selecionarProdutoItemNfce(i){var sel=document.getElementById('nfce_pid_'+i);var prod=produtosCadastrados.find(function(p){return p.id===sel.value;});if(prod){var valEl=document.getElementById('nfce_val_'+i);if(valEl)valEl.value=prod.preco.toFixed(2);}}
+function adicionarItemNfce(){itensNfce.push({produtoId:estado.produtoId||'',qtd:1,valor:100,desc:0});renderItensNfce();}
+function removerItemNfce(i){if(itensNfce.length>1){itensNfce.splice(i,1);renderItensNfce();}}
+function coletarItensNfce(){return itensNfce.map(function(_,i){return{produtoId:(document.getElementById('nfce_pid_'+i)||{}).value||'',quantidade:parseFloat((document.getElementById('nfce_qtd_'+i)||{}).value)||1,valorUnitario:parseFloat((document.getElementById('nfce_val_'+i)||{}).value)||0,valorDesconto:parseFloat((document.getElementById('nfce_desc_'+i)||{}).value)||0};});}
+
+async function salvarCsc(){
+  limparAlerta('alertaCsc');
+  if(!estado.empresaId){mostrarAlerta('alertaCsc','error','Cadastre a empresa primeiro.');return;}
+  var cscId=v('csc_id'),cscToken=v('csc_token');
+  if(!cscId||!cscToken){mostrarAlerta('alertaCsc','error','Preencha o CSC ID e o Token.');return;}
+  spin('spinCsc',true);
+  try{
+    var res=await fetch(API+'/api/empresa/'+estado.empresaId+'/csc',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({cscId:cscId,cscToken:cscToken})});
+    if(!res.ok){var d=await res.json().catch(function(){return{};});throw new Error(d.erro||'HTTP '+res.status);}
+    estado.cscSalvo=true;atualizarEstadoBar();
+    mostrarAlerta('alertaCsc','success','CSC salvo com sucesso!');
+  }catch(e){mostrarAlerta('alertaCsc','error',e.message);}
+  finally{spin('spinCsc',false);}
+}
+
+async function verificarCscSalvo(){
+  if(!estado.empresaId)return;
+  try{
+    var res=await fetch(API+'/api/empresa/'+estado.empresaId);
+    if(!res.ok)return;
+    var data=await res.json();
+    if(data.cscSalvo){estado.cscSalvo=true;atualizarEstadoBar();mostrarAlerta('alertaCsc','success','CSC ja configurado. Envie novamente para atualizar.');}
+  }catch(e){}
+}
+
+async function emitirNFCe(){
+  limparAlerta('alertaNfce');
+  document.getElementById('resultNfce').style.display='none';
+  if(!estado.empresaId){mostrarAlerta('alertaNfce','error','Empresa nao configurada.');return;}
+  var itensList=coletarItensNfce();
+  if(itensList.some(function(it){return!it.produtoId;})){mostrarAlerta('alertaNfce','error','Selecione o produto em todos os itens.');return;}
+  spin('spinNfce',true);
+  try{
+    var cpf=v('nfce_cpf').replace(/\D/g,'');
+    var body={empresaId:estado.empresaId,itens:itensList,serie:v('nfce_serie')||'1',cpfConsumidor:cpf||null,valorFrete:parseFloat(v('nfce_frete'))||0,valorDesconto:0,formaPagamento:v('nfce_pag')||'01',informacaoComplementar:v('nfce_info')||null};
+    var res=await fetch(API+'/api/nfe/emitir-nfce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var data=await safeJson(res);
+    var resultEl=document.getElementById('resultNfce');resultEl.style.display='block';
+    var ok=res.ok&&data.sucesso;
+    document.getElementById('nfceTitulo').textContent=ok?'NFC-e Autorizada!':'Erro na Emissao NFC-e';
+    var badges='';
+    if(data.cStat)badges+='<span class="badge '+(ok?'badge-green':'badge-red')+'">cStat: '+data.cStat+'</span>';
+    if(data.protocolo)badges+=' <span class="badge badge-blue">Protocolo: '+data.protocolo+'</span>';
+    document.getElementById('nfceBadge').innerHTML=badges;
+    var qrArea=document.getElementById('nfceQrArea');
+    if(ok&&data.qrCodeUrl){qrArea.style.display='block';document.getElementById('nfceQrLink').href=data.qrCodeUrl;document.getElementById('nfceQrLink').textContent=data.qrCodeUrl;}
+    else{qrArea.style.display='none';}
+    document.getElementById('nfceJson').innerHTML=jsonBonito(data);
+    resultEl.scrollIntoView({behavior:'smooth'});
+  }catch(e){mostrarAlerta('alertaNfce','error','Erro: '+e.message);}
+  finally{spin('spinNfce',false);}
+}
+
 // Init
 function toggleConsumidorFinal(){/* legado — nao usado mais */}
 
@@ -1305,6 +1454,8 @@ mostrarAlerta('alertaProduto','success','Produto Teste ja registrado. Selecione-
 
 atualizarEstadoBar();
 verificarCertificadoSalvo();
+verificarCscSalvo();
+renderItensNfce();
 </script>
 </body>
 </html>

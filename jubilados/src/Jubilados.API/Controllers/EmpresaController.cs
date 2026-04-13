@@ -64,7 +64,8 @@ public class EmpresaController : ControllerBase
             empresa.CertificadoValidade,
             empresa.CriadoEm,
             empresa.AtualizadoEm,
-            certificadoSalvo = empresa.CertificadoBase64 != null
+            certificadoSalvo = empresa.CertificadoBase64 != null,
+            cscSalvo = empresa.NfceCscId != null
         });
     }
 
@@ -118,6 +119,18 @@ public class EmpresaController : ControllerBase
         }
     }
 
+    [HttpPut("{id:guid}/csc")]
+    public async Task<IActionResult> AtualizarCscAsync(
+        Guid id, [FromBody] AtualizarCscRequest req, CancellationToken ct)
+    {
+        var empresa = await _db.Empresas.FindAsync(new object[] { id }, ct);
+        if (empresa is null) return NotFound();
+        empresa.NfceCscId = req.CscId;
+        empresa.NfceCscToken = req.CscToken;
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
 }
 
 public record AtualizarCertificadoRequest(string Base64, string Senha, DateTime? Validade);
+public record AtualizarCscRequest(string CscId, string CscToken);

@@ -81,7 +81,7 @@ public class NFeService : INFeService
             var nota = MontarNotaFiscal(dto, empresa, cliente, produtos, ultimoNumero + 1);
             CalcularTotais(nota, dto);
 
-            var xmlNFe = GerarXmlNFe(nota, empresa, cliente, produtos, dto);
+            var xmlNFe = GerarXmlNFe(nota, empresa, cliente, produtos, dto, tpEmis: 1);
             _logger.LogInformation("[NFe] Tentativa {T}, numero={N}, XML gerado (primeiros 500 chars): {Xml}",
                 tentativa + 1, nota.Numero, xmlNFe.Length > 500 ? xmlNFe[..500] : xmlNFe);
             var xmlAssinado = AssinarXml(xmlNFe, certificado);
@@ -89,6 +89,21 @@ public class NFeService : INFeService
 
             var (cStat, xMotivo, protocolo) = await EnviarParaSefazAsync(
                 xmlAssinado, empresa.CNPJ, certificado, cancellationToken);
+
+            // ── Contingência SVC-AN: SEFAZ principal inacessível ──
+            bool contingenciaNota = false;
+            if (cStat == "999" && xMotivo.Contains("Erro de comunicação", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("[NFe] SEFAZ SVRS indisponível. Ativando contingência SVC-AN (tpEmis=6)...");
+                contingenciaNota = true;
+                var xmlConting = GerarXmlNFe(nota, empresa, cliente, produtos, dto, tpEmis: 6);
+                var xmlAssinadoConting = AssinarXml(xmlConting, certificado);
+                nota.XmlEnvio = xmlAssinadoConting;
+                (cStat, xMotivo, protocolo) = await EnviarParaSefazAsync(
+                    xmlAssinadoConting, empresa.CNPJ, certificado, cancellationToken,
+                    urlOverride: _options.UrlSvcAn);
+                _logger.LogInformation("[NFe] SVC-AN resposta: cStat={CStat} | {XMotivo}", cStat, xMotivo);
+            }
 
             nota.CStat   = cStat;
             nota.XMotivo = xMotivo;
@@ -132,7 +147,8 @@ public class NFeService : INFeService
                 XMotivo: xMotivo,
                 NotaFiscalId: nota.Id,
                 ChaveAcesso: nota.ChaveAcesso,
-                Protocolo: protocolo);
+                Protocolo: protocolo,
+                Contingencia: contingenciaNota);
             break;
         }
 
@@ -611,7 +627,7 @@ public class NFeService : INFeService
     }
 
     private string GerarXmlNFe(NotaFiscal nota, Empresa empresa, Cliente? cliente,
-        List<Produto> produtos, EmitirNFeDto dto)
+        List<Produto> produtos, EmitirNFeDto dto, int tpEmis = 1)
     {
         var cUF = _options.CodigoUF;
         var cNF = new Random().Next(10000000, 99999999).ToString();
@@ -637,7 +653,7 @@ public class NFeService : INFeService
         sb.AppendLine("      <idDest>1</idDest>");
         sb.AppendLine($"      <cMunFG>{_options.CodigoMunicipio}</cMunFG>");
         sb.AppendLine("      <tpImp>1</tpImp>");
-        sb.AppendLine("      <tpEmis>1</tpEmis>");
+        sb.AppendLine($"      <tpEmis>{tpEmis}</tpEmis>");
         sb.AppendLine($"      <cDV>{chave[^1]}</cDV>");
         sb.AppendLine($"      <tpAmb>{ambiente}</tpAmb>");
         sb.AppendLine("      <finNFe>1</finNFe>");
@@ -645,6 +661,11 @@ public class NFeService : INFeService
         sb.AppendLine("      <indPres>1</indPres>");
         sb.AppendLine("      <procEmi>0</procEmi>");
         sb.AppendLine("      <verProc>1.0.0</verProc>");
+        if (tpEmis != 1)
+        {
+            sb.AppendLine($"      <dhCont>{DateTime.Now:yyyy-MM-ddTHH:mm:sszzz}</dhCont>");
+            sb.AppendLine("      <xJust>Contingencia SVC-AN: SEFAZ autorizadora principal temporariamente indisponivel</xJust>");
+        }
         sb.AppendLine("    </ide>");
 
         sb.AppendLine("    <emit>");
@@ -929,11 +950,12 @@ public class NFeService : INFeService
     }
 
     private async Task<(string cStat, string xMotivo, string protocolo)> EnviarParaSefazAsync(
-        string xmlAssinado, string cnpj, X509Certificate2 certificado, CancellationToken ct)
+        string xmlAssinado, string cnpj, X509Certificate2 certificado, CancellationToken ct,
+        string? urlOverride = null)
     {
-        var url = _options.IsHomologacao
+        var url = urlOverride ?? (_options.IsHomologacao
             ? _options.SefazUrlHomologacao
-            : _options.SefazUrlProducao;
+            : _options.SefazUrlProducao);
 
         var idLote = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var soapAction = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4/nfeAutorizacaoLote";
@@ -1050,10 +1072,10 @@ public class NFeService : INFeService
         }
     }
 
-    private static string GerarChaveAcesso(string cUF, string cnpj, string serie, string nNF, string cNF)
+    private static string GerarChaveAcesso(string cUF, string cnpj, string serie, string nNF, string cNF, string mod = "55")
     {
         var aamm = DateTime.Now.ToString("yyMM");
-        var chave = $"{cUF}{aamm}{Limpar(cnpj).PadLeft(14, '0')}55{serie.PadLeft(3, '0')}{nNF.PadLeft(9, '0')}1{cNF.PadLeft(8, '0')}";
+        var chave = $"{cUF}{aamm}{Limpar(cnpj).PadLeft(14, '0')}{mod}{serie.PadLeft(3, '0')}{nNF.PadLeft(9, '0')}1{cNF.PadLeft(8, '0')}";
         var dv = CalcularDV(chave);
         return chave + dv;
     }
@@ -1070,5 +1092,347 @@ public class NFeService : INFeService
 
     private static string Limpar(string v) => new(v?.Where(char.IsDigit).ToArray() ?? Array.Empty<char>());
     private static string XmlEnc(string v) => System.Security.SecurityElement.Escape(v ?? string.Empty)!;
+
+    // ────────────────────────────────────────────────────────────────────────────
+    // NFC-e (Cupom Fiscal Eletrônico — mod=65)
+    // ────────────────────────────────────────────────────────────────────────────
+
+    public async Task<NfceResultDto> EmitirNFCeAsync(EmitirNFCeDto dto, CancellationToken ct = default)
+    {
+        _logger.LogInformation("[NFCe] Iniciando emissão para EmpresaId={Id}", dto.EmpresaId);
+
+        var empresa = await _db.Empresas.AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == dto.EmpresaId, ct)
+            ?? throw new InvalidOperationException($"Empresa {dto.EmpresaId} não encontrada.");
+
+        if (string.IsNullOrEmpty(empresa.CertificadoBase64))
+            throw new InvalidOperationException("Empresa não possui certificado digital configurado.");
+
+        if (string.IsNullOrEmpty(empresa.NfceCscToken))
+            throw new InvalidOperationException("Empresa não possui CSC (Código de Segurança do Contribuinte) configurado. Cadastre o CSC para emitir NFC-e.");
+
+        var certificado = _certificadoService.CarregarCertificado(empresa.CertificadoBase64, empresa.CertificadoSenha!);
+
+        var produtoIds = dto.Itens.Select(i => i.ProdutoId).ToList();
+        var produtos = await _db.Produtos.AsNoTracking()
+            .Where(p => produtoIds.Contains(p.Id) && p.EmpresaId == dto.EmpresaId)
+            .ToListAsync(ct);
+
+        const int maxTentativas = 15;
+        NfceResultDto? resultado = null;
+
+        for (int tentativa = 0; tentativa < maxTentativas; tentativa++)
+        {
+            var ultimoNumero = await _db.NotasFiscais
+                .Where(n => n.EmpresaId == dto.EmpresaId && n.Serie == dto.Serie && n.Modelo == "65")
+                .MaxAsync(n => (int?)n.Numero, ct) ?? 0;
+
+            var nota = MontarNotaFiscalNFCe(dto, empresa, produtos, ultimoNumero + 1);
+            CalcularTotais(nota, dto.ValorFrete, dto.ValorDesconto);
+
+            var (xmlNFCe, qrCodeUrl) = GerarXmlNFCe(nota, empresa, produtos, dto);
+            var xmlAssinado = AssinarXml(xmlNFCe, certificado);
+            // Inserir infNFeSupl APÓS Signature dentro de <NFe>
+            xmlAssinado = InserirInfoSuplNFCe(xmlAssinado, qrCodeUrl, _options.UrlNfceQrCode);
+            nota.XmlEnvio = xmlAssinado;
+
+            var (cStat, xMotivo, protocolo) = await EnviarNFCeParaSefazAsync(xmlAssinado, certificado, ct);
+            nota.CStat = cStat;
+            nota.XMotivo = xMotivo;
+            nota.Protocolo = protocolo;
+
+            if (cStat == "100")
+            {
+                nota.Status = StatusNota.Autorizada;
+                nota.AutorizadaEm = DateTime.UtcNow;
+            }
+            else if (cStat == "539")
+            {
+                nota.Status = StatusNota.Rejeitada;
+                var m = System.Text.RegularExpressions.Regex.Match(xMotivo, @"chNFe:(\d{44})");
+                if (m.Success) nota.ChaveAcesso = m.Groups[1].Value;
+                _db.NotasFiscais.Add(nota);
+                await _db.SaveChangesAsync(ct);
+                continue;
+            }
+            else
+            {
+                nota.Status = StatusNota.Rejeitada;
+                _logger.LogWarning("[NFCe] Rejeitada. cStat={C} | {X}", cStat, xMotivo);
+            }
+
+            _db.NotasFiscais.Add(nota);
+            await _db.SaveChangesAsync(ct);
+            resultado = new NfceResultDto(cStat == "100", cStat, xMotivo, nota.Id, nota.ChaveAcesso, protocolo, qrCodeUrl);
+            break;
+        }
+
+        return resultado ?? throw new InvalidOperationException($"Não foi possível emitir NFC-e após {maxTentativas} tentativas.");
+    }
+
+    private NotaFiscal MontarNotaFiscalNFCe(EmitirNFCeDto dto, Empresa empresa,
+        List<Produto> produtos, int numero)
+    {
+        var nota = new NotaFiscal
+        {
+            EmpresaId = empresa.Id,
+            Numero = numero,
+            Serie = dto.Serie,
+            Modelo = "65",
+            NaturezaOperacao = "Venda ao Consumidor",
+            ValorFrete = dto.ValorFrete,
+            ValorDesconto = dto.ValorDesconto,
+            Status = StatusNota.Enviada
+        };
+        int nItem = 1;
+        foreach (var itemDto in dto.Itens)
+        {
+            var produto = produtos.First(p => p.Id == itemDto.ProdutoId);
+            var vTotal = (itemDto.Quantidade * itemDto.ValorUnitario) - itemDto.ValorDesconto;
+            nota.Itens.Add(new NotaItem
+            {
+                ProdutoId = produto.Id,
+                NumeroItem = nItem++,
+                Quantidade = itemDto.Quantidade,
+                Unidade = produto.Unidade,
+                ValorUnitario = itemDto.ValorUnitario,
+                ValorDesconto = itemDto.ValorDesconto,
+                ValorTotal = vTotal,
+            });
+        }
+        return nota;
+    }
+
+    private void CalcularTotais(NotaFiscal nota, decimal frete, decimal desconto)
+    {
+        nota.ValorProdutos = nota.Itens.Sum(i => i.ValorTotal + i.ValorDesconto);
+        nota.ValorTotal = nota.Itens.Sum(i => i.ValorTotal) + frete;
+    }
+
+    private (string xml, string qrCodeUrl) GerarXmlNFCe(NotaFiscal nota, Empresa empresa,
+        List<Produto> produtos, EmitirNFCeDto dto)
+    {
+        var cUF = _options.CodigoUF;
+        var cNF = new Random().Next(10000000, 99999999).ToString();
+        var dEmi = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:sszzz");
+        var ambiente = _options.Ambiente;
+
+        var chave = GerarChaveAcesso(cUF, empresa.CNPJ, nota.Serie, nota.Numero.ToString(), cNF, mod: "65");
+        nota.ChaveAcesso = chave;
+
+        var cscId = (empresa.NfceCscId ?? "000001").PadLeft(6, '0');
+        var cscToken = empresa.NfceCscToken ?? "";
+        var qrCodeUrl = GerarQrCodeNFCe(chave, ambiente, cscId, cscToken, _options.UrlNfceQrCode);
+
+        var sb = new StringBuilder();
+        sb.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+        sb.AppendLine("<NFe xmlns=\"http://www.portalfiscal.inf.br/nfe\">");
+        sb.AppendLine($"  <infNFe Id=\"NFe{chave}\" versao=\"4.00\">");
+        sb.AppendLine("    <ide>");
+        sb.AppendLine($"      <cUF>{cUF}</cUF>");
+        sb.AppendLine($"      <cNF>{cNF}</cNF>");
+        sb.AppendLine("      <natOp>Venda ao Consumidor</natOp>");
+        sb.AppendLine("      <mod>65</mod>");
+        sb.AppendLine($"      <serie>{nota.Serie}</serie>");
+        sb.AppendLine($"      <nNF>{nota.Numero}</nNF>");
+        sb.AppendLine($"      <dhEmi>{dEmi}</dhEmi>");
+        sb.AppendLine("      <tpNF>1</tpNF>");
+        sb.AppendLine("      <idDest>1</idDest>");
+        sb.AppendLine($"      <cMunFG>{_options.CodigoMunicipio}</cMunFG>");
+        sb.AppendLine("      <tpImp>4</tpImp>");
+        sb.AppendLine("      <tpEmis>1</tpEmis>");
+        sb.AppendLine($"      <cDV>{chave[^1]}</cDV>");
+        sb.AppendLine($"      <tpAmb>{ambiente}</tpAmb>");
+        sb.AppendLine("      <finNFe>1</finNFe>");
+        sb.AppendLine("      <indFinal>1</indFinal>");
+        sb.AppendLine("      <indPres>1</indPres>");
+        sb.AppendLine("      <procEmi>0</procEmi>");
+        sb.AppendLine("      <verProc>1.0.0</verProc>");
+        sb.AppendLine("    </ide>");
+
+        sb.AppendLine("    <emit>");
+        sb.AppendLine($"      <CNPJ>{Limpar(empresa.CNPJ)}</CNPJ>");
+        sb.AppendLine($"      <xNome>{XmlEnc(ambiente == "2" ? "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL" : empresa.RazaoSocial)}</xNome>");
+        sb.AppendLine($"      <xFant>{XmlEnc(empresa.NomeFantasia)}</xFant>");
+        sb.AppendLine("      <enderEmit>");
+        sb.AppendLine($"        <xLgr>{XmlEnc(empresa.Logradouro)}</xLgr>");
+        sb.AppendLine($"        <nro>{XmlEnc(empresa.Numero)}</nro>");
+        if (!string.IsNullOrWhiteSpace(empresa.Complemento))
+            sb.AppendLine($"        <xCpl>{XmlEnc(empresa.Complemento)}</xCpl>");
+        sb.AppendLine($"        <xBairro>{XmlEnc(empresa.Bairro)}</xBairro>");
+        sb.AppendLine($"        <cMun>{_options.CodigoMunicipio}</cMun>");
+        sb.AppendLine($"        <xMun>{XmlEnc(empresa.Municipio)}</xMun>");
+        sb.AppendLine($"        <UF>{empresa.UF}</UF>");
+        sb.AppendLine($"        <CEP>{Limpar(empresa.CEP)}</CEP>");
+        sb.AppendLine("        <cPais>1058</cPais>");
+        sb.AppendLine("        <xPais>Brasil</xPais>");
+        sb.AppendLine("      </enderEmit>");
+        sb.AppendLine($"      <IE>{empresa.InscricaoEstadual}</IE>");
+        sb.AppendLine("      <CRT>1</CRT>");
+        sb.AppendLine("    </emit>");
+
+        // Destinatário NFC-e: apenas CPF se identificado; sem endereço
+        var cpfLimpo = Limpar(dto.CpfConsumidor ?? "");
+        if (cpfLimpo.Length == 11)
+        {
+            sb.AppendLine("    <dest>");
+            sb.AppendLine($"      <CPF>{cpfLimpo}</CPF>");
+            sb.AppendLine("    </dest>");
+        }
+        // Se anônimo: sem <dest> (permitido para NFC-e homologação/produção)
+
+        int nItem = 1;
+        foreach (var item in nota.Itens)
+        {
+            var produto = produtos.First(p => p.Id == item.ProdutoId);
+            sb.AppendLine($"    <det nItem=\"{nItem++}\">");
+            sb.AppendLine("      <prod>");
+            sb.AppendLine($"        <cProd>{produto.Id.ToString()[..8].ToUpper()}</cProd>");
+            sb.AppendLine("        <cEAN>SEM GTIN</cEAN>");
+            sb.AppendLine($"        <xProd>{XmlEnc(produto.Nome)}</xProd>");
+            sb.AppendLine($"        <NCM>{produto.NCM}</NCM>");
+            sb.AppendLine($"        <CFOP>{produto.CFOP}</CFOP>");
+            sb.AppendLine($"        <uCom>{produto.Unidade}</uCom>");
+            sb.AppendLine($"        <qCom>{item.Quantidade:F4}</qCom>");
+            sb.AppendLine($"        <vUnCom>{item.ValorUnitario:F10}</vUnCom>");
+            sb.AppendLine($"        <vProd>{item.ValorTotal + item.ValorDesconto:F2}</vProd>");
+            sb.AppendLine("        <cEANTrib>SEM GTIN</cEANTrib>");
+            sb.AppendLine($"        <uTrib>{produto.Unidade}</uTrib>");
+            sb.AppendLine($"        <qTrib>{item.Quantidade:F4}</qTrib>");
+            sb.AppendLine($"        <vUnTrib>{item.ValorUnitario:F10}</vUnTrib>");
+            sb.AppendLine("        <indTot>1</indTot>");
+            sb.AppendLine("      </prod>");
+            sb.AppendLine("      <imposto>");
+            var csosnFinal = !string.IsNullOrEmpty(produto.CSOSN?.Trim()) ? produto.CSOSN!.Trim().PadLeft(3, '0') : "400";
+            sb.AppendLine("        <ICMS><ICMSSN102>");
+            sb.AppendLine("          <orig>0</orig>");
+            sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
+            sb.AppendLine("        </ICMSSN102></ICMS>");
+            sb.AppendLine("        <PIS><PISNT><CST>07</CST></PISNT></PIS>");
+            sb.AppendLine("        <COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS>");
+            sb.AppendLine("      </imposto>");
+            sb.AppendLine("    </det>");
+        }
+
+        sb.AppendLine("    <total><ICMSTot>");
+        sb.AppendLine("      <vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson>");
+        sb.AppendLine("      <vFCPUFDest>0.00</vFCPUFDest><vICMSUFDest>0.00</vICMSUFDest><vICMSUFRemet>0.00</vICMSUFRemet>");
+        sb.AppendLine("      <vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet>");
+        sb.AppendLine($"      <vProd>{nota.ValorProdutos:F2}</vProd>");
+        sb.AppendLine($"      <vFrete>{nota.ValorFrete:F2}</vFrete><vSeg>0.00</vSeg>");
+        sb.AppendLine($"      <vDesc>{nota.ValorDesconto:F2}</vDesc>");
+        sb.AppendLine("      <vII>0.00</vII><vIPI>0.00</vIPI><vIPIDevol>0.00</vIPIDevol>");
+        sb.AppendLine("      <vPIS>0.00</vPIS><vCOFINS>0.00</vCOFINS>");
+        sb.AppendLine($"      <vOutro>0.00</vOutro><vNF>{nota.ValorTotal:F2}</vNF>");
+        sb.AppendLine("    </ICMSTot></total>");
+        sb.AppendLine("    <transp><modFrete>9</modFrete></transp>");
+        sb.AppendLine("    <pag><detPag>");
+        sb.AppendLine($"      <tPag>{dto.FormaPagamento}</tPag>");
+        sb.AppendLine($"      <vPag>{nota.ValorTotal:F2}</vPag>");
+        sb.AppendLine("    </detPag></pag>");
+        if (!string.IsNullOrWhiteSpace(dto.InformacaoComplementar))
+        {
+            sb.AppendLine("    <infAdic>");
+            sb.AppendLine($"      <infCpl>{XmlEnc(dto.InformacaoComplementar)}</infCpl>");
+            sb.AppendLine("    </infAdic>");
+        }
+        sb.AppendLine("  </infNFe>");
+        sb.AppendLine("</NFe>");
+        return (sb.ToString(), qrCodeUrl);
+    }
+
+    private static string InserirInfoSuplNFCe(string xmlAssinado, string qrCodeUrl, string urlChave)
+    {
+        // Insere <infNFeSupl> após </Signature> como filho direto de <NFe>
+        var doc = new XmlDocument { PreserveWhitespace = false };
+        doc.LoadXml(xmlAssinado);
+        const string nfeNs = "http://www.portalfiscal.inf.br/nfe";
+        var supl = doc.CreateElement("infNFeSupl", nfeNs);
+        var qr = doc.CreateElement("qrCode", nfeNs);
+        qr.InnerText = qrCodeUrl;
+        var ul = doc.CreateElement("urlChave", nfeNs);
+        ul.InnerText = urlChave;
+        supl.AppendChild(qr);
+        supl.AppendChild(ul);
+        doc.DocumentElement!.AppendChild(supl);
+        return doc.DocumentElement.OuterXml;
+    }
+
+    private static string GerarQrCodeNFCe(string chave, string tpAmb, string cscId, string cscToken, string urlBase)
+    {
+        // NT 2015.002 v1.21: cHashQRCode = SHA1(chave|100|tpAmb|cscId[sem sep]cscToken).ToUpper()
+        var nVersao = "100";
+        var cIdPad = cscId.PadLeft(6, '0');
+        var hashInput = $"{chave}|{nVersao}|{tpAmb}|{cIdPad}{cscToken}";
+        var hashBytes = System.Security.Cryptography.SHA1.HashData(
+            System.Text.Encoding.UTF8.GetBytes(hashInput));
+        var hashHex = Convert.ToHexString(hashBytes).ToUpper();
+        return $"{urlBase}?p={chave}|{nVersao}|{tpAmb}|{cIdPad}|{hashHex}";
+    }
+
+    private async Task<(string cStat, string xMotivo, string protocolo)> EnviarNFCeParaSefazAsync(
+        string xmlAssinado, X509Certificate2 certificado, CancellationToken ct)
+    {
+        var url = _options.UrlNfceAutorizacao;
+        const string wsdlNs   = "http://www.portalfiscal.inf.br/nfe/wsdl/NfceAutorizacao4";
+        const string nfeNs    = "http://www.portalfiscal.inf.br/nfe";
+        const string soapNs   = "http://www.w3.org/2003/05/soap-envelope";
+        const string soapAction = "http://www.portalfiscal.inf.br/nfe/wsdl/NfceAutorizacao4/nfceAutorizacaoLote";
+
+        var idLote = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var soapDoc = new XmlDocument();
+        var envelope = soapDoc.CreateElement("soap12", "Envelope", soapNs);
+        envelope.SetAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
+        envelope.SetAttribute("xmlns:xsd", "http://www.w3.org/2001/XMLSchema");
+        soapDoc.AppendChild(envelope);
+
+        var header = soapDoc.CreateElement("soap12", "Header", soapNs);
+        envelope.AppendChild(header);
+        var cabec = soapDoc.CreateElement("nfeCabecMsg", wsdlNs);
+        var elCUF = soapDoc.CreateElement("cUF", wsdlNs); elCUF.InnerText = _options.CodigoUF;
+        var elVer = soapDoc.CreateElement("versaoDados", wsdlNs); elVer.InnerText = "4.00";
+        cabec.AppendChild(elCUF); cabec.AppendChild(elVer);
+        header.AppendChild(cabec);
+
+        var body = soapDoc.CreateElement("soap12", "Body", soapNs);
+        envelope.AppendChild(body);
+        var dadosMsg = soapDoc.CreateElement("nfeDadosMsg", wsdlNs);
+
+        var enviNFe = soapDoc.CreateElement("enviNFe", nfeNs);
+        enviNFe.SetAttribute("versao", "4.00");
+        var elIdLote = soapDoc.CreateElement("idLote", nfeNs); elIdLote.InnerText = idLote.ToString();
+        var elIndSinc = soapDoc.CreateElement("indSinc", nfeNs); elIndSinc.InnerText = "1";
+        enviNFe.AppendChild(elIdLote);
+        enviNFe.AppendChild(elIndSinc);
+
+        var nfceDoc = new XmlDocument { PreserveWhitespace = false };
+        nfceDoc.LoadXml(xmlAssinado);
+        enviNFe.AppendChild(soapDoc.ImportNode(nfceDoc.DocumentElement!, true));
+        dadosMsg.AppendChild(enviNFe);
+        body.AppendChild(dadosMsg);
+
+        var soap = soapDoc.OuterXml;
+        _logger.LogInformation("[NFCe] SOAP para {Url}: {Xml}", url, soap.Length > 2000 ? soap[..2000] : soap);
+
+        try
+        {
+            var handler = new HttpClientHandler();
+            handler.ClientCertificates.Add(certificado);
+            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+            using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(60) };
+            var content = new StringContent(soap, Encoding.UTF8);
+            content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(
+                $"application/soap+xml; charset=utf-8; action=\"{soapAction}\"");
+            var response = await http.PostAsync(url, content, ct);
+            var retorno = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogInformation("[NFCe] Resposta: {Body}", retorno.Length > 2000 ? retorno[..2000] : retorno);
+            return InterpretarRetorno(retorno, _logger);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "[NFCe] Erro HTTP.");
+            return ("999", $"Erro de comunicação: {ex.Message}", string.Empty);
+        }
+    }
 
 }

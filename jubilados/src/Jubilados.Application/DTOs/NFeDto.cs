@@ -52,7 +52,29 @@ public record NFeResultDto(
     string XMotivo,
     Guid? NotaFiscalId = null,
     string? ChaveAcesso = null,
-    string? Protocolo = null
+    string? Protocolo = null,
+    bool Contingencia = false
+);
+
+public record EmitirNFCeDto(
+    Guid EmpresaId,
+    IList<ItemNFeDto> Itens,
+    string Serie = "1",
+    string? CpfConsumidor = null,   // CPF do consumidor identificado (opcional)
+    decimal ValorFrete = 0,
+    decimal ValorDesconto = 0,
+    string FormaPagamento = "01",   // 01=Dinheiro 03=Cartao Credito 04=Cartao Debito 05=Credito Loja 10=Vale Alimentacao 99=Outros
+    string? InformacaoComplementar = null
+);
+
+public record NfceResultDto(
+    bool Sucesso,
+    string CStat,
+    string XMotivo,
+    Guid? NotaFiscalId = null,
+    string? ChaveAcesso = null,
+    string? Protocolo = null,
+    string? QrCodeUrl = null
 );
 
 public record NFeDetalheDto(

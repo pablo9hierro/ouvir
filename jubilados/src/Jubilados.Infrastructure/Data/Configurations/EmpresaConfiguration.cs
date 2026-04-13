@@ -27,6 +27,8 @@ public class EmpresaConfiguration : IEntityTypeConfiguration<Empresa>
         builder.Property(e => e.CertificadoBase64).HasColumnName("certificado_base64").HasColumnType("text");
         builder.Property(e => e.CertificadoSenha).HasColumnName("certificado_senha").HasMaxLength(256);
         builder.Property(e => e.CertificadoValidade).HasColumnName("certificado_validade");
+        builder.Property(e => e.NfceCscId).HasColumnName("nfce_csc_id").HasMaxLength(10);
+        builder.Property(e => e.NfceCscToken).HasColumnName("nfce_csc_token").HasMaxLength(64);
         builder.Property(e => e.CriadoEm).HasColumnName("criado_em").HasDefaultValueSql("NOW()");
         builder.Property(e => e.AtualizadoEm).HasColumnName("atualizado_em").HasDefaultValueSql("NOW()");
 

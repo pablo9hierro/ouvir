@@ -13,6 +13,9 @@ public class NotaFiscal
     public string ChaveAcesso { get; set; } = string.Empty;
     public StatusNota Status { get; set; } = StatusNota.Rascunho;
 
+    // Modelo: 55=NF-e, 65=NFC-e
+    public string Modelo { get; set; } = "55";
+
     // Tipo: 0=Entrada, 1=Saída
     public string TipoOperacao { get; set; } = "1";
 
