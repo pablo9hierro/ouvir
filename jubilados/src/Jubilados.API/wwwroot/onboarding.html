@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jubilados — Configuração Fiscal</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, sans-serif; background: #f0f4f8;
+      display: flex; align-items: flex-start; justify-content: center;
+      padding: 40px 16px; min-height: 100vh;
+    }
+    .card {
+      background: #fff; border-radius: 12px; padding: 40px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.10); width: 100%; max-width: 640px;
+    }
+    h1 { margin: 0 0 4px; font-size: 1.5rem; color: #1a202c; }
+    p.sub { margin: 0 0 32px; color: #718096; font-size: .9rem; }
+
+    /* Stepper */
+    .steps { display: flex; gap: 0; margin-bottom: 36px; position: relative; }
+    .steps::before {
+      content: ''; position: absolute; top: 16px; left: 32px; right: 32px;
+      height: 2px; background: #e2e8f0; z-index: 0;
+    }
+    .step {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      gap: 6px; position: relative; z-index: 1;
+    }
+    .step-circle {
+      width: 32px; height: 32px; border-radius: 50%; border: 2px solid #e2e8f0;
+      background: #fff; display: flex; align-items: center; justify-content: center;
+      font-size: .85rem; font-weight: 700; color: #a0aec0; transition: all .2s;
+    }
+    .step.ativo .step-circle   { border-color: #3b82f6; background: #3b82f6; color: #fff; }
+    .step.concluido .step-circle { border-color: #10b981; background: #10b981; color: #fff; }
+    .step-label { font-size: .75rem; color: #718096; text-align: center; }
+    .step.ativo .step-label { color: #3b82f6; font-weight: 600; }
+
+    /* Panels */
+    .panel { display: none; }
+    .panel.ativo { display: block; }
+
+    label { display: block; font-size: .85rem; color: #4a5568; margin-bottom: 4px; margin-top: 14px; }
+    label:first-of-type { margin-top: 0; }
+    input, select {
+      width: 100%; padding: 10px 12px; border: 1.5px solid #e2e8f0;
+      border-radius: 8px; font-size: 1rem; outline: none; transition: border-color .15s;
+      background: #fff;
+    }
+    input:focus, select:focus { border-color: #3b82f6; }
+
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+    .check-group {
+      display: flex; align-items: center; gap: 10px; margin-top: 14px;
+    }
+    .check-group input[type=checkbox] { width: auto; }
+    .check-group label { margin: 0; }
+
+    .btns { display: flex; gap: 12px; margin-top: 32px; }
+    .btn {
+      flex: 1; padding: 12px; border-radius: 8px; font-size: 1rem;
+      font-weight: 600; cursor: pointer; transition: background .15s; border: none;
+    }
+    .btn-outline {
+      background: #fff; border: 2px solid #e2e8f0; color: #4a5568;
+    }
+    .btn-outline:hover { border-color: #a0aec0; }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+    .btn-success { background: #10b981; color: #fff; }
+    .btn-success:hover { background: #059669; }
+
+    .msg { margin-top: 14px; padding: 10px 14px; border-radius: 8px; font-size: .9rem; }
+    .msg.error { background: #fee2e2; color: #991b1b; }
+    .msg.success { background: #d1fae5; color: #065f46; }
+
+    .info-box {
+      background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;
+      padding: 12px 16px; font-size: .88rem; color: #1e40af; margin-bottom: 20px;
+    }
+
+    /* Revisão */
+    .revisao-grid {
+      display: grid; grid-template-columns: max-content 1fr; gap: 6px 20px;
+      font-size: .9rem;
+    }
+    .revisao-grid dt { color: #718096; }
+    .revisao-grid dd { margin: 0; font-weight: 500; color: #1a202c; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>Configuração Fiscal</h1>
+  <p class="sub">Configure sua empresa para emitir NF-e com conformidade fiscal.</p>
+
+  <!-- Stepper -->
+  <div class="steps">
+    <div class="step ativo" id="s1"><div class="step-circle">1</div><span class="step-label">Empresa</span></div>
+    <div class="step" id="s2"><div class="step-circle">2</div><span class="step-label">Regime</span></div>
+    <div class="step" id="s3"><div class="step-circle">3</div><span class="step-label">Tributação</span></div>
+    <div class="step" id="s4"><div class="step-circle">4</div><span class="step-label">Revisar</span></div>
+  </div>
+
+  <!-- Passo 1: Dados da empresa -->
+  <div id="panel1" class="panel ativo">
+    <div class="info-box">Informe os dados cadastrais da sua empresa conforme o cartão CNPJ.</div>
+    <div class="row2">
+      <div>
+        <label>CNPJ *</label>
+        <input id="p1-cnpj" type="text" placeholder="00.000.000/0001-00" maxlength="18" />
+      </div>
+      <div>
+        <label>Ramo de atividade *</label>
+        <select id="p1-ramo">
+          <option value="">Selecione…</option>
+          <option value="material_construcao">Material de Construção</option>
+          <option value="ferragens">Ferragens</option>
+          <option value="vestuario">Vestuário</option>
+          <option value="deposito_bebidas">Depósito de Bebidas</option>
+          <option value="conveniencia_mercadinho">Conveniência / Mercadinho</option>
+          <option value="farmacia">Farmácia</option>
+          <option value="petshop">Pet Shop</option>
+          <option value="distribuidora">Distribuidora</option>
+          <option value="restaurante">Restaurante / Alimentação</option>
+          <option value="outros">Outros</option>
+        </select>
+      </div>
+    </div>
+    <label>Razão Social *</label>
+    <input id="p1-razao" type="text" placeholder="Nome conforme registro" />
+    <label>Nome Fantasia</label>
+    <input id="p1-fantasia" type="text" placeholder="Nome comercial" />
+    <div class="row3">
+      <div>
+        <label>UF *</label>
+        <select id="p1-uf">
+          <option value="">UF</option>
+          <option value="AC">AC</option><option value="AL">AL</option><option value="AM">AM</option>
+          <option value="AP">AP</option><option value="BA">BA</option><option value="CE">CE</option>
+          <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
+          <option value="MA">MA</option><option value="MG">MG</option><option value="MS">MS</option>
+          <option value="MT">MT</option><option value="PA">PA</option><option value="PB" selected>PB</option>
+          <option value="PE">PE</option><option value="PI">PI</option><option value="PR">PR</option>
+          <option value="RJ">RJ</option><option value="RN">RN</option><option value="RO">RO</option>
+          <option value="RR">RR</option><option value="RS">RS</option><option value="SC">SC</option>
+          <option value="SE">SE</option><option value="SP">SP</option><option value="TO">TO</option>
+        </select>
+      </div>
+      <div>
+        <label>CEP *</label>
+        <input id="p1-cep" type="text" placeholder="00000-000" maxlength="9" />
+      </div>
+      <div>
+        <label>Insc. Estadual</label>
+        <input id="p1-ie" type="text" placeholder="Opcional" />
+      </div>
+    </div>
+    <div class="btns">
+      <button class="btn btn-primary" onclick="irPasso(2)">Próximo →</button>
+    </div>
+  </div>
+
+  <!-- Passo 2: Regime Tributário -->
+  <div id="panel2" class="panel">
+    <label>Regime tributário *</label>
+    <select id="p2-regime" onchange="atualizarPasso2()">
+      <option value="">Selecione…</option>
+      <option value="mei">MEI — Microempreendedor Individual</option>
+      <option value="simples_nacional">Simples Nacional</option>
+      <option value="lucro_presumido">Lucro Presumido</option>
+      <option value="lucro_real">Lucro Real</option>
+    </select>
+
+    <div id="bloco-simples" style="display:none">
+      <label>Faixa do Simples (Anexo)</label>
+      <select id="p2-faixa">
+        <option value="">Selecione…</option>
+        <option value="I">Anexo I — Comércio</option>
+        <option value="II">Anexo II — Indústria</option>
+        <option value="III">Anexo III — Serviços (ISS)</option>
+        <option value="IV">Anexo IV — Serviços (Construção)</option>
+        <option value="V">Anexo V — Serviços diversos</option>
+      </select>
+    </div>
+
+    <div id="bloco-contador" style="display:none">
+      <label>Nome do contador</label>
+      <input id="p2-cont-nome" type="text" placeholder="Ex.: João da Silva" />
+      <div class="row2">
+        <div><label>CRC</label><input id="p2-cont-crc" type="text" placeholder="CRC/PB 123456" /></div>
+        <div><label>E-mail do contador</label><input id="p2-cont-email" type="email" placeholder="contador@escritorio.com.br" /></div>
+      </div>
+    </div>
+
+    <div class="check-group">
+      <input type="checkbox" id="p2-nfse" />
+      <label for="p2-nfse">Minha empresa também emite NFS-e (serviços)</label>
+    </div>
+    <div id="bloco-nfse" style="display:none; margin-top:10px;">
+      <label>Inscrição Municipal</label>
+      <input id="p2-im" type="text" placeholder="Número na prefeitura" />
+    </div>
+
+    <div class="check-group">
+      <input type="checkbox" id="p2-suframa" />
+      <label for="p2-suframa">Inscrito na SUFRAMA (Zona Franca de Manaus)</label>
+    </div>
+
+    <div class="btns">
+      <button class="btn btn-outline" onclick="irPasso(1)">← Voltar</button>
+      <button class="btn btn-primary" onclick="irPasso(3)">Próximo →</button>
+    </div>
+  </div>
+
+  <!-- Passo 3: Tributação NF-e -->
+  <div id="panel3" class="panel">
+    <div class="info-box" id="info-crt"></div>
+    <div class="row3">
+      <div>
+        <label>Alíquota PIS (%)</label>
+        <input id="p3-pis" type="number" step="0.01" min="0" max="10" value="0.65" />
+      </div>
+      <div>
+        <label>Alíquota COFINS (%)</label>
+        <input id="p3-cofins" type="number" step="0.01" min="0" max="10" value="3.00" />
+      </div>
+      <div>
+        <label>CSOSN padrão</label>
+        <select id="p3-csosn">
+          <option value="102">102 — Imune/isenta</option>
+          <option value="103">103 — Isento ICMS</option>
+          <option value="400" selected>400 — Não tributado</option>
+          <option value="500">500 — ICMS cobrado anteriormente</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="check-group">
+      <input type="checkbox" id="p3-st" onchange="atualizarST()" />
+      <label for="p3-st">Minha empresa opera como Substituta Tributária (ICMS-ST)</label>
+    </div>
+
+    <div id="bloco-st" style="display:none; margin-top:10px;">
+      <div class="row2">
+        <div>
+          <label>MVA padrão (%)</label>
+          <input id="p3-mva" type="number" step="0.01" min="0" value="30" />
+        </div>
+        <div>
+          <label>Opera com ST em bebidas</label>
+          <input type="checkbox" id="p3-st-bebidas" style="margin-top:12px;width:auto;" />
+        </div>
+      </div>
+    </div>
+
+    <div class="btns">
+      <button class="btn btn-outline" onclick="irPasso(2)">← Voltar</button>
+      <button class="btn btn-primary" onclick="irPasso(4)">Próximo →</button>
+    </div>
+  </div>
+
+  <!-- Passo 4: Revisão + Salvar -->
+  <div id="panel4" class="panel">
+    <div class="info-box" style="background:#f0fdf4;border-color:#bbf7d0;color:#166534;">
+      Revise as informações antes de finalizar. Você poderá alterar tudo depois em "Configurações".
+    </div>
+    <dl class="revisao-grid" id="revisao"></dl>
+    <div class="btns">
+      <button class="btn btn-outline" onclick="irPasso(3)">← Voltar</button>
+      <button class="btn btn-success" id="btn-finalizar" onclick="finalizarOnboarding()">✓ Finalizar configuração</button>
+    </div>
+  </div>
+
+  <div id="msg" style="display:none" class="msg"></div>
+</div>
+
+<script>
+  const SUPABASE_URL  = 'https://cumdvosqimugvzxlqtsu.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1bWR2b3NxaW11Z3Z6eGxxdHN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3ODUxODcsImV4cCI6MjA5MTM2MTE4N30.UubUbIAB2FQzY4jfR6kHLShkt8Ld9xCGZKjXqFIe5k8';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+  let token = null;
+
+  // Verifica autenticação
+  supabase.auth.getSession().then(({ data }) => {
+    if (!data.session) { window.location.href = '/login.html'; return; }
+    token = data.session.access_token;
+  });
+
+  let passoAtual = 1;
+
+  function irPasso(n) {
+    if (!validarPasso(passoAtual)) return;
+    passoAtual = n;
+    document.querySelectorAll('.panel').forEach((p, i) => {
+      p.classList.toggle('ativo', i + 1 === n);
+    });
+    document.querySelectorAll('.step').forEach((s, i) => {
+      s.className = 'step' + (i + 1 < n ? ' concluido' : i + 1 === n ? ' ativo' : '');
+      s.querySelector('.step-circle').textContent = i + 1 < n ? '✓' : i + 1;
+    });
+    if (n === 3) prepararPasso3();
+    if (n === 4) preencherRevisao();
+    esconderMsg();
+    window.scrollTo(0, 0);
+  }
+
+  function validarPasso(n) {
+    if (n === 1) {
+      if (!document.getElementById('p1-cnpj').value.replace(/\D/g,'').length)
+        return mostrarMsg('Informe o CNPJ.', 'error'), false;
+      if (!document.getElementById('p1-ramo').value)
+        return mostrarMsg('Selecione o ramo de atividade.', 'error'), false;
+      if (!document.getElementById('p1-razao').value.trim())
+        return mostrarMsg('Informe a razão social.', 'error'), false;
+      if (!document.getElementById('p1-uf').value)
+        return mostrarMsg('Selecione a UF.', 'error'), false;
+    }
+    if (n === 2) {
+      if (!document.getElementById('p2-regime').value)
+        return mostrarMsg('Selecione o regime tributário.', 'error'), false;
+    }
+    return true;
+  }
+
+  function atualizarPasso2() {
+    const r = document.getElementById('p2-regime').value;
+    document.getElementById('bloco-simples').style.display   = (r === 'simples_nacional' || r === 'mei') ? '' : 'none';
+    document.getElementById('bloco-contador').style.display  = (r === 'lucro_presumido'  || r === 'lucro_real') ? '' : 'none';
+  }
+
+  document.getElementById('p2-nfse').addEventListener('change', function() {
+    document.getElementById('bloco-nfse').style.display = this.checked ? '' : 'none';
+  });
+
+  function atualizarST() {
+    document.getElementById('bloco-st').style.display =
+      document.getElementById('p3-st').checked ? '' : 'none';
+  }
+
+  function prepararPasso3() {
+    const r = document.getElementById('p2-regime').value;
+    const crt = r === 'mei' ? 1 : r === 'simples_nacional' ? 1 : r === 'lucro_presumido' ? 2 : 3;
+    const msgs = { 1: 'CRT 1 — Simples Nacional / MEI: CSOSN é usado em vez de CST ICMS.', 2: 'CRT 2 — Lucro Presumido: usa CST ICMS e alíquotas normais.', 3: 'CRT 3 — Lucro Real: usa CST ICMS e pode ter débito/crédito de PIS/COFINS.' };
+    document.getElementById('info-crt').textContent = msgs[crt] || '';
+  }
+
+  function preencherRevisao() {
+    const regime = document.getElementById('p2-regime');
+    const ramo   = document.getElementById('p1-ramo');
+    const fields = [
+      ['CNPJ',            document.getElementById('p1-cnpj').value],
+      ['Razão Social',    document.getElementById('p1-razao').value],
+      ['Nome Fantasia',   document.getElementById('p1-fantasia').value || '—'],
+      ['UF',              document.getElementById('p1-uf').value],
+      ['Ramo',            ramo.selectedOptions[0]?.text || '—'],
+      ['Regime',          regime.selectedOptions[0]?.text || '—'],
+      ['PIS',             document.getElementById('p3-pis').value + '%'],
+      ['COFINS',          document.getElementById('p3-cofins').value + '%'],
+      ['CSOSN padrão',    document.getElementById('p3-csosn').selectedOptions[0]?.text || '—'],
+      ['Opera com ST',    document.getElementById('p3-st').checked ? 'Sim' : 'Não'],
+      ['Emite NFS-e',     document.getElementById('p2-nfse').checked ? 'Sim' : 'Não'],
+    ];
+    const dl = document.getElementById('revisao');
+    dl.innerHTML = fields.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  }
+
+  async function finalizarOnboarding() {
+    const btn = document.getElementById('btn-finalizar');
+    btn.disabled = true; btn.textContent = 'Salvando…';
+
+    const regimeVal = document.getElementById('p2-regime').value;
+    const crt = regimeVal === 'mei' ? 1 : regimeVal === 'simples_nacional' ? 1 : regimeVal === 'lucro_presumido' ? 2 : 3;
+
+    const payload = {
+      cnpj:               document.getElementById('p1-cnpj').value.replace(/\D/g,''),
+      razaoSocial:        document.getElementById('p1-razao').value.trim(),
+      nomeFantasia:       document.getElementById('p1-fantasia').value.trim() || null,
+      uf:                 document.getElementById('p1-uf').value,
+      cep:                document.getElementById('p1-cep').value.replace(/\D/g,''),
+      inscricaoEstadual:  document.getElementById('p1-ie').value.trim() || null,
+      ramo:               document.getElementById('p1-ramo').value,
+      regimeTributario:   regimeVal,
+      crt,
+      faixaSimples:       document.getElementById('p2-faixa').value || null,
+      emiteNfse:          document.getElementById('p2-nfse').checked,
+      inscricaoMunicipal: document.getElementById('p2-im').value.trim() || null,
+      inscritoSuframa:    document.getElementById('p2-suframa').checked,
+      contadorNome:       document.getElementById('p2-cont-nome').value.trim() || null,
+      contadorCrc:        document.getElementById('p2-cont-crc').value.trim() || null,
+      contadorEmail:      document.getElementById('p2-cont-email').value.trim() || null,
+      aliquotaPis:        parseFloat(document.getElementById('p3-pis').value) || 0.65,
+      aliquotaCofins:     parseFloat(document.getElementById('p3-cofins').value) || 3.00,
+      csosnPadrao:        document.getElementById('p3-csosn').value,
+      operaComoSubstitutoTributario: document.getElementById('p3-st').checked,
+      mvaPadrao:          document.getElementById('p3-st').checked
+                            ? parseFloat(document.getElementById('p3-mva').value) || null
+                            : null,
+      possuiStBebidas:    document.getElementById('p3-st-bebidas')?.checked || false,
+    };
+
+    try {
+      // 1. Cria ou atualiza empresa via API
+      let res = await fetch('/api/empresa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        // Pode já existir: tenta PUT
+        const empresaRes = await fetch('/api/empresa?cnpj=' + payload.cnpj, {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (empresaRes.ok) {
+          const list = await empresaRes.json();
+          const id = Array.isArray(list) ? list[0]?.id : list?.id;
+          if (id) {
+            res = await fetch('/api/empresa/' + id, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+              body: JSON.stringify(payload)
+            });
+          }
+        }
+      }
+
+      if (!res.ok) throw new Error('Erro ao salvar empresa: ' + res.status);
+      const empresa = await res.json();
+
+      // 2. Associa usuário à empresa
+      await fetch('/api/auth/associar-empresa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ cnpj: payload.cnpj })
+      });
+
+      // 3. Marca onboarding concluído
+      await fetch('/api/auth/onboarding-concluido', {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+
+      mostrarMsg('Configuração salva! Redirecionando…', 'success');
+      setTimeout(() => window.location.href = '/index2.html', 1500);
+    } catch (err) {
+      btn.disabled = false; btn.textContent = '✓ Finalizar configuração';
+      mostrarMsg(err.message, 'error');
+    }
+  }
+
+  function mostrarMsg(txt, tipo) {
+    const el = document.getElementById('msg');
+    el.textContent = txt; el.className = 'msg ' + tipo; el.style.display = '';
+  }
+  function esconderMsg() { document.getElementById('msg').style.display = 'none'; }
+</script>
+</body>
+</html>

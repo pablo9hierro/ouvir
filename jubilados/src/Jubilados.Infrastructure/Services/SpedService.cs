@@ -249,7 +249,68 @@ public class SpedService : ISpedService
 
         Add("C990", blocoCCount.ToString()); // fecha bloco C
 
-        // ── BLOCO 9: Encerramento ──────────────────────────────────────────────
+        // ── BLOCO E: Apuração ICMS ─────────────────────────────────────────────
+        var blocoECount = 0;
+        Add("E001", "0"); blocoECount++;
+
+        var totalDebICMS  = notas.Sum(n => n.ValorICMS);
+        var totalBaseICMS = notas.Sum(n => n.Itens.Sum(i => i.BaseICMS));
+
+        Add("E100", dInicio, dFim); blocoECount++;
+
+        // E110 – Apuração do ICMS
+        Add("E110",
+            totalDebICMS.ToString("F2"),  // VL_TOT_DEBITOS
+            "0.00",                       // VL_AJ_DEBITOS
+            "0.00",                       // VL_TOT_AJ_DEBITOS
+            totalDebICMS.ToString("F2"),  // VL_ESTORNOS_CRED
+            "0.00",                       // VL_TOT_CREDITOS
+            "0.00",                       // VL_AJ_CREDITOS
+            "0.00",                       // VL_TOT_AJ_CREDITOS
+            "0.00",                       // VL_ESTORNOS_DEB
+            totalBaseICMS.ToString("F2"), // VL_SLD_CREDOR_ANT
+            totalDebICMS.ToString("F2"),  // VL_SLD_APURADO
+            "0.00",                       // VL_TOT_DED
+            totalDebICMS.ToString("F2"),  // VL_ICMS_RECOLHER
+            "0.00",                       // VL_SLD_CREDOR_TRANSPORTAR
+            "0.00"                        // DEB_ESP
+        );
+        blocoECount++;
+
+        Add("E990", blocoECount.ToString()); // fecha bloco E
+
+        // ── BLOCO H: Inventário ────────────────────────────────────────────────
+        var blocoHCount = 0;
+        Add("H001", "0"); blocoHCount++;
+
+        // H005 – Totais do inventário
+        var estoqueProdutos = await _db.Produtos.AsNoTracking()
+            .Where(p => p.EmpresaId == dto.EmpresaId && p.QuantidadeEstoque > 0)
+            .ToListAsync(cancellationToken);
+
+        var valorInventario = estoqueProdutos.Sum(p => p.QuantidadeEstoque * p.Preco);
+        Add("H005", dFim, valorInventario.ToString("F2"), "09"); // 09=inventário periódico
+        blocoHCount++;
+
+        foreach (var prod in estoqueProdutos)
+        {
+            var vlItem = prod.QuantidadeEstoque * prod.Preco;
+            Add("H010",
+                prod.Id.ToString()[..8].ToUpper(),  // COD_ITEM
+                prod.Unidade,                        // UNID
+                prod.QuantidadeEstoque.ToString("F3"), // QTD
+                prod.Preco.ToString("F2"),           // VL_UNIT
+                vlItem.ToString("F2"),               // VL_ITEM
+                "0",                                 // IND_PROP (0=própria)
+                "",                                  // COD_PART
+                "",                                  // TXT_COMPL
+                "0.00",                              // COD_CTA
+                "0.00"                               // VL_ITEM_IR
+            );
+            blocoHCount++;
+        }
+
+        Add("H990", blocoHCount.ToString()); // fecha bloco H
         Add("9001", "0");
 
         // 9900 – Totais de registros por tipo

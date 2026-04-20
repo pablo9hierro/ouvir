@@ -1,6 +1,7 @@
 using Jubilados.Application.DTOs;
 using Jubilados.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Jubilados.API.Controllers;
 
@@ -14,6 +15,8 @@ public class NFeController : ControllerBase
     private readonly IManifestacaoService _manifestacaoService;
     private readonly IDanfeService _danfeService;
     private readonly ISpedService _spedService;
+    private readonly ICancelamentoService _cancelamentoService;
+    private readonly ISpedContribuicoesService _spedContribuicoesService;
     private readonly ILogger<NFeController> _logger;
 
     public NFeController(
@@ -22,6 +25,8 @@ public class NFeController : ControllerBase
         IManifestacaoService manifestacaoService,
         IDanfeService danfeService,
         ISpedService spedService,
+        ICancelamentoService cancelamentoService,
+        ISpedContribuicoesService spedContribuicoesService,
         ILogger<NFeController> logger)
     {
         _nfeService = nfeService;
@@ -29,6 +34,8 @@ public class NFeController : ControllerBase
         _manifestacaoService = manifestacaoService;
         _danfeService = danfeService;
         _spedService = spedService;
+        _cancelamentoService = cancelamentoService;
+        _spedContribuicoesService = spedContribuicoesService;
         _logger = logger;
     }
 
@@ -317,6 +324,7 @@ public class NFeController : ControllerBase
 
         var itens = notas.Select(n => new NuvemFiscalItemDto(
             n.Id,
+            n.EmpresaId,
             n.TipoOperacao == "0" ? "Entrada" : "Saída",
             n.ChaveAcesso,
             n.Numero,
@@ -455,8 +463,164 @@ public class NFeController : ControllerBase
             return StatusCode(500, new { erro = "Erro interno ao gerar SPED." });
         }
     }
+    /// <summary>
+    /// POST /api/nfe/cancelar — Cancela uma NF-e autorizada (prazo 24 horas).
+    /// </summary>
+    [HttpPost("cancelar")]
+    public async Task<IActionResult> Cancelar([FromBody] CancelarNFeDto dto, CancellationToken cancellationToken)
+    {
+        if (dto.EmpresaId == Guid.Empty || dto.NotaFiscalId == Guid.Empty)
+            return BadRequest(new { erro = "EmpresaId e NotaFiscalId são obrigatórios." });
+        if (string.IsNullOrWhiteSpace(dto.Justificativa) || dto.Justificativa.Trim().Length < 15)
+            return BadRequest(new { erro = "Justificativa deve ter no mínimo 15 caracteres." });
+        try
+        {
+            var resultado = await _cancelamentoService.CancelarAsync(dto, cancellationToken);
+            return Ok(resultado);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[API] Erro ao cancelar NF-e.");
+            return StatusCode(500, new { erro = "Erro interno." });
+        }
+    }
+
+    /// <summary>
+    /// POST /api/nfe/importar-xml-entrada — Importa XML de NF-e de entrada, criando produtos automaticamente.
+    /// </summary>
+    [HttpPost("importar-xml-entrada")]
+    public async Task<IActionResult> ImportarXmlEntrada(
+        [FromBody] ImportarXmlRequest req, CancellationToken cancellationToken)
+    {
+        if (req.EmpresaId == Guid.Empty)
+            return BadRequest(new { erro = "EmpresaId é obrigatório." });
+        if (string.IsNullOrWhiteSpace(req.XmlBase64))
+            return BadRequest(new { erro = "XmlBase64 é obrigatório." });
+        try
+        {
+            var resultado = await _entradaService.ImportarXmlEntradaAsync(
+                req.EmpresaId, req.XmlBase64, cancellationToken);
+            return Ok(resultado);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[API] Erro ao importar XML entrada.");
+            return StatusCode(500, new { erro = "Erro interno." });
+        }
+    }
+
+    /// <summary>
+    /// GET /api/nfe/exportar-xml-lote?empresaId=&amp;dataInicio=&amp;dataFim=
+    /// Exporta XMLs de NF-e autorizadas em um arquivo ZIP.
+    /// </summary>
+    [HttpGet("exportar-xml-lote")]
+    public async Task<IActionResult> ExportarXmlLote(
+        [FromQuery] Guid empresaId,
+        [FromQuery] DateTime dataInicio,
+        [FromQuery] DateTime dataFim,
+        CancellationToken cancellationToken)
+    {
+        if (empresaId == Guid.Empty)
+            return BadRequest(new { erro = "empresaId é obrigatório." });
+        if (dataFim < dataInicio)
+            return BadRequest(new { erro = "dataFim deve ser >= dataInicio." });
+
+        try
+        {
+            // Busca empresa para obter CNPJ
+            var empresa = await (
+                from e in HttpContext.RequestServices
+                    .GetRequiredService<Jubilados.Infrastructure.Data.JubiladosDbContext>().Empresas
+                    .AsNoTracking()
+                where e.Id == empresaId
+                select new { e.CNPJ }
+            ).FirstOrDefaultAsync(cancellationToken);
+            if (empresa is null) return NotFound(new { erro = "Empresa não encontrada." });
+
+            var db = HttpContext.RequestServices
+                .GetRequiredService<Jubilados.Infrastructure.Data.JubiladosDbContext>();
+
+            var notas = await db.NotasFiscais
+                .AsNoTracking()
+                .Where(n => n.EmpresaId == empresaId
+                         && n.CStat == "100"
+                         && n.EmitidaEm >= dataInicio.ToUniversalTime()
+                         && n.EmitidaEm <= dataFim.ToUniversalTime()
+                         && n.XmlEnvio != null)
+                .OrderBy(n => n.EmitidaEm)
+                .Select(n => new { n.ChaveAcesso, n.XmlEnvio })
+                .ToListAsync(cancellationToken);
+
+            if (!notas.Any())
+                return NotFound(new { erro = "Nenhuma NF-e autorizada encontrada no período." });
+
+            using var ms = new System.IO.MemoryStream();
+            using (var zip = new System.IO.Compression.ZipArchive(ms, System.IO.Compression.ZipArchiveMode.Create, true))
+            {
+                foreach (var nota in notas)
+                {
+                    var entry = zip.CreateEntry($"{nota.ChaveAcesso}-nfe.xml");
+                    using var entryStream = entry.Open();
+                    var bytes = System.Text.Encoding.UTF8.GetBytes(nota.XmlEnvio!);
+                    await entryStream.WriteAsync(bytes, cancellationToken);
+                }
+            }
+            ms.Seek(0, System.IO.SeekOrigin.Begin);
+            var cnpj = new string(empresa.CNPJ.Where(char.IsDigit).ToArray());
+            var fileName = $"NFe_{cnpj}_{dataInicio:yyyyMM}_{dataFim:yyyyMM}.zip";
+            return File(ms.ToArray(), "application/zip", fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[API] Erro ao exportar XML lote.");
+            return StatusCode(500, new { erro = "Erro interno." });
+        }
+    }
+
+    /// <summary>
+    /// GET /api/nfe/efd-contribuicoes?empresaId=&amp;dataInicio=&amp;dataFim=
+    /// Gera EFD Contribuições (PIS/COFINS) para download.
+    /// </summary>
+    [HttpGet("efd-contribuicoes")]
+    public async Task<IActionResult> GerarEfdContribuicoes(
+        [FromQuery] Guid empresaId,
+        [FromQuery] DateTime dataInicio,
+        [FromQuery] DateTime dataFim,
+        CancellationToken cancellationToken)
+    {
+        if (empresaId == Guid.Empty)
+            return BadRequest(new { erro = "empresaId é obrigatório." });
+        if (dataFim < dataInicio)
+            return BadRequest(new { erro = "dataFim deve ser >= dataInicio." });
+        try
+        {
+            var conteudo = await _spedContribuicoesService.GerarEfdContribuicoesAsync(
+                new SpedContribuicoesDto(empresaId, dataInicio, dataFim.AddDays(1).AddSeconds(-1)), cancellationToken);
+            var bytes = System.Text.Encoding.UTF8.GetBytes(conteudo);
+            var fileName = $"EFD_CONTRIB_{dataInicio:yyyyMM}.txt";
+            return File(bytes, "text/plain; charset=utf-8", fileName);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[API] Erro ao gerar EFD Contribuições.");
+            return StatusCode(500, new { erro = "Erro interno." });
+        }
+    }
 }
 
 // ── Request helpers ───────────────────────────────────────────────────────────
 
 public record ConsultarNFeRequest(Guid EmpresaId, Guid NotaId = default, string? ChaveAcesso = null);
+public record ImportarXmlRequest(Guid EmpresaId, string XmlBase64);

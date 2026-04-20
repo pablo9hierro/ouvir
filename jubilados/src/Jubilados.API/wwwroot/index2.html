@@ -95,6 +95,8 @@
   <div style="font-size:1.4rem">🧾</div>
   <h1>Jubilados NF-e</h1>
   <span class="env-badge">🟡 HOMOLOGACAO</span>
+  <span id="userEmail" style="margin-left:auto;font-size:.8rem;opacity:.85"></span>
+  <button id="btnLogout" onclick="fazerLogout()" style="margin-left:12px;background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.4);border-radius:6px;padding:4px 12px;font-size:.8rem;cursor:pointer;display:none">Sair</button>
 </header>
 <div class="container">
   <div class="estado-bar" id="estadoBar">
@@ -115,6 +117,8 @@
     <button class="tab-btn" onclick="showTab('nuvemfiscal',this)">☁️ Nuvem Fiscal</button>
     <button class="tab-btn" onclick="showTab('cce',this)">CCe</button>
     <button class="tab-btn" onclick="showTab('sped',this)">SPED EFD</button>
+    <button class="tab-btn" onclick="showTab('efdcontrib',this)">EFD Contribuicoes</button>
+    <button class="tab-btn" onclick="showTab('nfse',this)">NFS-e</button>
     <button class="tab-btn" onclick="showTab('nfce',this)">Emitir NFC-e</button>
   </div>
 
@@ -515,6 +519,7 @@
       <div id="alertaEntrada"></div>
       <div class="actions">
         <button class="btn btn-primary" onclick="consultarEntrada()"><span id="spinEntrada" class="spinner" style="display:none"></span> Buscar Notas de Entrada</button>
+        <button class="btn btn-outline" onclick="importarXmlEntrada()">&#128228; Importar XML Entrada</button>
       </div>
     </div>
     <div id="resultEntrada" style="display:none" class="card">
@@ -537,6 +542,7 @@
       <div class="actions">
         <button class="btn btn-primary" onclick="consultarNuvemFiscal()"><span id="spinNuvem" class="spinner" style="display:none"></span> Buscar NF-es</button>
         <button class="btn btn-outline" onclick="document.getElementById('nf_cnpj').value='21362844000152'">Usar empresa cadastrada</button>
+        <button class="btn btn-outline" onclick="exportarXmlLote()">&#11015; Exportar XML Lote (ZIP)</button>
       </div>
     </div>
     <div id="resultNuvem" style="display:none">
@@ -610,8 +616,56 @@
       <div id="alertaSped"></div>
       <div class="actions">
         <button class="btn btn-success" style="font-size:.96rem;padding:11px 24px" onclick="downloadSped()">&#11015; Baixar SPED EFD</button>
+        <button class="btn btn-outline" onclick="downloadSpedBlocoE()">Bloco E (Apuracao ICMS)</button>
+        <button class="btn btn-outline" onclick="downloadSpedBlocoH()">Bloco H (Inventario)</button>
         <button class="btn btn-outline" onclick="preencherMesAtual()">Preencher mes atual</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ABA EFD CONTRIBUICOES -->
+  <div id="tab-efdcontrib" class="tab-pane">
+    <div class="card">
+      <h2>EFD Contribuicoes (PIS/COFINS)</h2>
+      <p class="subtitle">Gera o arquivo EFD Contribuicoes com apuracao de PIS e COFINS. Prazo mensal: ate o 10 dia util do segundo mes subsequente.</p>
+      <div class="alert alert-info">Inclui Blocos 0, C, M (apuracao) e 9. Compatible com Simples Nacional (cumulativo) e Lucro Presumido/Real (nao-cumulativo).</div>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="efc_empresaId"><option value="">-- Selecione --</option></select></div>
+        <div class="field"><label>Data Inicio <span class="req">*</span></label><input type="date" id="efc_ini"></div>
+        <div class="field"><label>Data Fim <span class="req">*</span></label><input type="date" id="efc_fim"></div>
+      </div>
+      <div id="alertaEfc"></div>
+      <div class="actions">
+        <button class="btn btn-success" style="font-size:.96rem;padding:11px 24px" onclick="downloadEfdContrib()">&#11015; Baixar EFD Contribuicoes</button>
+        <button class="btn btn-outline" onclick="preencherMesAtualEfc()">Preencher mes atual</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABA NFS-e -->
+  <div id="tab-nfse" class="tab-pane">
+    <div class="card">
+      <h2>Emitir NFS-e (Nota Fiscal de Servico)</h2>
+      <p class="subtitle">Emite NFS-e via webservice municipal ABRASF 2.04. Apenas para empresas com Inscricao Municipal cadastrada.</p>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="nfse_empresaId"><option value="">-- Selecione --</option></select></div>
+        <div class="field span2"><label>Nome do Servico <span class="req">*</span></label><input id="nfse_nome" placeholder="Ex: Desenvolvimento de software"></div>
+        <div class="field"><label>Valor do Servico <span class="req">*</span></label><input type="number" id="nfse_valor" step="0.01" min="0.01" placeholder="0.00"></div>
+        <div class="field"><label>Aliquota ISS (%) </label><input type="number" id="nfse_aliq" step="0.01" min="0" placeholder="5.00"></div>
+        <div class="field span2"><label>Discriminacao</label><textarea id="nfse_disc" rows="3" placeholder="Descricao detalhada do servico prestado"></textarea></div>
+        <div class="field"><label>CPF/CNPJ Tomador</label><input id="nfse_tomCpfCnpj" placeholder="Opcional"></div>
+        <div class="field"><label>Nome Tomador</label><input id="nfse_tomNome" placeholder="Opcional"></div>
+        <div class="field"><label>Codigo Servico LC 116/03</label><input id="nfse_codSrv" placeholder="Ex: 14.01"></div>
+      </div>
+      <div id="alertaNfse"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="emitirNfse()"><span id="spinNfse" class="spinner" style="display:none"></span> Emitir NFS-e</button>
+      </div>
+    </div>
+    <div id="resultNfse" style="display:none" class="card">
+      <h2 id="nfseTitulo">Resultado</h2>
+      <div id="nfseBadge" style="margin-bottom:10px"></div>
+      <pre class="result-box" id="nfseJson"></pre>
     </div>
   </div>
 
@@ -675,7 +729,7 @@ async function carregarEmpresasSelects(){
     var res=await fetch(API+'/api/empresa');
     if(!res.ok)return;
     empresasCadastradas=await res.json();
-    var ids=['cs_empresaId','st_empresaId','in_empresaId','mf_empresaId','en_empresaId','cce_empresaId','sp_empresaId'];
+    var ids=['cs_empresaId','st_empresaId','in_empresaId','mf_empresaId','en_empresaId','cce_empresaId','sp_empresaId','efc_empresaId','nfse_empresaId'];
     ids.forEach(function(id){
       var sel=document.getElementById(id);if(!sel)return;
       sel.innerHTML='<option value="">-- Selecione a empresa --</option>';
@@ -1293,7 +1347,7 @@ async function consultarNuvemFiscal(){
         +'<td style="padding:7px 10px;white-space:nowrap">'+dt+'</td>'
         +'<td style="padding:7px 10px">'+manifesta+'</td>'
         +'<td style="padding:7px 10px;font-size:.74rem;color:var(--muted)" title="'+n.chaveAcesso+'">'+chave+'</td>'
-        +'<td style="padding:7px 10px;white-space:nowrap"><button class="btn btn-outline" style="font-size:.72rem;padding:4px 8px" onclick="downloadXml(\''+n.id+'\')">&#11015; XML</button> <button class="btn btn-outline" style="font-size:.72rem;padding:4px 8px" onclick="downloadDanfe(\''+n.id+'\')">&#128202; DANFE</button></td>';
+        +'<td style="padding:7px 10px;white-space:nowrap"><button class="btn btn-outline" style="font-size:.72rem;padding:4px 8px" onclick="downloadXml(\''+n.id+'\')">&#11015; XML</button> <button class="btn btn-outline" style="font-size:.72rem;padding:4px 8px" onclick="downloadDanfe(\''+n.id+'\')">&#128202; DANFE</button>'+(n.status==='Autorizada'?' <button class="btn btn-danger" style="font-size:.72rem;padding:4px 8px" onclick="cancelarNota(\''+n.id+'\',\''+n.empresaId+'\')">&#10006; Cancelar</button>':'')+'</td>';
       tbody.appendChild(tr);
     });
   }catch(e){mostrarAlerta('alertaNuvem','error','Erro: '+e.message);}
@@ -1392,6 +1446,106 @@ function toggleConsumidorFinal(){/* legado — nao usado mais */}
 function downloadXml(notaId){window.open(API+'/api/nfe/'+notaId+'/xml','_blank');}
 function downloadDanfe(notaId){window.open(API+'/api/nfe/'+notaId+'/danfe','_blank');}
 
+function importarXmlEntrada(){
+  var empId=v('en_empresaId');
+  if(!empId){mostrarAlerta('alertaEntrada','error','Selecione a empresa antes de importar o XML.');return;}
+  var input=document.createElement('input');input.type='file';input.accept='.xml';
+  input.onchange=function(e){
+    var file=e.target.files[0];if(!file)return;
+    var reader=new FileReader();
+    reader.onload=async function(ev){
+      var base64=btoa(ev.target.result);
+      try{
+        var res=await fetchAuth(API+'/api/nfe/importar-xml-entrada',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresaId:empId,xmlBase64:base64})});
+        var data=await safeJson(res);
+        mostrarAlerta('alertaEntrada',data.sucesso?'success':'error',data.mensagem||(data.sucesso?'Importado!':'Erro'));
+      }catch(ex){mostrarAlerta('alertaEntrada','error','Erro: '+ex.message);}
+    };
+    reader.readAsBinaryString(file);
+  };
+  input.click();
+}
+
+function exportarXmlLote(){
+  var ini=prompt('Data inicio (AAAA-MM-DD):');if(!ini)return;
+  var fim=prompt('Data fim (AAAA-MM-DD):');if(!fim)return;
+  var cnpj=v('nf_cnpj');
+  if(!cnpj){alert('Informe o CNPJ do lojista antes de exportar.');return;}
+  // Need empresaId from loaded list: try to find by CNPJ
+  var emp=empresasCadastradas&&empresasCadastradas.find(function(e){return e.cnpj&&e.cnpj.replace(/\D/g,'')===cnpj.replace(/\D/g,'');});
+  if(!emp){alert('Empresa nao encontrada no cadastro local. Busque as NF-es primeiro.');return;}
+  window.open(API+'/api/nfe/exportar-xml-lote?empresaId='+encodeURIComponent(emp.id)+'&dataInicio='+ini+'&dataFim='+fim,'_blank');
+}
+
+async function cancelarNota(notaId, empresaId){
+  var just=prompt('Justificativa do cancelamento (min 15 caracteres):');
+  if(!just||just.trim().length<15){alert('Justificativa deve ter pelo menos 15 caracteres.');return;}
+  if(!confirm('Confirmar cancelamento da nota?'))return;
+  try{
+    var res=await fetchAuth(API+'/api/nfe/cancelar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresaId:empresaId,notaFiscalId:notaId,justificativa:just.trim()})});
+    var data=await safeJson(res);
+    if(res.ok&&data.sucesso)alert('Nota cancelada com sucesso! Protocolo: '+(data.protocolo||'N/A'));
+    else alert('Erro ao cancelar: '+(data.erro||data.xMotivo||'Erro desconhecido'));
+    consultarNuvemFiscal();
+  }catch(e){alert('Erro: '+e.message);}
+}
+
+function downloadSpedBlocoE(){
+  var empId=v('sp_empresaId'),ini=v('sp_ini'),fim=v('sp_fim');
+  if(!empId||!ini||!fim){mostrarAlerta('alertaSped','error','Preencha empresa e periodo.');return;}
+  window.open(API+'/api/nfe/sped?empresaId='+encodeURIComponent(empId)+'&dataInicio='+ini+'&dataFim='+fim,'_blank');
+  mostrarAlerta('alertaSped','info','Bloco E incluido no arquivo SPED EFD (registros E001/E100/E110/E990).');
+}
+
+function downloadSpedBlocoH(){
+  var empId=v('sp_empresaId'),ini=v('sp_ini'),fim=v('sp_fim');
+  if(!empId||!ini||!fim){mostrarAlerta('alertaSped','error','Preencha empresa e periodo.');return;}
+  window.open(API+'/api/nfe/sped?empresaId='+encodeURIComponent(empId)+'&dataInicio='+ini+'&dataFim='+fim,'_blank');
+  mostrarAlerta('alertaSped','info','Bloco H incluido no arquivo SPED EFD (registros H001/H005/H010/H990).');
+}
+
+function downloadEfdContrib(){
+  limparAlerta('alertaEfc');
+  var empId=v('efc_empresaId'),ini=v('efc_ini'),fim=v('efc_fim');
+  if(!empId){mostrarAlerta('alertaEfc','error','EmpresaId e obrigatorio.');return;}
+  if(!ini||!fim){mostrarAlerta('alertaEfc','error','Informe a data de inicio e fim.');return;}
+  window.open(API+'/api/nfe/efd-contribuicoes?empresaId='+encodeURIComponent(empId)+'&dataInicio='+ini+'&dataFim='+fim,'_blank');
+}
+
+function preencherMesAtualEfc(){
+  var now=new Date();
+  var y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0');
+  var ultimo=new Date(y,now.getMonth()+1,0).getDate();
+  document.getElementById('efc_ini').value=y+'-'+m+'-01';
+  document.getElementById('efc_fim').value=y+'-'+m+'-'+String(ultimo).padStart(2,'0');
+}
+
+async function emitirNfse(){
+  limparAlerta('alertaNfse');
+  document.getElementById('resultNfse').style.display='none';
+  var empId=v('nfse_empresaId'),nome=v('nfse_nome'),valor=parseFloat(v('nfse_valor')||0);
+  if(!empId){mostrarAlerta('alertaNfse','error','Selecione a empresa.');return;}
+  if(!nome){mostrarAlerta('alertaNfse','error','Nome do servico e obrigatorio.');return;}
+  if(!valor||valor<=0){mostrarAlerta('alertaNfse','error','Valor do servico deve ser maior que zero.');return;}
+  spin('spinNfse',true);
+  try{
+    var body={empresaId:empId,nomeServico:nome,valorServico:valor};
+    var disc=v('nfse_disc');if(disc)body.discriminacao=disc;
+    var aliq=parseFloat(v('nfse_aliq')||0);if(aliq>0)body.aliquotaISS=aliq;
+    var cpfCnpj=v('nfse_tomCpfCnpj');if(cpfCnpj)body.cpfCnpjTomador=cpfCnpj;
+    var tomNome=v('nfse_tomNome');if(tomNome)body.nomeTomador=tomNome;
+    var codSrv=v('nfse_codSrv');if(codSrv)body.codigoServico=codSrv;
+    var res=await fetchAuth(API+'/api/nfse/emitir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var data=await safeJson(res);
+    document.getElementById('resultNfse').style.display='block';
+    var ok=res.ok&&data.sucesso;
+    document.getElementById('nfseTitulo').textContent=ok?'NFS-e Emitida!':'Erro ao emitir NFS-e';
+    document.getElementById('nfseBadge').innerHTML='<span class="badge '+(ok?'badge-green':'badge-red')+'">'+(ok?'Emitida':'Erro')+'</span>'+(data.numeroNfse?' <span class="badge badge-blue">NFS-e #'+data.numeroNfse+'</span>':'');
+    document.getElementById('nfseJson').innerHTML=jsonBonito(data);
+  }catch(e){mostrarAlerta('alertaNfse','error','Erro: '+e.message);}
+  finally{spin('spinNfse',false);}
+}
+
 function preencherMesAtual(){
   var now=new Date();
   var y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0');
@@ -1428,6 +1582,42 @@ async function enviarCce(){
   }catch(e){mostrarAlerta('alertaCce','error','Erro: '+e.message);}
   finally{spin('spinCce',false);}
 }
+
+// ── Auth local (sem Supabase) ─────────────────────────────────────────────────
+let _authToken = null;
+
+function authHeaders() {
+  return _authToken ? { 'Authorization': 'Bearer ' + _authToken } : {};
+}
+
+async function fetchAuth(url, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign({}, opts.headers || {}, authHeaders());
+  return fetch(url, opts);
+}
+
+async function fazerLogout() {
+  localStorage.removeItem('jubilados_token');
+  window.location.href = '/login.html';
+}
+
+// ── Auth guard: usa token local armazenado no localStorage ──────────────────
+(function() {
+  var token = localStorage.getItem('jubilados_token');
+  if (!token) {
+    window.location.href = '/login.html';
+    return;
+  }
+  _authToken = token;
+  var emailEl = document.getElementById('userEmail');
+  // Decodifica email do JWT (payload é base64)
+  try {
+    var payload = JSON.parse(atob(token.split('.')[1]));
+    if (emailEl && payload.email) emailEl.textContent = payload.email;
+  } catch(e) {}
+  var logoutBtn = document.getElementById('btnLogout');
+  if (logoutBtn) logoutBtn.style.display = '';
+})();
 
 estado.empresaId='dd104b57-010a-4458-8699-d63807e205d3';
 estado.cnpj='21362844000152';

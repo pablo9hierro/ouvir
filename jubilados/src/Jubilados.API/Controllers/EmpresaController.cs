@@ -130,6 +130,31 @@ public class EmpresaController : ControllerBase
         await _db.SaveChangesAsync(ct);
         return NoContent();
     }
+
+    /// <summary>
+    /// GET /api/empresa/{id}/alerta-certificado
+    /// Retorna alerta sobre validade do certificado digital.
+    /// </summary>
+    [HttpGet("{id:guid}/alerta-certificado")]
+    public async Task<IActionResult> AlertaCertificadoAsync(Guid id, CancellationToken ct)
+    {
+        var empresa = await _db.Empresas.AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == id, ct);
+        if (empresa is null) return NotFound();
+
+        if (empresa.CertificadoValidade is null)
+            return Ok(new { expiradoOuFaltando = true, diasRestantes = 0, mensagem = "Sem data de validade cadastrada." });
+
+        var dias = (int)(empresa.CertificadoValidade.Value - DateTime.UtcNow).TotalDays;
+        var expirado = dias <= 30;
+        string? mensagem = dias < 0
+            ? $"Certificado EXPIRADO há {-dias} dias!"
+            : dias <= 30
+                ? $"Certificado expira em {dias} dias!"
+                : null;
+
+        return Ok(new { expiradoOuFaltando = expirado, diasRestantes = dias, mensagem });
+    }
 }
 
 public record AtualizarCertificadoRequest(string Base64, string Senha, DateTime? Validade);

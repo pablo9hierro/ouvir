@@ -234,4 +234,170 @@ public class NotaEntradaService : InotaEntradaService
             return string.Empty;
         }
     }
+
+    /// <inheritdoc/>
+    public async Task<ImportarXmlResultDto> ImportarXmlEntradaAsync(
+        Guid empresaId, string xmlBase64, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[Entrada] Importando XML para EmpresaId={Id}", empresaId);
+
+        string xmlContent;
+        try
+        {
+            var bytes = Convert.FromBase64String(xmlBase64);
+            xmlContent = Encoding.UTF8.GetString(bytes);
+        }
+        catch
+        {
+            return new ImportarXmlResultDto(false, "XML inválido: não é base64 válido.");
+        }
+
+        XmlDocument doc;
+        try
+        {
+            doc = new XmlDocument();
+            doc.LoadXml(xmlContent);
+        }
+        catch
+        {
+            return new ImportarXmlResultDto(false, "XML inválido: não é XML bem-formado.");
+        }
+
+        var ns = new XmlNamespaceManager(doc.NameTable);
+        ns.AddNamespace("nfe", "http://www.portalfiscal.inf.br/nfe");
+
+        var infNFe = doc.SelectSingleNode("//nfe:infNFe", ns);
+        if (infNFe is null)
+            return new ImportarXmlResultDto(false, "XML não contém elemento infNFe.");
+
+        var chave = infNFe.Attributes?["Id"]?.Value?.Replace("NFe", "") ?? "";
+        var numDoc = int.TryParse(infNFe.SelectSingleNode("nfe:ide/nfe:nNF", ns)?.InnerText, out var n) ? n : 0;
+        var serie  = infNFe.SelectSingleNode("nfe:ide/nfe:serie", ns)?.InnerText ?? "1";
+        var natOp  = infNFe.SelectSingleNode("nfe:ide/nfe:natOp", ns)?.InnerText ?? "Compra";
+        var dhEmi  = infNFe.SelectSingleNode("nfe:ide/nfe:dhEmi", ns)?.InnerText;
+        var emitidaEm = DateTime.TryParse(dhEmi, out var dt) ? dt.ToUniversalTime() : DateTime.UtcNow;
+
+        // Verifica se já existe
+        var jaExiste = await _db.NotasFiscais
+            .AsNoTracking()
+            .AnyAsync(nf => nf.EmpresaId == empresaId && nf.ChaveAcesso == chave, cancellationToken);
+        if (jaExiste)
+            return new ImportarXmlResultDto(false, $"Nota com chave {chave} já importada.");
+
+        var produtosCriados = new List<ProdutoImportadoDto>();
+        decimal valorTotal = 0;
+
+        var nota = new Jubilados.Domain.Entities.NotaFiscal
+        {
+            Id = Guid.NewGuid(),
+            EmpresaId = empresaId,
+            ChaveAcesso = chave,
+            Numero = numDoc,
+            Serie = serie,
+            NaturezaOperacao = natOp,
+            Status = Jubilados.Domain.Enums.StatusNota.Autorizada,
+            CStat = "100",
+            XMotivo = "Importado via XML",
+            TipoOperacao = "0",  // entrada
+            EmitidaEm = emitidaEm,
+            AutorizadaEm = emitidaEm,
+            XmlEnvio = xmlContent
+        };
+
+        var detNos = infNFe.SelectNodes("nfe:det", ns);
+        if (detNos is not null)
+        {
+            int nItem = 1;
+            foreach (XmlNode det in detNos)
+            {
+                var prod = det.SelectSingleNode("nfe:prod", ns);
+                if (prod is null) continue;
+
+                var nomeProd  = prod.SelectSingleNode("nfe:xProd", ns)?.InnerText ?? "Produto Importado";
+                var ncm       = prod.SelectSingleNode("nfe:NCM", ns)?.InnerText ?? "00000000";
+                var cfop      = prod.SelectSingleNode("nfe:CFOP", ns)?.InnerText ?? "1102";
+                var unid      = prod.SelectSingleNode("nfe:uCom", ns)?.InnerText ?? "UN";
+                var qtd       = decimal.TryParse(prod.SelectSingleNode("nfe:qCom", ns)?.InnerText,
+                                    System.Globalization.NumberStyles.Any,
+                                    System.Globalization.CultureInfo.InvariantCulture, out var q) ? q : 1;
+                var vUnit     = decimal.TryParse(prod.SelectSingleNode("nfe:vUnCom", ns)?.InnerText,
+                                    System.Globalization.NumberStyles.Any,
+                                    System.Globalization.CultureInfo.InvariantCulture, out var vu) ? vu : 0;
+                var vProd     = decimal.TryParse(prod.SelectSingleNode("nfe:vProd", ns)?.InnerText,
+                                    System.Globalization.NumberStyles.Any,
+                                    System.Globalization.CultureInfo.InvariantCulture, out var vp) ? vp : qtd * vUnit;
+                var ean       = prod.SelectSingleNode("nfe:cEAN", ns)?.InnerText ?? "";
+                if (ean == "SEM GTIN") ean = "";
+
+                // Cria produto se não existir (por NCM+nome)
+                var existeProd = await _db.Produtos.AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.EmpresaId == empresaId
+                        && p.NCM == ncm && p.Nome == nomeProd, cancellationToken);
+
+                Guid produtoId;
+                if (existeProd is null)
+                {
+                    var novoProd = new Jubilados.Domain.Entities.Produto
+                    {
+                        Id = Guid.NewGuid(),
+                        EmpresaId = empresaId,
+                        Nome = nomeProd,
+                        NCM = ncm,
+                        CFOP = cfop,
+                        Unidade = unid,
+                        Preco = vUnit,
+                        EAN = ean,
+                        CSOSN = "400",
+                        CST = "",
+                        AliquotaICMS = 0,
+                        AliquotaIPI = 0,
+                        AliquotaPIS = 0,
+                        AliquotaCOFINS = 0
+                    };
+                    _db.Produtos.Add(novoProd);
+                    produtoId = novoProd.Id;
+                    produtosCriados.Add(new ProdutoImportadoDto(novoProd.Id, nomeProd, ncm));
+                    _logger.LogInformation("[Entrada] Produto criado: {Nome} NCM={NCM}", nomeProd, ncm);
+                }
+                else
+                {
+                    produtoId = existeProd.Id;
+                }
+
+                nota.Itens.Add(new Jubilados.Domain.Entities.NotaItem
+                {
+                    ProdutoId = produtoId,
+                    NumeroItem = nItem++,
+                    Quantidade = qtd,
+                    Unidade = unid,
+                    ValorUnitario = vUnit,
+                    ValorDesconto = 0,
+                    ValorTotal = vProd,
+                    BaseICMS = 0,
+                    AliquotaICMS = 0,
+                    ValorICMS = 0,
+                    AliquotaIPI = 0,
+                    ValorIPI = 0,
+                    AliquotaPIS = 0,
+                    ValorPIS = 0,
+                    AliquotaCOFINS = 0,
+                    ValorCOFINS = 0
+                });
+                valorTotal += vProd;
+            }
+        }
+
+        nota.ValorProdutos = valorTotal;
+        nota.ValorTotal = valorTotal;
+
+        _db.NotasFiscais.Add(nota);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("[Entrada] Nota importada Id={Id}, {Prods} produtos criados", nota.Id, produtosCriados.Count);
+        return new ImportarXmlResultDto(
+            Sucesso: true,
+            Mensagem: $"Nota importada com sucesso. {produtosCriados.Count} produto(s) criado(s).",
+            NotaFiscalId: nota.Id,
+            ProdutosCriados: produtosCriados);
+    }
 }

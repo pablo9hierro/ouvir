@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jubilados — Acesso</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, sans-serif; background: #f0f4f8;
+      display: flex; align-items: center; justify-content: center; min-height: 100vh;
+    }
+    .card {
+      background: #fff; border-radius: 12px; padding: 40px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.10); width: 100%; max-width: 420px;
+    }
+    h1 { margin: 0 0 8px; font-size: 1.5rem; color: #1a202c; }
+    p.sub { margin: 0 0 28px; color: #718096; font-size: .9rem; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+    .tab {
+      flex: 1; padding: 8px; border: 2px solid #e2e8f0; background: #fff;
+      border-radius: 8px; cursor: pointer; font-size: .95rem; color: #4a5568;
+      transition: all .15s;
+    }
+    .tab.active { border-color: #3b82f6; color: #3b82f6; font-weight: 600; }
+    label { display: block; font-size: .85rem; color: #4a5568; margin-bottom: 4px; }
+    input {
+      width: 100%; padding: 10px 12px; border: 1.5px solid #e2e8f0;
+      border-radius: 8px; font-size: 1rem; outline: none; margin-bottom: 16px;
+      transition: border-color .15s;
+    }
+    input:focus { border-color: #3b82f6; }
+    button.btn-primary {
+      width: 100%; padding: 12px; background: #3b82f6; color: #fff; border: none;
+      border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer;
+      transition: background .15s;
+    }
+    button.btn-primary:hover { background: #2563eb; }
+    button.btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+    .msg { margin-top: 14px; padding: 10px 14px; border-radius: 8px; font-size: .9rem; }
+    .msg.error { background: #fee2e2; color: #991b1b; }
+    .msg.success { background: #d1fae5; color: #065f46; }
+    .link-forgot {
+      display: block; text-align: right; font-size: .82rem; color: #3b82f6;
+      text-decoration: none; margin-top: -8px; margin-bottom: 16px; cursor: pointer;
+    }
+    .link-forgot:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>Jubilados NFe</h1>
+  <p class="sub">Sistema de emissão de Nota Fiscal Eletrônica</p>
+
+  <div class="tabs">
+    <button class="tab active" id="tab-login"    onclick="mostrarAba('login')">Entrar</button>
+    <button class="tab"         id="tab-cadastro" onclick="mostrarAba('cadastro')">Cadastrar</button>
+  </div>
+
+  <!-- Login -->
+  <div id="panel-login">
+    <label>E-mail</label>
+    <input type="email"    id="login-email" placeholder="seu@email.com" />
+    <label>Senha</label>
+    <input type="password" id="login-senha" placeholder="••••••••" />
+    <a class="link-forgot" onclick="mostrarAba('forgot')">Esqueci minha senha</a>
+    <button class="btn-primary" id="btn-login" onclick="entrar()">Entrar</button>
+  </div>
+
+  <!-- Cadastro -->
+  <div id="panel-cadastro" style="display:none">
+    <label>E-mail</label>
+    <input type="email"    id="cad-email"    placeholder="seu@email.com" />
+    <label>Senha (mínimo 6 caracteres)</label>
+    <input type="password" id="cad-senha"    placeholder="••••••••" />
+    <label>Confirmar senha</label>
+    <input type="password" id="cad-confirma" placeholder="••••••••" />
+    <button class="btn-primary" id="btn-cadastro" onclick="cadastrar()">Criar conta</button>
+  </div>
+
+  <!-- Recuperar senha -->
+  <div id="panel-forgot" style="display:none">
+    <label>E-mail cadastrado</label>
+    <input type="email" id="forgot-email" placeholder="seu@email.com" />
+    <button class="btn-primary" id="btn-forgot" onclick="recuperarSenha()">Enviar link de redefinição</button>
+    <p style="text-align:center;margin-top:12px;">
+      <a onclick="mostrarAba('login')" style="color:#3b82f6;font-size:.88rem;cursor:pointer;">Voltar ao login</a>
+    </p>
+  </div>
+
+  <div id="msg" style="display:none" class="msg"></div>
+</div>
+
+<script>
+  // ── Auto-redirect se já estiver logado ────────────────────────────────────
+  (function() {
+    var token = localStorage.getItem('jubilados_token');
+    if (!token) return;
+    fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(p) {
+        if (p) window.location.href = p.onboardingConcluido ? '/index2.html' : '/onboarding.html';
+      })
+      .catch(function() {});
+  })();
+
+  // ── UI helpers ────────────────────────────────────────────────────────────
+  function mostrarAba(aba) {
+    document.getElementById('panel-login').style.display    = aba === 'login'    ? '' : 'none';
+    document.getElementById('panel-cadastro').style.display = aba === 'cadastro' ? '' : 'none';
+    document.getElementById('panel-forgot').style.display   = aba === 'forgot'   ? '' : 'none';
+    document.getElementById('tab-login').classList.toggle('active',    aba === 'login');
+    document.getElementById('tab-cadastro').classList.toggle('active', aba === 'cadastro');
+    esconderMsg();
+  }
+
+  function mostrarMsg(txt, tipo) {
+    var el = document.getElementById('msg');
+    el.textContent = txt; el.className = 'msg ' + tipo; el.style.display = '';
+  }
+  function esconderMsg() { document.getElementById('msg').style.display = 'none'; }
+
+  function setBusy(btnId, txt, ocupado) {
+    var btn = document.getElementById(btnId);
+    btn.disabled = ocupado; btn.textContent = txt;
+  }
+
+  // ── Redireciona após login ─────────────────────────────────────────────────
+  async function redirecionarPosLogin(token) {
+    localStorage.setItem('jubilados_token', token);
+    try {
+      var res = await fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } });
+      if (!res.ok) { window.location.href = '/index2.html'; return; }
+      var perfil = await res.json();
+      window.location.href = perfil.onboardingConcluido ? '/index2.html' : '/onboarding.html';
+    } catch(e) {
+      window.location.href = '/index2.html';
+    }
+  }
+
+  // ── Login ─────────────────────────────────────────────────────────────────
+  async function entrar() {
+    var email = document.getElementById('login-email').value.trim();
+    var senha = document.getElementById('login-senha').value;
+    if (!email || !senha) { mostrarMsg('Preencha e-mail e senha.', 'error'); return; }
+
+    setBusy('btn-login', 'Entrando…', true);
+    try {
+      var res  = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, senha: senha })
+      });
+      var data = await res.json();
+      if (!res.ok) { mostrarMsg(data.error || 'Erro ao fazer login.', 'error'); return; }
+      await redirecionarPosLogin(data.token);
+    } catch(e) {
+      mostrarMsg('Falha de rede. Verifique se a API está rodando.', 'error');
+    } finally {
+      setBusy('btn-login', 'Entrar', false);
+    }
+  }
+
+  // ── Cadastro ──────────────────────────────────────────────────────────────
+  async function cadastrar() {
+    var email    = document.getElementById('cad-email').value.trim();
+    var senha    = document.getElementById('cad-senha').value;
+    var confirma = document.getElementById('cad-confirma').value;
+    if (!email || !senha) { mostrarMsg('Preencha todos os campos.', 'error'); return; }
+    if (senha !== confirma) { mostrarMsg('As senhas não coincidem.', 'error'); return; }
+    if (senha.length < 6)  { mostrarMsg('A senha deve ter ao menos 6 caracteres.', 'error'); return; }
+
+    setBusy('btn-cadastro', 'Criando…', true);
+    try {
+      var res  = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, senha: senha })
+      });
+      var data = await res.json();
+      if (!res.ok) { mostrarMsg(data.error || 'Erro ao criar conta.', 'error'); return; }
+      await redirecionarPosLogin(data.token);
+    } catch(e) {
+      mostrarMsg('Falha de rede. Verifique se a API está rodando.', 'error');
+    } finally {
+      setBusy('btn-cadastro', 'Criar conta', false);
+    }
+  }
+
+  // ── Recuperar senha ───────────────────────────────────────────────────────
+  async function recuperarSenha() {
+    var email = document.getElementById('forgot-email').value.trim();
+    if (!email) { mostrarMsg('Digite seu e-mail.', 'error'); return; }
+
+    setBusy('btn-forgot', 'Enviando…', true);
+    try {
+      var res  = await fetch('/api/auth/recuperar-senha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email })
+      });
+      var data = await res.json();
+      mostrarMsg(data.message || 'Se o e-mail existir, um link será enviado.', 'success');
+    } catch(e) {
+      mostrarMsg('Falha de rede.', 'error');
+    } finally {
+      setBusy('btn-forgot', 'Enviar link de redefinição', false);
+    }
+  }
+
+  // ── Enter nas inputs ──────────────────────────────────────────────────────
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    if (document.getElementById('panel-login').style.display    !== 'none') entrar();
+    if (document.getElementById('panel-cadastro').style.display !== 'none') cadastrar();
+  });
+</script>
+</body>
+</html>
+  <title>Jubilados — Acesso</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, sans-serif; background: #f0f4f8;
+      display: flex; align-items: center; justify-content: center; min-height: 100vh;
+    }
+    .card {
+      background: #fff; border-radius: 12px; padding: 40px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.10); width: 100%; max-width: 420px;
+    }
+    h1 { margin: 0 0 8px; font-size: 1.5rem; color: #1a202c; }
+    p.sub { margin: 0 0 28px; color: #718096; font-size: .9rem; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+    .tab {
+      flex: 1; padding: 8px; border: 2px solid #e2e8f0; background: #fff;
+      border-radius: 8px; cursor: pointer; font-size: .95rem; color: #4a5568;
+      transition: all .15s;
+    }
+    .tab.active { border-color: #3b82f6; color: #3b82f6; font-weight: 600; }
+    label { display: block; font-size: .85rem; color: #4a5568; margin-bottom: 4px; }
+    input {
+      width: 100%; padding: 10px 12px; border: 1.5px solid #e2e8f0;
+      border-radius: 8px; font-size: 1rem; outline: none; margin-bottom: 16px;
+      transition: border-color .15s;
+    }
+    input:focus { border-color: #3b82f6; }
+    button.btn-primary {
+      width: 100%; padding: 12px; background: #3b82f6; color: #fff; border: none;
+      border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer;
+      transition: background .15s;
+    }
+    button.btn-primary:hover { background: #2563eb; }
+    button.btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+    .msg { margin-top: 14px; padding: 10px 14px; border-radius: 8px; font-size: .9rem; }
+    .msg.error { background: #fee2e2; color: #991b1b; }
+    .msg.success { background: #d1fae5; color: #065f46; }
+    .link-forgot {
+      display: block; text-align: right; font-size: .82rem; color: #3b82f6;
+      text-decoration: none; margin-top: -8px; margin-bottom: 16px;
+    }
+    .link-forgot:hover { text-decoration: underline; }
+    #panel-forgot { display: none; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>Jubilados NFe</h1>
+  <p class="sub">Sistema de emissão de Nota Fiscal Eletrônica</p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="mostrarAba('login')">Entrar</button>
+    <button class="tab" onclick="mostrarAba('cadastro')">Cadastrar</button>
+  </div>
+
+  <!-- Login -->
+  <div id="panel-login">
+    <label>E-mail</label>
+    <input type="email" id="login-email" placeholder="seu@email.com" />
+    <label>Senha</label>
+    <input type="password" id="login-senha" placeholder="••••••••" />
+    <a class="link-forgot" href="#" onclick="mostrarAba('forgot')">Esqueci minha senha</a>
+    <button class="btn-primary" onclick="entrar()">Entrar</button>
+  </div>
+
+  <!-- Cadastro -->
+  <div id="panel-cadastro" style="display:none">
+    <label>E-mail</label>
+    <input type="email" id="cad-email" placeholder="seu@email.com" />
+    <label>Senha (mínimo 8 caracteres)</label>
+    <input type="password" id="cad-senha" placeholder="••••••••" />
+    <label>Confirmar senha</label>
+    <input type="password" id="cad-confirma" placeholder="••••••••" />
+    <button class="btn-primary" onclick="cadastrar()">Criar conta</button>
+  </div>
+
+  <!-- Recuperar senha -->
+  <div id="panel-forgot">
+    <label>E-mail cadastrado</label>
+    <input type="email" id="forgot-email" placeholder="seu@email.com" />
+    <button class="btn-primary" onclick="recuperarSenha()">Enviar link de redefinição</button>
+    <p style="text-align:center;margin-top:12px;">
+      <a href="#" onclick="mostrarAba('login')" style="color:#3b82f6;font-size:.88rem;">Voltar ao login</a>
+    </p>
+  </div>
+
+  <div id="msg" style="display:none" class="msg"></div>
+</div>
+
+<script>
+  // ── Supabase Init ─────────────────────────────────────────────────────────
+  const SUPABASE_URL  = 'https://cumdvosqimugvzxlqtsu.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1bWR2b3NxaW11Z3Z6eGxxdHN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3ODUxODcsImV4cCI6MjA5MTM2MTE4N30.UubUbIAB2FQzY4jfR6kHLShkt8Ld9xCGZKjXqFIe5k8';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  // Redireciona se já autenticado
+  supabase.auth.getSession().then(({ data }) => {
+    if (data.session) redirecionarPosLogin(data.session);
+  });
+
+  async function redirecionarPosLogin(session) {
+    try {
+      const res = await fetch('/api/auth/me', {
+        headers: { 'Authorization': 'Bearer ' + session.access_token }
+      });
+      if (!res.ok) throw new Error('Erro /api/auth/me');
+      const perfil = await res.json();
+      if (perfil.onboardingConcluido) {
+        window.location.href = '/index2.html';
+      } else {
+        window.location.href = '/onboarding.html';
+      }
+    } catch {
+      window.location.href = '/index2.html';
+    }
+  }
+
+  // ── Funções de UI ─────────────────────────────────────────────────────────
+  function mostrarAba(aba) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      const abas = ['login', 'cadastro', 'forgot'];
+      t.classList.toggle('active', abas[i] === aba);
+    });
+    document.getElementById('panel-login').style.display    = aba === 'login'    ? '' : 'none';
+    document.getElementById('panel-cadastro').style.display = aba === 'cadastro' ? '' : 'none';
+    document.getElementById('panel-forgot').style.display   = aba === 'forgot'   ? '' : 'none';
+    esconderMsg();
+  }
+
+  function mostrarMsg(txt, tipo) {
+    const el = document.getElementById('msg');
+    el.textContent = txt; el.className = 'msg ' + tipo; el.style.display = '';
+  }
+  function esconderMsg() { document.getElementById('msg').style.display = 'none'; }
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  async function entrar() {
+    const email = document.getElementById('login-email').value.trim();
+    const senha = document.getElementById('login-senha').value;
+    if (!email || !senha) return mostrarMsg('Preencha e-mail e senha.', 'error');
+
+    const btn = document.querySelector('#panel-login .btn-primary');
+    btn.disabled = true; btn.textContent = 'Entrando…';
+
+    let authResult;
+    try {
+      authResult = await supabase.auth.signInWithPassword({ email, password: senha });
+    } catch (netErr) {
+      btn.disabled = false; btn.textContent = 'Entrar';
+      return mostrarMsg('Falha de rede ao contactar Supabase. Verifique sua conexão.', 'error');
+    }
+    btn.disabled = false; btn.textContent = 'Entrar';
+
+    const { data, error } = authResult;
+    if (error) {
+      let msg = error.message;
+      if (msg.includes('Invalid login credentials'))
+        msg = 'Credenciais inválidas. Use o Supabase Auth (não o PostgreSQL local). Se ainda não tem conta, clique em "Cadastrar".';
+      else if (msg.includes('Email not confirmed'))
+        msg = 'E-mail não confirmado. Verifique sua caixa de entrada e clique no link de confirmação enviado pelo Supabase.';
+      else if (msg.includes('Too many requests'))
+        msg = 'Muitas tentativas. Aguarde alguns minutos.';
+      return mostrarMsg(msg, 'error');
+    }
+    await redirecionarPosLogin(data.session);
+  }
+
+  async function cadastrar() {
+    const email    = document.getElementById('cad-email').value.trim();
+    const senha    = document.getElementById('cad-senha').value;
+    const confirma = document.getElementById('cad-confirma').value;
+    if (!email || !senha) return mostrarMsg('Preencha todos os campos.', 'error');
+    if (senha !== confirma) return mostrarMsg('As senhas não coincidem.', 'error');
+    if (senha.length < 8)  return mostrarMsg('A senha deve ter ao menos 8 caracteres.', 'error');
+
+    const btn = document.querySelector('#panel-cadastro .btn-primary');
+    btn.disabled = true; btn.textContent = 'Criando…';
+
+    const { data, error } = await supabase.auth.signUp({ email, password: senha });
+    btn.disabled = false; btn.textContent = 'Criar conta';
+
+    if (error) return mostrarMsg(error.message, 'error');
+    if (data.session) {
+      await redirecionarPosLogin(data.session);
+    } else {
+      mostrarMsg('Conta criada! Verifique seu e-mail para confirmar o cadastro.', 'success');
+    }
+  }
+
+  async function recuperarSenha() {
+    const email = document.getElementById('forgot-email').value.trim();
+    if (!email) return mostrarMsg('Digite seu e-mail.', 'error');
+
+    const btn = document.querySelector('#panel-forgot .btn-primary');
+    btn.disabled = true; btn.textContent = 'Enviando…';
+
+    const redirectTo = window.location.origin + '/login.html';
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    btn.disabled = false; btn.textContent = 'Enviar link de redefinição';
+
+    if (error) return mostrarMsg(error.message, 'error');
+    mostrarMsg('Link enviado! Verifique seu e-mail.', 'success');
+  }
+
+  // Enter nos inputs
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const login = document.getElementById('panel-login');
+    if (login.style.display !== 'none') entrar();
+  });
+</script>
+</body>
+</html>

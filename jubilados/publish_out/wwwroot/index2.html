@@ -1,0 +1,1692 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jubilados NF-e — Painel SEFAZ</title>
+<style>
+  :root {
+    --primary: #2563eb; --primary-dark: #1d4ed8;
+    --success: #16a34a; --danger: #dc2626; --warn: #d97706;
+    --bg: #f8fafc; --card: #ffffff; --border: #e2e8f0;
+    --text: #1e293b; --muted: #64748b;
+    --step-active: #eff6ff; --step-done: #f0fdf4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; }
+  header { background: var(--primary); color: white; padding: 14px 24px; display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+  header h1 { font-size: 1.1rem; font-weight: 700; }
+  header .env-badge { margin-left: auto; background: #fbbf24; color: #78350f; border-radius: 6px; padding: 3px 12px; font-size:.8rem; font-weight:700; }
+  .container { max-width: 960px; margin: 0 auto; padding: 20px 16px 60px; }
+  .tabs { display: flex; gap: 2px; background: var(--border); border-radius: 10px; padding: 3px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab-btn { flex: 1; min-width: 110px; padding: 9px 8px; border: none; border-radius: 8px; font-size: .82rem; font-weight: 600; cursor: pointer; background: transparent; color: var(--muted); transition: all .15s; }
+  .tab-btn.active { background: white; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .tab-btn:hover:not(.active) { color: var(--text); }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+  .card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+  .card h2 { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
+  .card .subtitle { font-size: .83rem; color: var(--muted); margin-bottom: 18px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .span2 { grid-column: span 2; }
+  .span3 { grid-column: span 3; }
+  label { display: block; font-size: .78rem; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+  label .req { color: var(--danger); }
+  input, select, textarea { width: 100%; padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px; font-size: .88rem; color: var(--text); background: white; transition: border .15s; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+  textarea { resize: vertical; min-height: 60px; }
+  .field { display: flex; flex-direction: column; }
+  .btn { padding: 9px 20px; border: none; border-radius: 8px; font-size: .88rem; font-weight: 600; cursor: pointer; transition: background .15s, transform .1s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:active { transform: scale(.98); }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-success { background: var(--success); color: white; }
+  .btn-success:hover { background: #15803d; }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-danger:hover { background: #b91c1c; }
+  .btn-outline { background: white; color: var(--primary); border: 1px solid var(--primary); }
+  .btn-outline:hover { background: var(--step-active); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; align-items: center; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: .74rem; font-weight: 700; }
+  .badge-green { background: #dcfce7; color: #15803d; }
+  .badge-blue { background: #dbeafe; color: #1d4ed8; }
+  .badge-red { background: #fee2e2; color: #b91c1c; }
+  .badge-orange { background: #ffedd5; color: #c2410c; }
+  .badge-gray { background: #f1f5f9; color: #475569; }
+  .alert { padding: 11px 15px; border-radius: 8px; font-size: .86rem; margin-bottom: 14px; display: flex; gap: 9px; align-items: flex-start; }
+  .alert-info { background: #eff6ff; border: 1px solid #93c5fd; color: #1e40af; }
+  .alert-success { background: #f0fdf4; border: 1px solid #86efac; color: #15803d; }
+  .alert-error { background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; }
+  .alert-warn { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+  .result-box { background: #0f172a; color: #e2e8f0; border-radius: 10px; padding: 18px; font-family: Consolas, monospace; font-size: .8rem; white-space: pre-wrap; word-break: break-all; max-height: 420px; overflow-y: auto; margin-top: 14px; }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .section-title { font-size: .71rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 12px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
+  .estado-bar { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; margin-bottom: 18px; display: flex; gap: 14px; flex-wrap: wrap; font-size: .8rem; align-items: center; }
+  .estado-bar strong { color: var(--muted); }
+  .estado-item { display: flex; gap: 4px; align-items: center; }
+  .file-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 18px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; }
+  .file-zone:hover, .file-zone.dragover { border-color: var(--primary); background: var(--step-active); }
+  .file-zone .icon { font-size: 1.8rem; }
+  .file-zone p { font-size: .83rem; color: var(--muted); margin-top: 5px; }
+  .file-zone.ok { border-color: var(--success); background: var(--step-done); }
+  .file-zone.ok p { color: var(--success); }
+  .item-linha { background: var(--bg); border-radius: 8px; padding: 12px; margin-bottom: 10px; border: 1px solid var(--border); position: relative; }
+  .item-linha .remover { position: absolute; top: 8px; right: 10px; background: none; border: none; cursor: pointer; color: var(--danger); font-size: 1rem; }
+  .stepper { display: flex; background: var(--card); border-radius: 10px; border: 1px solid var(--border); overflow: hidden; margin-bottom: 20px; }
+  .step-item { flex: 1; padding: 12px 8px; text-align: center; font-size: .78rem; font-weight: 600; color: var(--muted); cursor: pointer; border-right: 1px solid var(--border); transition: background .15s; }
+  .step-item:last-child { border-right: none; }
+  .step-item .num { width: 24px; height: 24px; border-radius: 50%; background: var(--border); color: var(--muted); font-size: .78rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 4px; }
+  .step-item.active { background: var(--step-active); color: var(--primary); }
+  .step-item.active .num { background: var(--primary); color: white; }
+  .step-item.done { background: var(--step-done); color: var(--success); }
+  .step-item.done .num { background: var(--success); color: white; }
+  .tipo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tipo-btn { padding: 10px; border: 2px solid var(--border); border-radius: 8px; background: white; cursor: pointer; font-size: .82rem; font-weight: 600; text-align: center; transition: all .15s; }
+  .tipo-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .tipo-btn.selected { border-color: var(--primary); background: var(--step-active); color: var(--primary); }
+  @media (max-width: 600px) { .grid2, .grid3, .tipo-grid { grid-template-columns: 1fr; } .span2, .span3 { grid-column: span 1; } }
+</style>
+</head>
+<body>
+<header>
+  <div style="font-size:1.4rem">🧾</div>
+  <h1>Jubilados NF-e</h1>
+  <span class="env-badge">🟡 HOMOLOGACAO</span>
+  <span id="userEmail" style="margin-left:auto;font-size:.8rem;opacity:.85"></span>
+  <button id="btnLogout" onclick="fazerLogout()" style="margin-left:12px;background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.4);border-radius:6px;padding:4px 12px;font-size:.8rem;cursor:pointer;display:none">Sair</button>
+</header>
+<div class="container">
+  <div class="estado-bar" id="estadoBar">
+    <strong>Estado:</strong>
+    <div class="estado-item">Empresa: <span id="stEmpresa" class="badge badge-red">nao selecionada</span></div>
+    <div class="estado-item">Certificado: <span id="stCert" class="badge badge-red">nao enviado</span></div>
+    <div class="estado-item">Destinatario: <span id="stCliente" class="badge badge-red">nao definido</span></div>
+    <div class="estado-item">Produto: <span id="stProduto" class="badge badge-red">nao definido</span></div>
+    <div class="estado-item">CSC NFC-e: <span id="stCsc" class="badge badge-gray">nao verificado</span></div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('emitir',this)">Emitir NF-e</button>
+    <button class="tab-btn" onclick="showTab('consultar',this)">Consultar SEFAZ</button>
+    <button class="tab-btn" onclick="showTab('status',this)">Status Servico</button>
+    <button class="tab-btn" onclick="showTab('inutilizar',this)">Inutilizar</button>
+    <button class="tab-btn" onclick="showTab('manifestar',this)">Manifestacao</button>
+    <button class="tab-btn" onclick="showTab('entrada',this)">Notas Entrada</button>
+    <button class="tab-btn" onclick="showTab('nuvemfiscal',this)">☁️ Nuvem Fiscal</button>
+    <button class="tab-btn" onclick="showTab('cce',this)">CCe</button>
+    <button class="tab-btn" onclick="showTab('sped',this)">SPED EFD</button>
+    <button class="tab-btn" onclick="showTab('efdcontrib',this)">EFD Contribuicoes</button>
+    <button class="tab-btn" onclick="showTab('nfse',this)">NFS-e</button>
+    <button class="tab-btn" onclick="showTab('nfce',this)">Emitir NFC-e</button>
+  </div>
+
+  <!-- ABA EMITIR -->
+  <div id="tab-emitir" class="tab-pane active">
+    <div class="stepper">
+      <div class="step-item active" id="nav0" onclick="irParaPasso(0)"><div class="num" id="num0">1</div><br>Empresa + Cert.</div>
+      <div class="step-item" id="nav1" onclick="irParaPasso(1)"><div class="num" id="num1">2</div><br>Destinatario</div>
+      <div class="step-item" id="nav2" onclick="irParaPasso(2)"><div class="num" id="num2">3</div><br>Produto</div>
+      <div class="step-item" id="nav3" onclick="irParaPasso(3)"><div class="num" id="num3">4</div><br>Emitir NF-e</div>
+    </div>
+    <!-- Passo 0 -->
+    <div id="passo0">
+      <div class="card">
+        <h2>1. Dados da Empresa Emitente</h2>
+        <p class="subtitle">Preencha os dados do CNPJ emissor.</p>
+        <div class="section-title">Identificacao</div>
+        <div class="grid2" style="margin-bottom:12px">
+          <div class="field"><label>CNPJ <span class="req">*</span></label><input id="e_cnpj" placeholder="00000000000000" maxlength="18"></div>
+          <div class="field"><label>Razao Social <span class="req">*</span></label><input id="e_razao" placeholder="Empresa Ltda"></div>
+          <div class="field"><label>Nome Fantasia</label><input id="e_fantasia" placeholder="Fantasia"></div>
+          <div class="field"><label>Inscricao Estadual <span class="req">*</span></label><input id="e_ie" placeholder="000000000000"></div>
+          <div class="field"><label>E-mail</label><input id="e_email" type="email" placeholder="contato@empresa.com"></div>
+          <div class="field"><label>Telefone</label><input id="e_fone" placeholder="83999999999"></div>
+        </div>
+        <div class="section-title">Endereco</div>
+        <div class="grid3" style="margin-bottom:12px">
+          <div class="field span2"><label>Logradouro <span class="req">*</span></label><input id="e_logradouro" placeholder="Rua das Flores"></div>
+          <div class="field"><label>Numero <span class="req">*</span></label><input id="e_numero" placeholder="100"></div>
+          <div class="field"><label>Complemento</label><input id="e_complemento" placeholder="Sala 1"></div>
+          <div class="field"><label>Bairro <span class="req">*</span></label><input id="e_bairro" placeholder="Centro"></div>
+          <div class="field span2"><label>Municipio <span class="req">*</span></label><input id="e_municipio" placeholder="Joao Pessoa"></div>
+          <div class="field"><label>UF <span class="req">*</span></label><select id="e_uf"><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option selected>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option></select></div>
+          <div class="field"><label>CEP <span class="req">*</span></label><input id="e_cep" placeholder="58000000" maxlength="9"></div>
+        </div>
+        <div id="alertaEmpresa"></div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="cadastrarEmpresa()"><span id="spinEmpresa" class="spinner" style="display:none"></span> Cadastrar Empresa</button>
+          <small id="empresaIdLabel" style="color:var(--muted)"></small>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Certificado Digital A1</h2>
+        <p class="subtitle">Arquivo .pfx do certificado e-CNPJ. Obrigatorio para assinar e enviar a SEFAZ.</p>
+        <div class="grid2">
+          <div class="field">
+            <label>Arquivo .pfx <span class="req">*</span></label>
+            <div class="file-zone" id="fileZone" onclick="document.getElementById('pfxInput').click()" ondragover="fileDragOver(event)" ondragleave="fileDragLeave()" ondrop="fileDrop(event)">
+              <div class="icon">📁</div>
+              <p id="fileZoneText">Clique ou arraste o arquivo .pfx aqui</p>
+            </div>
+            <input type="file" id="pfxInput" accept=".pfx,.p12" style="display:none" onchange="pfxSelecionado(event)">
+          </div>
+          <div class="field">
+            <label>Senha do Certificado <span class="req">*</span></label>
+            <input type="password" id="certSenha" placeholder="Senha do .pfx">
+            <br>
+            <label>Validade (opcional)</label>
+            <input type="date" id="certValidade">
+          </div>
+        </div>
+        <div id="alertaCert"></div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="enviarCertificado()"><span id="spinCert" class="spinner" style="display:none"></span> Enviar Certificado</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>CSC NFC-e (Codigo de Seguranca do Contribuinte)</h2>
+        <p class="subtitle">Necessario para emitir NFC-e (cupom fiscal). O CSC e fornecido pela SEFAZ para cada empresa emitente.</p>
+        <div class="grid2">
+          <div class="field"><label>CSC ID (ex: 000001)</label><input id="csc_id" placeholder="000001" maxlength="8"></div>
+          <div class="field"><label>CSC Token</label><input id="csc_token" placeholder="Token CSC da SEFAZ" maxlength="64"></div>
+        </div>
+        <div id="alertaCsc"></div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="salvarCsc()"><span id="spinCsc" class="spinner" style="display:none"></span> Salvar CSC</button>
+        </div>
+      </div>
+      <div class="actions" style="justify-content:flex-end">
+        <button class="btn btn-success" onclick="irParaPasso(1)">Proximo: Destinatario</button>
+      </div>
+    </div>
+    <!-- Passo 1 -->
+    <div id="passo1" style="display:none">
+      <div class="card">
+        <h2>2. Destinatario da Nota Fiscal</h2>
+        <p class="subtitle">Selecione o tipo de destinatario para a nota.</p>
+
+        <!-- Tipo selector -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px">
+          <button id="tipodest_anonimo" class="tipo-btn" onclick="selecionarTipoDest('anonimo')">
+            <div style="font-size:1.4rem;margin-bottom:4px">🙈</div>
+            <strong>Consumidor Anonimo</strong><br>
+            <small style="color:var(--muted);font-weight:400">Venda balcao sem identificacao</small>
+          </button>
+          <button id="tipodest_cpf" class="tipo-btn selected" onclick="selecionarTipoDest('cpf')">
+            <div style="font-size:1.4rem;margin-bottom:4px">👤</div>
+            <strong>Pessoa Fisica (CPF)</strong><br>
+            <small style="color:var(--muted);font-weight:400">Venda presencial ou remota</small>
+          </button>
+          <button id="tipodest_cnpj" class="tipo-btn" onclick="selecionarTipoDest('cnpj')">
+            <div style="font-size:1.4rem;margin-bottom:4px">🏢</div>
+            <strong>Empresa (CNPJ)</strong><br>
+            <small style="color:var(--muted);font-weight:400">B2B — exige endereco completo</small>
+          </button>
+        </div>
+
+        <!-- Anonimo -->
+        <div id="area_anonimo" style="display:none">
+          <div class="alert alert-info">&#9432; Nenhum dado do destinatario e necessario. A nota sera emitida com <strong>CONSUMIDOR NAO IDENTIFICADO</strong>. Permitido por lei para vendas de varejo ate R$ 10.000 (ICMS).</div>
+        </div>
+
+        <!-- CPF -->
+        <div id="area_cpf" style="display:block">
+          <div class="alert alert-info" style="margin-bottom:12px">&#9432; <strong>Venda presencial a CPF:</strong> endereco <strong>nao e obrigatorio</strong> (NT 2011.003). Informe apenas se quiser identificar o cliente na nota.</div>
+          <!-- Busca cliente existente -->
+          <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:12px;border:1px solid var(--border)">
+            <div class="section-title" style="margin-bottom:8px">Buscar cliente ja cadastrado</div>
+            <div style="display:flex;gap:8px;align-items:flex-end">
+              <div class="field" style="flex:1"><label>Pesquisar por nome ou CPF</label><input id="busca_cliente" placeholder="Digite nome ou CPF..." oninput="filtrarClientes()"></div>
+              <button class="btn btn-outline" onclick="carregarClientes()" style="white-space:nowrap"><span id="spinBuscaCliente" class="spinner" style="display:none"></span> Atualizar lista</button>
+            </div>
+            <div id="lista_clientes" style="margin-top:8px;max-height:150px;overflow-y:auto;display:none"></div>
+          </div>
+          <div class="section-title">Novo destinatario / dados do cliente</div>
+          <div class="grid2" style="margin-bottom:12px">
+            <div class="field"><label>Nome <span class="req">*</span></label><input id="c_nome" placeholder="Maria da Silva"></div>
+            <div class="field"><label>CPF <span class="req">*</span></label><input id="c_cpfcnpj" placeholder="12345678901" maxlength="14"></div>
+            <div class="field"><label>E-mail <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="c_email" type="email" placeholder="maria@email.com"></div>
+            <div class="field"><label>Telefone <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="c_fone" placeholder="11999999999"></div>
+          </div>
+          <details id="detalhes_endereco_cpf">
+            <summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--primary);margin-bottom:10px;user-select:none">&#9660; Endereco (opcional para CPF presencial)</summary>
+            <div class="grid3" style="margin-bottom:12px;padding-top:8px">
+              <div class="field span2"><label>Logradouro</label><input id="c_logradouro" placeholder="Rua das Flores"></div>
+              <div class="field"><label>Numero</label><input id="c_numero" placeholder="100"></div>
+              <div class="field"><label>Complemento</label><input id="c_complemento"></div>
+              <div class="field"><label>Bairro</label><input id="c_bairro" placeholder="Centro"></div>
+              <div class="field span2"><label>Municipio</label><input id="c_municipio" placeholder="Joao Pessoa"></div>
+              <div class="field"><label>Cod. IBGE</label><input id="c_codmun" placeholder="2507507" maxlength="7"></div>
+              <div class="field"><label>UF</label><select id="c_uf"><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option selected>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option></select></div>
+              <div class="field"><label>CEP</label><input id="c_cep" placeholder="58000000" maxlength="9"></div>
+            </div>
+          </details>
+          <div style="display:none"><input id="c_ie" value=""></div>
+          <div id="alertaCliente"></div>
+          <div class="actions">
+            <button class="btn btn-primary" onclick="cadastrarCliente()"><span id="spinCliente" class="spinner" style="display:none"></span> Salvar Cliente</button>
+            <small id="clienteIdLabel" style="color:var(--muted)"></small>
+          </div>
+        </div>
+
+        <!-- CNPJ -->
+        <div id="area_cnpj" style="display:none">
+          <div class="alert alert-warn" style="margin-bottom:12px">&#9888; <strong>Venda B2B pra empresa:</strong> endereco completo e <strong>OBRIGATORIO</strong> pela SEFAZ.</div>
+          <!-- Busca cliente existente -->
+          <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:12px;border:1px solid var(--border)">
+            <div class="section-title" style="margin-bottom:8px">Buscar empresa ja cadastrada</div>
+            <div style="display:flex;gap:8px;align-items:flex-end">
+              <div class="field" style="flex:1"><label>Pesquisar por nome ou CNPJ</label><input id="busca_cliente_cnpj" placeholder="Digite nome ou CNPJ..." oninput="filtrarClientesCnpj()"></div>
+              <button class="btn btn-outline" onclick="carregarClientes()" style="white-space:nowrap"><span id="spinBuscaClienteCnpj" class="spinner" style="display:none"></span> Atualizar lista</button>
+            </div>
+            <div id="lista_clientes_cnpj" style="margin-top:8px;max-height:150px;overflow-y:auto;display:none"></div>
+          </div>
+          <div class="section-title">Dados da empresa destinataria</div>
+          <div class="grid2" style="margin-bottom:12px">
+            <div class="field"><label>Razao Social <span class="req">*</span></label><input id="c_nome_cnpj" placeholder="Empresa Ltda"></div>
+            <div class="field"><label>CNPJ <span class="req">*</span></label><input id="c_cpfcnpj_cnpj" placeholder="00000000000000" maxlength="18"></div>
+            <div class="field"><label>Inscricao Estadual <span style="color:var(--muted);font-weight:400">(ou ISENTO)</span></label><input id="c_ie_cnpj" placeholder="ISENTO"></div>
+            <div class="field"><label>E-mail <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="c_email_cnpj" type="email" placeholder="financeiro@empresa.com"></div>
+            <div class="field"><label>Telefone <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="c_fone_cnpj" placeholder="11999999999"></div>
+          </div>
+          <div class="section-title">Endereco <span class="req">*</span> (obrigatorio para CNPJ)</div>
+          <div class="grid3" style="margin-bottom:12px">
+            <div class="field span2"><label>Logradouro <span class="req">*</span></label><input id="c_logradouro_cnpj" placeholder="Rua das Flores"></div>
+            <div class="field"><label>Numero <span class="req">*</span></label><input id="c_numero_cnpj" placeholder="100"></div>
+            <div class="field"><label>Complemento</label><input id="c_complemento_cnpj"></div>
+            <div class="field"><label>Bairro <span class="req">*</span></label><input id="c_bairro_cnpj" placeholder="Centro"></div>
+            <div class="field span2"><label>Municipio <span class="req">*</span></label><input id="c_municipio_cnpj" placeholder="Sao Paulo"></div>
+            <div class="field"><label>Cod. IBGE</label><input id="c_codmun_cnpj" placeholder="3550308" maxlength="7"></div>
+            <div class="field"><label>UF <span class="req">*</span></label><select id="c_uf_cnpj"><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option selected>SP</option><option>SE</option><option>TO</option></select></div>
+            <div class="field"><label>CEP <span class="req">*</span></label><input id="c_cep_cnpj" placeholder="01310100" maxlength="9"></div>
+          </div>
+          <div id="alertaClienteCnpj"></div>
+          <div class="actions">
+            <button class="btn btn-primary" onclick="cadastrarClienteCnpj()"><span id="spinClienteCnpj" class="spinner" style="display:none"></span> Salvar Empresa</button>
+            <small id="clienteIdLabelCnpj" style="color:var(--muted)"></small>
+          </div>
+        </div>
+
+      </div>
+      <div class="actions" style="justify-content:space-between">
+        <button class="btn btn-outline" onclick="irParaPasso(0)">Voltar</button>
+        <button class="btn btn-success" onclick="irParaPasso(2)">Proximo: Produto</button>
+      </div>
+    </div>
+    <!-- Passo 2 -->
+    <div id="passo2" style="display:none">
+      <div class="card">
+        <h2>3. Produto / Servico</h2>
+        <p class="subtitle">Selecione um produto existente ou cadastre um novo.</p>
+        <!-- Busca produto existente -->
+        <div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:14px;border:1px solid var(--border)">
+          <div class="section-title" style="margin-bottom:8px">Buscar produto ja cadastrado</div>
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <div class="field" style="flex:1"><label>Pesquisar por nome</label><input id="busca_produto" placeholder="Digite o nome do produto..." oninput="filtrarProdutos()"></div>
+            <button class="btn btn-outline" onclick="carregarProdutos()" style="white-space:nowrap"><span id="spinBuscaProduto" class="spinner" style="display:none"></span> Atualizar lista</button>
+          </div>
+          <div id="lista_produtos" style="margin-top:8px;max-height:150px;overflow-y:auto;display:none"></div>
+        </div>
+        <details id="detalhes_novo_produto">
+          <summary style="cursor:pointer;font-size:.86rem;font-weight:700;color:var(--primary);margin-bottom:10px;user-select:none">&#9654; Cadastrar novo produto</summary>
+          <div style="padding-top:8px">
+            <div class="grid2" style="margin-bottom:12px">
+              <div class="field"><label>Nome do Produto <span class="req">*</span></label><input id="p_nome" value="Produto Teste Homologacao"></div>
+              <div class="field"><label>Descricao <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="p_descricao" value="Produto para teste de emissao NF-e em homologacao"></div>
+              <div class="field"><label>NCM <span class="req">*</span></label><input id="p_ncm" value="84713012" maxlength="8"></div>
+              <div class="field"><label>CFOP <span class="req">*</span></label><input id="p_cfop" value="5102" maxlength="4"></div>
+              <div class="field"><label>CST</label><input id="p_cst" value="00" maxlength="3"></div>
+              <div class="field"><label>CSOSN</label><input id="p_csosn" value="102" maxlength="3"></div>
+              <div class="field"><label>Unidade</label><select id="p_unidade"><option selected>UN</option><option>PC</option><option>KG</option><option>LT</option><option>MT</option><option>CX</option></select></div>
+              <div class="field"><label>Preco Unitario (R$) <span class="req">*</span></label><input id="p_preco" type="number" step="0.01" value="100.00" min="0.01"></div>
+            </div>
+            <div id="alertaProduto"></div>
+            <div class="actions">
+              <button class="btn btn-primary" onclick="cadastrarProduto()"><span id="spinProduto" class="spinner" style="display:none"></span> Cadastrar Produto</button>
+              <small id="produtoIdLabel" style="color:var(--muted)"></small>
+            </div>
+          </div>
+        </details>
+      </div>
+      <div class="actions" style="justify-content:space-between">
+        <button class="btn btn-outline" onclick="irParaPasso(1)">Voltar</button>
+        <button class="btn btn-success" onclick="irParaPasso(3)">Proximo: Emitir NF-e</button>
+      </div>
+    </div>
+    <!-- Passo 3 -->
+    <div id="passo3" style="display:none">
+      <div class="card">
+        <h2>4. Emitir Nota Fiscal Eletronica</h2>
+        <p class="subtitle">Confirme os dados e clique em Emitir NF-e.</p>
+        <div class="alert alert-warn">Voce esta em AMBIENTE DE HOMOLOGACAO. As notas emitidas nao tem validade fiscal.</div>
+
+        <!-- Resumo do destinatario selecionado -->
+        <div id="resumoDestinatario" style="background:var(--step-active);border:1px solid #93c5fd;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.86rem"></div>
+
+        <div class="grid2" style="margin-bottom:12px">
+          <div class="field"><label>Natureza da Operacao <span class="req">*</span></label><input id="n_natureza" value="Venda de Mercadoria"></div>
+          <div class="field"><label>Serie <span class="req">*</span></label><input id="n_serie" value="1" maxlength="3"></div>
+          <div class="field"><label>Frete (R$) <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="n_frete" type="number" step="0.01" value="0" min="0"></div>
+          <div class="field"><label>Desconto Geral (R$) <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="n_desconto" type="number" step="0.01" value="0" min="0"></div>
+          <div class="field span2"><label>Informacoes Complementares <span style="color:var(--muted);font-weight:400">(opcional)</span></label><input id="n_info" value="NOTA SEM VALOR FISCAL - EMITIDA PARA FINS DE TESTE"></div>
+        </div>
+        <div class="section-title" style="display:flex;justify-content:space-between;align-items:center">
+          Itens da Nota <span class="req">*</span>
+          <button class="btn btn-outline" style="font-size:.78rem;padding:5px 12px" onclick="adicionarItem()">+ Item</button>
+        </div>
+        <div id="itensContainer" style="margin-bottom:12px"></div>
+        <div id="alertaEmitir"></div>
+        <div class="actions">
+          <button class="btn btn-success" style="font-size:.96rem;padding:11px 28px" onclick="emitirNFe()">
+            <span id="spinEmitir" class="spinner" style="display:none"></span> Emitir NF-e em Homologacao
+          </button>
+        </div>
+      </div>
+      <div id="resultadoCard" style="display:none" class="card">
+        <h2 id="resultadoTitulo">Resultado</h2>
+        <p class="subtitle" id="resultadoSubtitulo"></p>
+        <div id="resultadoBadge" style="margin-bottom:10px"></div>
+        <div id="consultarNfeBtn" style="display:none;margin-bottom:10px">
+          <button class="btn btn-outline" onclick="consultarUltimaNfeSefaz()">Verificar na SEFAZ</button>
+        </div>
+        <pre class="result-box" id="resultadoJson"></pre>
+      </div>
+      <div class="actions" style="margin-top:10px">
+        <button class="btn btn-outline" onclick="irParaPasso(2)">Voltar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABA CONSULTAR -->
+  <div id="tab-consultar" class="tab-pane">
+    <div class="card">
+      <h2>Consultar NF-e na SEFAZ</h2>
+      <p class="subtitle">Consulta direta ao WebService NFeConsultaProtocolo4 da SEFAZ homologacao usando a chave de acesso.</p>
+      <div class="grid2">
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="cs_empresaId"><option value="">-- Selecione --</option></select></div>
+        <div class="field span2"><label>Nota emitida (preenche a chave automaticamente)</label><select id="cs_nota_sel" onchange="selecionarNotaConsultar()"><option value="">-- Selecione uma nota --</option></select></div>
+        <div class="field span2"><label>Chave de Acesso (44 digitos) <span class="req">*</span></label><input id="cs_chave" placeholder="Ou informe manualmente" maxlength="44"></div>
+      </div>
+      <div id="alertaConsultar"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="consultarSefaz()"><span id="spinConsultar" class="spinner" style="display:none"></span> Consultar na SEFAZ</button>
+        <button class="btn btn-outline" onclick="preencherUltimaChave()">Usar ultima NF-e emitida</button>
+      </div>
+    </div>
+    <div id="resultConsultar" style="display:none" class="card">
+      <h2 id="rcTitulo">Resultado</h2>
+      <div id="rcBadge" style="margin-bottom:10px"></div>
+      <pre class="result-box" id="rcJson"></pre>
+    </div>
+  </div>
+
+  <!-- ABA STATUS -->
+  <div id="tab-status" class="tab-pane">
+    <div class="card">
+      <h2>Status do Servico SEFAZ</h2>
+      <p class="subtitle">Consulta o NFeStatusServico4 — verifica se os servidores da SEFAZ SVRS estao operacionais.</p>
+      <div class="field" style="max-width:400px">
+        <label>Empresa <span class="req">*</span></label>
+        <select id="st_empresaId"><option value="">-- Selecione --</option></select>
+      </div>
+      <div id="alertaStatus"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="consultarStatus()"><span id="spinStatus" class="spinner" style="display:none"></span> Consultar Status</button>
+      </div>
+    </div>
+    <div id="resultStatus" style="display:none" class="card">
+      <h2 id="stTitulo">Resultado</h2>
+      <div id="stBadge" style="margin-bottom:10px"></div>
+      <pre class="result-box" id="stJson"></pre>
+    </div>
+  </div>
+
+  <!-- ABA INUTILIZAR -->
+  <div id="tab-inutilizar" class="tab-pane">
+    <div class="card">
+      <h2>Inutilizar Numeracao NF-e</h2>
+      <p class="subtitle">Inutiliza uma faixa de numeros no NFeInutilizacao4. Use apenas quando necessario.</p>
+      <div class="alert alert-warn">A inutilizacao e IRREVERSIVEL. Os numeros inutilizados nao poderao ser reutilizados.</div>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="in_empresaId"><option value="">-- Selecione --</option></select></div>
+        <div class="field"><label>Serie <span class="req">*</span></label><input id="in_serie" value="1" maxlength="3"></div>
+        <div class="field"><!-- spacer --></div>
+        <div class="field"><label>Numero Inicial <span class="req">*</span></label><input id="in_ini" type="number" min="1" value="1"></div>
+        <div class="field"><label>Numero Final <span class="req">*</span></label><input id="in_fim" type="number" min="1" value="1"></div>
+        <div class="field span2">
+          <label>Justificativa <span class="req">*</span> (min. 15 caracteres)</label>
+          <textarea id="in_justificativa" placeholder="Justificativa para inutilizacao dos numeros que nao foram utilizados" style="min-height:64px"></textarea>
+        </div>
+      </div>
+      <div id="alertaInutilizar"></div>
+      <div class="actions">
+        <button class="btn btn-danger" onclick="inutilizar()"><span id="spinInutilizar" class="spinner" style="display:none"></span> Inutilizar Numeracao</button>
+      </div>
+    </div>
+    <div id="resultInutilizar" style="display:none" class="card">
+      <h2 id="inTitulo">Resultado</h2>
+      <div id="inBadge" style="margin-bottom:10px"></div>
+      <pre class="result-box" id="inJson"></pre>
+    </div>
+  </div>
+
+  <!-- ABA MANIFESTAR -->
+  <div id="tab-manifestar" class="tab-pane">
+    <div class="card">
+      <h2>Manifestacao do Destinatario</h2>
+      <p class="subtitle">Registra a ciencia ou confirmacao de uma NF-e no NFeRecepcaoEvento4 (SEFAZ Nacional).</p>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="mf_empresaId"><option value="">-- Selecione --</option></select></div>
+        <div class="field span2"><label>Nota Fiscal <span class="req">*</span></label><select id="mf_notaId"><option value="">-- Selecione a nota --</option></select></div>
+      </div>
+      <div class="section-title">Tipo de Manifestacao</div>
+      <div class="tipo-grid" style="margin-bottom:14px">
+        <button class="tipo-btn selected" id="tipo_ciencia" onclick="selecionarTipo('CienciaOperacao')">Ciencia da Operacao<br><small style="font-weight:400;color:var(--muted)">cStat 135 - Tomei ciencia da nota</small></button>
+        <button class="tipo-btn" id="tipo_confirmacao" onclick="selecionarTipo('ConfirmacaoOperacao')">Confirmacao da Operacao<br><small style="font-weight:400;color:var(--muted)">cStat 135 - Confirmo o recebimento</small></button>
+        <button class="tipo-btn" id="tipo_desconhecimento" onclick="selecionarTipo('Desconhecimento')">Desconhecimento<br><small style="font-weight:400;color:var(--muted)">cStat 135 - Nao reconheco a operacao</small></button>
+        <button class="tipo-btn" id="tipo_nrealizada" onclick="selecionarTipo('OperacaoNaoRealizada')">Operacao nao Realizada<br><small style="font-weight:400;color:var(--muted)">cStat 135 - Operacao nao ocorreu</small></button>
+      </div>
+      <div id="mf_justArea" style="display:none;margin-bottom:12px">
+        <div class="field">
+          <label>Justificativa <span class="req">*</span> (min. 15 chars)</label>
+          <textarea id="mf_justificativa" placeholder="Informe o motivo da nao realizacao da operacao"></textarea>
+        </div>
+      </div>
+      <div id="alertaManifestar"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="manifestar()"><span id="spinManifestar" class="spinner" style="display:none"></span> Registrar Manifestacao</button>
+        <button class="btn btn-outline" onclick="preencherUltimaNotaAutorizada()">Usar ultima NF-e autorizada</button>
+      </div>
+    </div>
+    <div id="resultManifestar" style="display:none" class="card">
+      <h2 id="mfTitulo">Resultado</h2>
+      <div id="mfBadge" style="margin-bottom:10px"></div>
+      <pre class="result-box" id="mfJson"></pre>
+    </div>
+  </div>
+
+  <!-- ABA ENTRADA -->
+  <div id="tab-entrada" class="tab-pane">
+    <div class="card">
+      <h2>Consultar NF-es de Entrada</h2>
+      <p class="subtitle">Busca NF-es destinadas a empresa via NFeDistribuicaoDFe (SEFAZ Nacional). NSU=0 busca todas.</p>
+      <div class="grid2">
+        <div class="field"><label>Empresa <span class="req">*</span></label><select id="en_empresaId"><option value="">-- Selecione --</option></select></div>
+        <div class="field"><label>Ultimo NSU (0=buscar tudo)</label><input id="en_nsu" type="number" min="0" value="0"></div>
+      </div>
+      <div id="alertaEntrada"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="consultarEntrada()"><span id="spinEntrada" class="spinner" style="display:none"></span> Buscar Notas de Entrada</button>
+        <button class="btn btn-outline" onclick="importarXmlEntrada()">&#128228; Importar XML Entrada</button>
+      </div>
+    </div>
+    <div id="resultEntrada" style="display:none" class="card">
+      <h2 id="enTitulo">Resultado</h2>
+      <div id="enBadge" style="margin-bottom:10px"></div>
+      <pre class="result-box" id="enJson"></pre>
+    </div>
+  </div>
+
+  <!-- ABA NUVEM FISCAL -->
+  <div id="tab-nuvemfiscal" class="tab-pane">
+    <div class="card">
+      <h2>☁️ Nuvem Fiscal</h2>
+      <p class="subtitle">Informe o CNPJ do lojista para listar todas as NF-e (entrada e saída) registradas.</p>
+      <div class="grid2">
+        <div class="field span2"><label>CNPJ do Lojista <span class="req">*</span></label>
+          <input id="nf_cnpj" placeholder="00.000.000/0000-00 ou 14 dígitos" maxlength="18"></div>
+      </div>
+      <div id="alertaNuvem"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="consultarNuvemFiscal()"><span id="spinNuvem" class="spinner" style="display:none"></span> Buscar NF-es</button>
+        <button class="btn btn-outline" onclick="document.getElementById('nf_cnpj').value='21362844000152'">Usar empresa cadastrada</button>
+        <button class="btn btn-outline" onclick="exportarXmlLote()">&#11015; Exportar XML Lote (ZIP)</button>
+      </div>
+    </div>
+    <div id="resultNuvem" style="display:none">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <h2 id="nfTitulo" style="margin:0">Resultado</h2>
+          <span id="nfBadge"></span>
+        </div>
+        <p id="nfSubtitulo" style="color:var(--muted);font-size:.84rem;margin-bottom:14px"></p>
+        <div id="nfTabela" style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+            <thead>
+              <tr style="background:var(--bg);text-align:left">
+                <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Tipo</th>
+                <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Nº / Série</th>
+                <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Natureza</th>
+                <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Status</th>
+                <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Valor</th>
+                <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Data</th>
+                <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Manifesta</th>
+                <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Chave</th>
+                <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Acoes</th>
+              </tr>
+            </thead>
+            <tbody id="nfLinhas"></tbody>
+          </table>
+        </div>
+        <div id="nfEmpty" style="display:none;text-align:center;padding:32px;color:var(--muted)">Nenhuma NF-e encontrada para este CNPJ.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABA CCe -->
+  <div id="tab-cce" class="tab-pane">
+    <div class="card">
+      <h2>Carta de Correcao Eletronica (CCe)</h2>
+      <p class="subtitle">Corrige informacoes de uma NF-e autorizada via evento tpEvento=110110. Valido em homologacao e producao.</p>
+      <div class="alert alert-warn">A CCe NAO pode corrigir: valor total, CFOP, destinatario, data de emissao/saida. Use apenas para correcoes de texto em campos nao-criticos.</div>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="cce_empresaId"><option value="">-- Selecione --</option></select></div>
+        <div class="field span2"><label>Nota Fiscal <span class="req">*</span></label><select id="cce_notaId"><option value="">-- Selecione a nota --</option></select></div>
+        <div class="field span2">
+          <label>Texto de Correcao <span class="req">*</span> (15 a 1000 caracteres)</label>
+          <textarea id="cce_texto" style="min-height:100px" placeholder="Descreva a correcao..." oninput="document.getElementById('cce_chars').textContent=this.value.length+'/1000 caracteres'"></textarea>
+          <small id="cce_chars" style="color:var(--muted);font-size:.75rem">0/1000 caracteres</small>
+        </div>
+      </div>
+      <div id="alertaCce"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="enviarCce()"><span id="spinCce" class="spinner" style="display:none"></span> Enviar CCe</button>
+      </div>
+    </div>
+    <div id="resultCce" style="display:none" class="card">
+      <h2 id="cceTitulo">Resultado</h2>
+      <div id="cceBadge" style="margin-bottom:10px"></div>
+      <pre class="result-box" id="cceJson"></pre>
+    </div>
+  </div>
+
+  <!-- ABA SPED -->
+  <div id="tab-sped" class="tab-pane">
+    <div class="card">
+      <h2>SPED EFD ICMS/IPI</h2>
+      <p class="subtitle">Gera o arquivo SPED EFD (Registros 0, C e 9) com as NF-e autorizadas no periodo. Prazo mensal: ate o dia 15 do mes seguinte.</p>
+      <div class="alert alert-info">O arquivo gerado cobre as NF-e com cStat=100 (Autorizado) no periodo informado. Formato: texto delimitado por pipe (|).</div>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="sp_empresaId"><option value="">-- Selecione --</option></select></div>
+        <div class="field"><label>Data Inicio <span class="req">*</span></label><input type="date" id="sp_ini"></div>
+        <div class="field"><label>Data Fim <span class="req">*</span></label><input type="date" id="sp_fim"></div>
+      </div>
+      <div id="alertaSped"></div>
+      <div class="actions">
+        <button class="btn btn-success" style="font-size:.96rem;padding:11px 24px" onclick="downloadSped()">&#11015; Baixar SPED EFD</button>
+        <button class="btn btn-outline" onclick="downloadSpedBlocoE()">Bloco E (Apuracao ICMS)</button>
+        <button class="btn btn-outline" onclick="downloadSpedBlocoH()">Bloco H (Inventario)</button>
+        <button class="btn btn-outline" onclick="preencherMesAtual()">Preencher mes atual</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABA EFD CONTRIBUICOES -->
+  <div id="tab-efdcontrib" class="tab-pane">
+    <div class="card">
+      <h2>EFD Contribuicoes (PIS/COFINS)</h2>
+      <p class="subtitle">Gera o arquivo EFD Contribuicoes com apuracao de PIS e COFINS. Prazo mensal: ate o 10 dia util do segundo mes subsequente.</p>
+      <div class="alert alert-info">Inclui Blocos 0, C, M (apuracao) e 9. Compatible com Simples Nacional (cumulativo) e Lucro Presumido/Real (nao-cumulativo).</div>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="efc_empresaId"><option value="">-- Selecione --</option></select></div>
+        <div class="field"><label>Data Inicio <span class="req">*</span></label><input type="date" id="efc_ini"></div>
+        <div class="field"><label>Data Fim <span class="req">*</span></label><input type="date" id="efc_fim"></div>
+      </div>
+      <div id="alertaEfc"></div>
+      <div class="actions">
+        <button class="btn btn-success" style="font-size:.96rem;padding:11px 24px" onclick="downloadEfdContrib()">&#11015; Baixar EFD Contribuicoes</button>
+        <button class="btn btn-outline" onclick="preencherMesAtualEfc()">Preencher mes atual</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABA NFS-e -->
+  <div id="tab-nfse" class="tab-pane">
+    <div class="card">
+      <h2>Emitir NFS-e (Nota Fiscal de Servico)</h2>
+      <p class="subtitle">Emite NFS-e via webservice municipal ABRASF 2.04. Apenas para empresas com Inscricao Municipal cadastrada.</p>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="nfse_empresaId"><option value="">-- Selecione --</option></select></div>
+        <div class="field span2"><label>Nome do Servico <span class="req">*</span></label><input id="nfse_nome" placeholder="Ex: Desenvolvimento de software"></div>
+        <div class="field"><label>Valor do Servico <span class="req">*</span></label><input type="number" id="nfse_valor" step="0.01" min="0.01" placeholder="0.00"></div>
+        <div class="field"><label>Aliquota ISS (%) </label><input type="number" id="nfse_aliq" step="0.01" min="0" placeholder="5.00"></div>
+        <div class="field span2"><label>Discriminacao</label><textarea id="nfse_disc" rows="3" placeholder="Descricao detalhada do servico prestado"></textarea></div>
+        <div class="field"><label>CPF/CNPJ Tomador</label><input id="nfse_tomCpfCnpj" placeholder="Opcional"></div>
+        <div class="field"><label>Nome Tomador</label><input id="nfse_tomNome" placeholder="Opcional"></div>
+        <div class="field"><label>Codigo Servico LC 116/03</label><input id="nfse_codSrv" placeholder="Ex: 14.01"></div>
+      </div>
+      <div id="alertaNfse"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="emitirNfse()"><span id="spinNfse" class="spinner" style="display:none"></span> Emitir NFS-e</button>
+      </div>
+    </div>
+    <div id="resultNfse" style="display:none" class="card">
+      <h2 id="nfseTitulo">Resultado</h2>
+      <div id="nfseBadge" style="margin-bottom:10px"></div>
+      <pre class="result-box" id="nfseJson"></pre>
+    </div>
+  </div>
+
+  <!-- ABA NFC-e -->
+  <div id="tab-nfce" class="tab-pane">
+    <div class="card">
+      <h2>Emitir NFC-e (Cupom Fiscal)</h2>
+      <p class="subtitle">Emite cupom fiscal eletronico (modelo 65) para venda ao consumidor. Requer CSC configurado no Passo 1 (Empresa).</p>
+      <div class="alert alert-warn">Voce esta em AMBIENTE DE HOMOLOGACAO. Os cupons emitidos nao tem validade fiscal.</div>
+      <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+        Itens do Cupom <span class="req">*</span>
+        <button class="btn btn-outline" style="font-size:.78rem;padding:5px 12px" onclick="adicionarItemNfce()">+ Item</button>
+      </div>
+      <div id="itensContainerNfce" style="margin-bottom:12px"></div>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field"><label>CPF do Consumidor (opcional)</label><input id="nfce_cpf" placeholder="Deixe vazio para consumidor anonimo" maxlength="11"></div>
+        <div class="field"><label>Forma de Pagamento</label>
+          <select id="nfce_pag">
+            <option value="01">01 - Dinheiro</option>
+            <option value="02">02 - Cheque</option>
+            <option value="03">03 - Cartao de Credito</option>
+            <option value="04">04 - Cartao de Debito</option>
+            <option value="05">05 - Credito Loja</option>
+            <option value="10">10 - Vale Alimentacao</option>
+            <option value="99">99 - Outros</option>
+          </select>
+        </div>
+        <div class="field"><label>Frete (R$)</label><input id="nfce_frete" type="number" step="0.01" value="0" min="0"></div>
+        <div class="field"><label>Serie</label><input id="nfce_serie" value="1" maxlength="3"></div>
+        <div class="field span2"><label>Informacoes Complementares (opcional)</label><input id="nfce_info" placeholder="Opcional"></div>
+      </div>
+      <div id="alertaNfce"></div>
+      <div class="actions">
+        <button class="btn btn-success" style="font-size:.96rem;padding:11px 28px" onclick="emitirNFCe()">
+          <span id="spinNfce" class="spinner" style="display:none"></span> Emitir NFC-e em Homologacao
+        </button>
+      </div>
+    </div>
+    <div id="resultNfce" style="display:none" class="card">
+      <h2 id="nfceTitulo">Resultado</h2>
+      <div id="nfceBadge" style="margin-bottom:10px"></div>
+      <div id="nfceQrArea" style="display:none;margin-bottom:12px;padding:12px;background:var(--step-active);border-radius:8px;border:1px solid #93c5fd">
+        <div style="font-size:.85rem;font-weight:600;margin-bottom:6px">URL do QR Code NFC-e:</div>
+        <a id="nfceQrLink" href="#" target="_blank" style="font-size:.78rem;word-break:break-all;color:var(--primary)"></a>
+      </div>
+      <pre class="result-box" id="nfceJson"></pre>
+    </div>
+  </div>
+
+</div>
+<script>
+const estado = { empresaId:null, cnpj:null, clienteId:null, clienteNome:null, tipoDest:'cpf', produtoId:null, produtoNome:null, certEnviado:false, cscSalvo:false, pfxBase64:null, pfxNome:null, ultimaChave:null, ultimaNotaId:null };
+var clientesCadastrados = [];
+var produtosCadastrados = [];
+var empresasCadastradas = [];
+var notasCarregadas = [];
+const API = window.location.origin;
+
+async function carregarEmpresasSelects(){
+  try{
+    var res=await fetch(API+'/api/empresa');
+    if(!res.ok)return;
+    empresasCadastradas=await res.json();
+    var ids=['cs_empresaId','st_empresaId','in_empresaId','mf_empresaId','en_empresaId','cce_empresaId','sp_empresaId','efc_empresaId','nfse_empresaId'];
+    ids.forEach(function(id){
+      var sel=document.getElementById(id);if(!sel)return;
+      sel.innerHTML='<option value="">-- Selecione a empresa --</option>';
+      empresasCadastradas.forEach(function(e){
+        var opt=document.createElement('option');opt.value=e.id;opt.textContent=e.razaoSocial;sel.appendChild(opt);
+      });
+      if(estado.empresaId)sel.value=estado.empresaId;
+    });
+  }catch(e){}
+}
+
+async function carregarNotasParaSelect(selectId){
+  var sel=document.getElementById(selectId);if(!sel||!estado.cnpj)return;
+  sel.innerHTML='<option value="">Carregando...</option>';
+  try{
+    var cnpj=estado.cnpj.replace(/\D/g,'');
+    var res=await fetch(API+'/api/nfe/nuvem-fiscal?cnpj='+cnpj);
+    var data=await res.json();
+    sel.innerHTML='<option value="">-- Selecione a nota --</option>';
+    if(data.sucesso&&data.notas&&data.notas.length){
+      notasCarregadas=data.notas;
+      data.notas.forEach(function(n){
+        var opt=document.createElement('option');opt.value=n.id;
+        var dt=new Date(n.emitidaEm).toLocaleDateString('pt-BR');
+        opt.textContent='NF '+n.numero+'/'+n.serie+' – '+n.status+' – '+dt+' – '+n.chaveAcesso.substring(0,20)+'...';
+        opt.dataset.chave=n.chaveAcesso;opt.dataset.id=n.id;
+        sel.appendChild(opt);
+      });
+      if(estado.ultimaNotaId)sel.value=estado.ultimaNotaId;
+    }else{
+      sel.innerHTML='<option value="">Nenhuma nota encontrada</option>';
+    }
+  }catch(e){sel.innerHTML='<option value="">Erro ao carregar</option>';}
+}
+
+function selecionarNotaConsultar(){
+  var sel=document.getElementById('cs_nota_sel');
+  var opt=sel&&sel.options[sel.selectedIndex];
+  if(opt&&opt.dataset.chave)document.getElementById('cs_chave').value=opt.dataset.chave;
+}
+
+function showTab(name,btn){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='nfce'){renderItensNfce();}
+  if(name==='consultar'){carregarNotasParaSelect('cs_nota_sel');}
+  if(name==='manifestar'){carregarNotasParaSelect('mf_notaId');}
+  if(name==='cce'){carregarNotasParaSelect('cce_notaId');}
+}
+
+let passoAtual=0;
+function irParaPasso(n){
+  document.getElementById('passo'+passoAtual).style.display='none';
+  document.getElementById('nav'+passoAtual).classList.remove('active');
+  passoAtual=n;
+  document.getElementById('passo'+passoAtual).style.display='block';
+  for(let i=0;i<4;i++){
+    const nav=document.getElementById('nav'+i),num=document.getElementById('num'+i);
+    nav.classList.remove('active','done');
+    if(i<passoAtual){nav.classList.add('done');num.textContent='ok';}
+    else if(i===passoAtual){nav.classList.add('active');num.textContent=i+1;}
+    else{num.textContent=i+1;}
+  }
+  if(n===1&&estado.empresaId){carregarClientes();}
+  if(n===2&&estado.empresaId){carregarProdutos();}
+  if(n===3){atualizarResumoDestinatario();renderItens();}
+}
+
+const v=id=>(document.getElementById(id)||{}).value?.trim()||'';
+const spin=(id,show)=>{const el=document.getElementById(id);if(el)el.style.display=show?'inline-block':'none';};
+
+function mostrarAlerta(cid,tipo,msg){
+  const icons={info:'i',success:'OK',error:'ERRO',warn:'ATENC'};
+  const el=document.getElementById(cid);
+  if(el)el.innerHTML='<div class="alert alert-'+tipo+'"><span>'+msg+'</span></div>';
+}
+function limparAlerta(id){const el=document.getElementById(id);if(el)el.innerHTML='';}
+
+async function safeJson(res){try{const t=await res.text();return t?JSON.parse(t):{}}catch{return {};}}
+
+function jsonBonito(obj){
+  return JSON.stringify(obj,null,2)
+    .replace(/"([^"]+)":/g,'<span style="color:#7dd3fc">"$1"</span>:')
+    .replace(/: "([^"]*)"/g,': <span style="color:#86efac">"$1"</span>')
+    .replace(/: (true)\b/g,': <span style="color:#4ade80">$1</span>')
+    .replace(/: (false)\b/g,': <span style="color:#f87171">$1</span>')
+    .replace(/: (-?\d+\.?\d*)\b(?!")/g,': <span style="color:#fbbf24">$1</span>');
+}
+
+function mostrarResultado(cardId,tituloId,badgeId,jsonId,data,ok,tOk,tErr){
+  document.getElementById(cardId).style.display='block';
+  document.getElementById(tituloId).textContent=(ok?'OK: ':'ERRO: ')+(ok?tOk:tErr);
+  var badges='';
+  if(data.cStat)badges+='<span class="badge '+(ok?'badge-green':'badge-red')+'">cStat: '+data.cStat+'</span>';
+  if(data.protocolo)badges+=' <span class="badge badge-blue">Protocolo: '+data.protocolo+'</span>';
+  document.getElementById(badgeId).innerHTML=badges;
+  document.getElementById(jsonId).innerHTML=jsonBonito(data);
+  document.getElementById(cardId).scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function atualizarEstadoBar(){
+  var s=function(id,ok,texto,tipo){var el=document.getElementById(id);el.className='badge '+(ok?(tipo||'badge-green'):'badge-red');el.textContent=ok?texto:(id==='stCliente'?'nao definido':'nao definido');};
+  s('stEmpresa',!!estado.empresaId,estado.empresaId?'Empresa ok':'');
+  var cert=document.getElementById('stCert');
+  cert.className='badge '+(estado.certEnviado?'badge-green':'badge-red');
+  cert.textContent=estado.certEnviado?'enviado ok':'nao enviado';
+  // Destinatario: varia por tipo
+  var stCl=document.getElementById('stCliente');
+  if(estado.tipoDest==='anonimo'){stCl.className='badge badge-blue';stCl.textContent='Anonimo';}
+  else if(estado.tipoDest==='cpf'&&estado.clienteNome){stCl.className='badge badge-green';stCl.textContent=estado.clienteNome;}
+  else if(estado.tipoDest==='cnpj'&&estado.clienteNome){stCl.className='badge badge-green';stCl.textContent=estado.clienteNome;}
+  else{stCl.className='badge badge-red';stCl.textContent='nao definido';}
+  s('stProduto',!!estado.produtoId,estado.produtoNome||'Produto ok');
+  var stCsc=document.getElementById('stCsc');
+  if(stCsc){stCsc.className='badge '+(estado.cscSalvo?'badge-green':'badge-gray');stCsc.textContent=estado.cscSalvo?'configurado':'nao configurado';}
+}
+
+async function cadastrarEmpresa(){
+  limparAlerta('alertaEmpresa');
+  if(!v('e_cnpj')||!v('e_razao')||!v('e_ie')){mostrarAlerta('alertaEmpresa','error','Preencha CNPJ, Razao Social e IE.');return;}
+  spin('spinEmpresa',true);
+  try{
+    var res=await fetch(API+'/api/empresa',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({cnpj:v('e_cnpj'),razaoSocial:v('e_razao'),nomeFantasia:v('e_fantasia'),inscricaoEstadual:v('e_ie'),logradouro:v('e_logradouro'),numero:v('e_numero'),complemento:v('e_complemento'),bairro:v('e_bairro'),municipio:v('e_municipio'),uf:v('e_uf'),cep:v('e_cep'),telefone:v('e_fone'),email:v('e_email')})});
+    var data=await safeJson(res);
+    if(!res.ok)throw new Error(data.erro||'HTTP '+res.status);
+    estado.empresaId=data.id;
+    estado.cnpj=v('e_cnpj');
+    document.getElementById('empresaIdLabel').textContent='ID: '+data.id;
+    mostrarAlerta('alertaEmpresa','success','Empresa cadastrada! ID: '+data.id);
+    atualizarEstadoBar();
+  }catch(e){mostrarAlerta('alertaEmpresa','error',e.message);}
+  finally{spin('spinEmpresa',false);}
+}
+
+function pfxSelecionado(event){if(event.target.files[0])lerArquivoPfx(event.target.files[0]);}
+function fileDragOver(e){e.preventDefault();document.getElementById('fileZone').classList.add('dragover');}
+function fileDragLeave(){document.getElementById('fileZone').classList.remove('dragover');}
+function fileDrop(e){e.preventDefault();document.getElementById('fileZone').classList.remove('dragover');if(e.dataTransfer.files[0])lerArquivoPfx(e.dataTransfer.files[0]);}
+function lerArquivoPfx(file){
+  var reader=new FileReader();
+  reader.onload=function(e){var bytes=new Uint8Array(e.target.result),bin='';bytes.forEach(function(b){bin+=String.fromCharCode(b);});estado.pfxBase64=btoa(bin);estado.pfxNome=file.name;var zone=document.getElementById('fileZone');zone.classList.add('ok');document.getElementById('fileZoneText').textContent=file.name+' ('+Math.round(file.size/1024)+' KB)';};
+  reader.readAsArrayBuffer(file);
+}
+
+async function verificarCertificadoSalvo(){
+  if(!estado.empresaId) return;
+  try{
+    var res=await fetch(API+'/api/empresa/'+estado.empresaId);
+    if(!res.ok) return;
+    var data=await res.json();
+    if(data.certificadoSalvo){
+      estado.certEnviado=true;
+      atualizarEstadoBar();
+      var zone=document.getElementById('fileZone');
+      zone.classList.add('ok');
+      document.getElementById('fileZoneText').textContent='Certificado ja salvo no servidor. Envie novamente para atualizar.';
+      mostrarAlerta('alertaCert','success','Certificado digital ja esta salvo. Nao precisa enviar novamente.');
+    }
+  }catch(e){}
+}
+
+async function enviarCertificado(){
+  limparAlerta('alertaCert');
+  if(!estado.empresaId){mostrarAlerta('alertaCert','error','Cadastre a empresa primeiro.');return;}
+  if(!estado.pfxBase64){mostrarAlerta('alertaCert','error','Selecione o arquivo .pfx.');return;}
+  if(!v('certSenha')){mostrarAlerta('alertaCert','error','Informe a senha.');return;}
+  spin('spinCert',true);
+  try{
+    var validade=v('certValidade')||null;
+    var res=await fetch(API+'/api/empresa/'+estado.empresaId+'/certificado',{method:'PUT',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({base64:estado.pfxBase64,senha:v('certSenha'),validade:validade?new Date(validade).toISOString():null})});
+    if(!res.ok){var d=await res.json().catch(function(){return{};});throw new Error(d.erro||'HTTP '+res.status);}
+    estado.certEnviado=true;atualizarEstadoBar();
+    mostrarAlerta('alertaCert','success','Certificado enviado com sucesso!');
+  }catch(e){mostrarAlerta('alertaCert','error',e.message);}
+  finally{spin('spinCert',false);}
+}
+
+// -------- DESTINATARIO --------
+var tipoDest = 'cpf';
+function selecionarTipoDest(tipo){
+  tipoDest=tipo; estado.tipoDest=tipo;
+  ['anonimo','cpf','cnpj'].forEach(function(t){
+    document.getElementById('tipodest_'+t).className='tipo-btn'+(t===tipo?' selected':'');
+    document.getElementById('area_'+t).style.display=t===tipo?'block':'none';
+  });
+  if(tipo==='anonimo'){
+    estado.clienteId=null; estado.clienteNome='Consumidor Anonimo';
+    document.getElementById('stCliente').className='badge badge-blue';
+    document.getElementById('stCliente').textContent='Anonimo';
+  } else if(tipo==='cpf') {
+    estado.clienteId=null; estado.clienteNome=null; atualizarEstadoBar();
+  } else {
+    estado.clienteId=null; estado.clienteNome=null; atualizarEstadoBar();
+  }
+  atualizarResumoDestinatario();
+}
+
+function atualizarResumoDestinatario(){
+  var el=document.getElementById('resumoDestinatario');
+  if(!el)return;
+  if(tipoDest==='anonimo'){
+    el.innerHTML='<strong>Destinatario:</strong> <span class="badge badge-blue">Consumidor Anonimo</span> — nenhum dado necessario.';
+  } else if(tipoDest==='cpf'&&estado.clienteNome){
+    el.innerHTML='<strong>Destinatario:</strong> <span class="badge badge-green">'+estado.clienteNome+'</span> (CPF) — ID: '+estado.clienteId;
+  } else if(tipoDest==='cnpj'&&estado.clienteNome){
+    el.innerHTML='<strong>Destinatario:</strong> <span class="badge badge-green">'+estado.clienteNome+'</span> (CNPJ) — ID: '+estado.clienteId;
+  } else {
+    el.innerHTML='<span style="color:var(--danger)">Nenhum destinatario definido. Volte ao Passo 2.</span>';
+  }
+}
+
+async function carregarClientes(){
+  if(!estado.empresaId){return;}
+  spin('spinBuscaCliente',true);spin('spinBuscaClienteCnpj',true);
+  try{
+    var res=await fetch(API+'/api/cliente?empresaId='+encodeURIComponent(estado.empresaId));
+    if(res.ok){clientesCadastrados=await res.json();filtrarClientes();filtrarClientesCnpj();}
+  }catch(e){}
+  finally{spin('spinBuscaCliente',false);spin('spinBuscaClienteCnpj',false);}
+}
+
+function renderListaClientes(lista, containerEl, onSelect){
+  if(!containerEl)return;
+  if(!lista||!lista.length){containerEl.style.display='none';return;}
+  containerEl.style.display='block';
+  containerEl.innerHTML='';
+  lista.forEach(function(c){
+    var el=document.createElement('div');
+    el.style.cssText='padding:7px 10px;cursor:pointer;border-bottom:1px solid var(--border);border-radius:4px;display:flex;justify-content:space-between;align-items:center';
+    el.innerHTML='<span><strong>'+c.nome+'</strong> <small style="color:var(--muted)">'+c.cpf_CNPJ+'</small></span><span class="badge badge-blue" style="font-size:.7rem">Selecionar</span>';
+    el.onmouseenter=function(){this.style.background='var(--step-active)';};
+    el.onmouseleave=function(){this.style.background='';};
+    el.onclick=function(){onSelect(c);};
+    containerEl.appendChild(el);
+  });
+}
+
+function filtrarClientes(){
+  var q=(document.getElementById('busca_cliente').value||'').toLowerCase();
+  var lista=clientesCadastrados.filter(function(c){return!q||c.nome.toLowerCase().includes(q)||(c.cpf_CNPJ||'').includes(q);});
+  renderListaClientes(lista.slice(0,8), document.getElementById('lista_clientes'), function(c){
+    document.getElementById('c_nome').value=c.nome;
+    document.getElementById('c_cpfcnpj').value=c.cpf_CNPJ||'';
+    estado.clienteId=c.id; estado.clienteNome=c.nome;
+    document.getElementById('clienteIdLabel').textContent='ID: '+c.id;
+    mostrarAlerta('alertaCliente','success','Cliente selecionado: '+c.nome);
+    atualizarEstadoBar();
+  });
+}
+
+function filtrarClientesCnpj(){
+  var q=(document.getElementById('busca_cliente_cnpj').value||'').toLowerCase();
+  var lista=clientesCadastrados.filter(function(c){return!q||c.nome.toLowerCase().includes(q)||(c.cpf_CNPJ||'').includes(q);});
+  renderListaClientes(lista.slice(0,8), document.getElementById('lista_clientes_cnpj'), function(c){
+    document.getElementById('c_nome_cnpj').value=c.nome;
+    document.getElementById('c_cpfcnpj_cnpj').value=c.cpf_CNPJ||'';
+    estado.clienteId=c.id; estado.clienteNome=c.nome;
+    document.getElementById('clienteIdLabelCnpj').textContent='ID: '+c.id;
+    mostrarAlerta('alertaClienteCnpj','success','Empresa selecionada: '+c.nome);
+    atualizarEstadoBar();
+  });
+}
+
+async function cadastrarCliente(){
+  limparAlerta('alertaCliente');
+  if(!estado.empresaId){mostrarAlerta('alertaCliente','warn','Cadastre a empresa primeiro.');return;}
+  if(!v('c_nome')){mostrarAlerta('alertaCliente','error','Nome e obrigatorio.');return;}
+  spin('spinCliente',true);
+  try{
+    var res=await fetch(API+'/api/cliente',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({empresaId:estado.empresaId,nome:v('c_nome'),cpf_CNPJ:v('c_cpfcnpj')||null,inscricaoEstadual:'',email:v('c_email'),telefone:v('c_fone'),logradouro:v('c_logradouro'),numero:v('c_numero'),complemento:v('c_complemento'),bairro:v('c_bairro'),municipio:v('c_municipio'),codigoMunicipio:v('c_codmun'),uf:v('c_uf'),cep:v('c_cep'),pais:'Brasil',codigoPais:'1058'})});
+    var data=await safeJson(res);
+    if(!res.ok)throw new Error(data.erro||'HTTP '+res.status);
+    estado.clienteId=data.id; estado.clienteNome=data.nome||v('c_nome');
+    document.getElementById('clienteIdLabel').textContent='ID: '+data.id;
+    mostrarAlerta('alertaCliente','success','Cliente salvo! ID: '+data.id);
+    clientesCadastrados.push({id:data.id,nome:estado.clienteNome,cpf_CNPJ:v('c_cpfcnpj')});
+    atualizarEstadoBar();
+  }catch(e){mostrarAlerta('alertaCliente','error',e.message);}
+  finally{spin('spinCliente',false);}
+}
+
+async function cadastrarClienteCnpj(){
+  limparAlerta('alertaClienteCnpj');
+  if(!estado.empresaId){mostrarAlerta('alertaClienteCnpj','warn','Cadastre a empresa primeiro.');return;}
+  if(!v('c_nome_cnpj')||!v('c_cpfcnpj_cnpj')){mostrarAlerta('alertaClienteCnpj','error','Razao Social e CNPJ sao obrigatorios.');return;}
+  if(!v('c_logradouro_cnpj')||!v('c_numero_cnpj')||!v('c_bairro_cnpj')||!v('c_municipio_cnpj')||!v('c_cep_cnpj')){
+    mostrarAlerta('alertaClienteCnpj','error','Endereco completo e obrigatorio para CNPJ (SEFAZ rejeita sem endereco).');return;}
+  spin('spinClienteCnpj',true);
+  try{
+    var res=await fetch(API+'/api/cliente',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({empresaId:estado.empresaId,nome:v('c_nome_cnpj'),cpf_CNPJ:v('c_cpfcnpj_cnpj'),inscricaoEstadual:v('c_ie_cnpj')||'ISENTO',email:v('c_email_cnpj'),telefone:v('c_fone_cnpj'),logradouro:v('c_logradouro_cnpj'),numero:v('c_numero_cnpj'),complemento:v('c_complemento_cnpj'),bairro:v('c_bairro_cnpj'),municipio:v('c_municipio_cnpj'),codigoMunicipio:v('c_codmun_cnpj'),uf:v('c_uf_cnpj'),cep:v('c_cep_cnpj'),pais:'Brasil',codigoPais:'1058'})});
+    var data=await safeJson(res);
+    if(!res.ok)throw new Error(data.erro||'HTTP '+res.status);
+    estado.clienteId=data.id; estado.clienteNome=data.nome||v('c_nome_cnpj');
+    document.getElementById('clienteIdLabelCnpj').textContent='ID: '+data.id;
+    mostrarAlerta('alertaClienteCnpj','success','Empresa salva! ID: '+data.id);
+    clientesCadastrados.push({id:data.id,nome:estado.clienteNome,cpf_CNPJ:v('c_cpfcnpj_cnpj')});
+    atualizarEstadoBar();
+  }catch(e){mostrarAlerta('alertaClienteCnpj','error',e.message);}
+  finally{spin('spinClienteCnpj',false);}
+}
+
+// -------- PRODUTO --------
+async function carregarProdutos(){
+  if(!estado.empresaId){return;}
+  spin('spinBuscaProduto',true);
+  try{
+    var res=await fetch(API+'/api/produto?empresaId='+encodeURIComponent(estado.empresaId));
+    if(res.ok){produtosCadastrados=await res.json();filtrarProdutos();}
+  }catch(e){}
+  finally{spin('spinBuscaProduto',false);}
+}
+
+function filtrarProdutos(){
+  var q=(document.getElementById('busca_produto').value||'').toLowerCase();
+  var lista=produtosCadastrados.filter(function(p){return!q||p.nome.toLowerCase().includes(q);});
+  var containerEl=document.getElementById('lista_produtos');
+  if(!containerEl)return;
+  if(!lista||!lista.length){containerEl.style.display='none';return;}
+  containerEl.style.display='block';
+  containerEl.innerHTML='';
+  lista.slice(0,8).forEach(function(p){
+    var el=document.createElement('div');
+    el.style.cssText='padding:7px 10px;cursor:pointer;border-bottom:1px solid var(--border);border-radius:4px;display:flex;justify-content:space-between;align-items:center';
+    var preco='R$ '+(p.preco||0).toFixed(2).replace('.',',');
+    el.innerHTML='<span><strong>'+p.nome+'</strong> <small style="color:var(--muted)">'+p.unidade+' — '+preco+'</small></span><span class="badge badge-blue" style="font-size:.7rem">Selecionar</span>';
+    el.onmouseenter=function(){this.style.background='var(--step-active)';};
+    el.onmouseleave=function(){this.style.background='';};
+    el.onclick=function(){
+      estado.produtoId=p.id; estado.produtoNome=p.nome;
+      document.getElementById('produtoIdLabel').textContent='ID: '+p.id;
+      // atualiza item[0] com este produto
+      if(itens.length>0){itens[0].produtoId=p.id;itens[0].valor=p.preco||itens[0].valor;}
+      renderItens();
+      mostrarAlerta('alertaProduto','success','Produto selecionado: '+p.nome+' — '+preco);
+      atualizarEstadoBar();
+    };
+    containerEl.appendChild(el);
+  });
+}
+
+async function cadastrarProduto(){
+  limparAlerta('alertaProduto');
+  if(!estado.empresaId){mostrarAlerta('alertaProduto','warn','Cadastre a empresa primeiro.');return;}
+  if(!v('p_nome')){mostrarAlerta('alertaProduto','error','Nome do produto e obrigatorio.');return;}
+  spin('spinProduto',true);
+  try{
+    var res=await fetch(API+'/api/produto',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({empresaId:estado.empresaId,nome:v('p_nome'),descricao:v('p_descricao'),ncm:v('p_ncm'),cfop:v('p_cfop'),cst:v('p_cst'),csosn:v('p_csosn'),unidade:v('p_unidade'),preco:parseFloat(v('p_preco'))||0,aliquotaICMS:0,aliquotaIPI:0,aliquotaPIS:0.65,aliquotaCOFINS:3})});
+    var data=await safeJson(res);
+    if(!res.ok)throw new Error(data.erro||'HTTP '+res.status);
+    estado.produtoId=data.id; estado.produtoNome=data.nome||v('p_nome');
+    document.getElementById('produtoIdLabel').textContent='ID: '+data.id;
+    produtosCadastrados.push({id:data.id,nome:estado.produtoNome,preco:parseFloat(v('p_preco'))||0,unidade:v('p_unidade')||'UN'});
+    if(itens.length>0){itens[0].produtoId=data.id;itens[0].valor=parseFloat(v('p_preco'))||itens[0].valor;}
+    renderItens();
+    mostrarAlerta('alertaProduto','success','Produto cadastrado! ID: '+data.id);
+    atualizarEstadoBar();
+  }catch(e){mostrarAlerta('alertaProduto','error',e.message);}
+  finally{spin('spinProduto',false);}
+}
+
+var itens=[];
+function renderItens(){
+  if(!itens.length)itens=[{produtoId:estado.produtoId||'',qtd:1,valor:100,desc:0}];
+  if(estado.produtoId&&!itens[0].produtoId)itens[0].produtoId=estado.produtoId;
+  var container=document.getElementById('itensContainer');container.innerHTML='';
+  itens.forEach(function(item,i){
+    var div=document.createElement('div');div.className='item-linha';
+    var opts='<option value="">-- Selecione --</option>';
+    produtosCadastrados.forEach(function(p){
+      opts+='<option value="'+p.id+'"'+(item.produtoId===p.id?' selected':'')+'>'+p.nome+' (R$ '+p.preco.toFixed(2)+')</option>';
+    });
+    if(produtosCadastrados.length){
+      div.innerHTML='<button class="remover" onclick="removerItem('+i+')" title="Remover">x</button>'
+        +'<div class="grid3"><div class="field span3"><label>Produto <span class="req">*</span></label>'
+        +'<select id="item_pid_'+i+'" onchange="selecionarProdutoItem('+i+')">'+opts+'</select></div>'
+        +'<div class="field"><label>Quantidade</label><input id="item_qtd_'+i+'" type="number" step="0.001" min="0.001" value="'+item.qtd+'"></div>'
+        +'<div class="field"><label>Valor Unitario (R$)</label><input id="item_val_'+i+'" type="number" step="0.01" min="0.01" value="'+item.valor+'"></div>'
+        +'<div class="field"><label>Desconto (R$)</label><input id="item_desc_'+i+'" type="number" step="0.01" value="'+item.desc+'"></div></div>';
+    } else {
+      div.innerHTML='<button class="remover" onclick="removerItem('+i+')" title="Remover">x</button>'
+        +'<div class="grid3"><div class="field span3"><label>Produto ID <span class="req">*</span></label>'
+        +'<input id="item_pid_'+i+'" value="'+(item.produtoId||'')+'" placeholder="UUID do produto (va ao Passo 3 para selecionar)"></div>'
+        +'<div class="field"><label>Quantidade</label><input id="item_qtd_'+i+'" type="number" step="0.001" min="0.001" value="'+item.qtd+'"></div>'
+        +'<div class="field"><label>Valor Unitario (R$)</label><input id="item_val_'+i+'" type="number" step="0.01" min="0.01" value="'+item.valor+'"></div>'
+        +'<div class="field"><label>Desconto (R$)</label><input id="item_desc_'+i+'" type="number" step="0.01" value="'+item.desc+'"></div></div>';
+    }
+    container.appendChild(div);
+  });
+}
+function selecionarProdutoItem(i){
+  var sel=document.getElementById('item_pid_'+i);
+  var prod=produtosCadastrados.find(function(p){return p.id===sel.value;});
+  if(prod){var valEl=document.getElementById('item_val_'+i);if(valEl)valEl.value=prod.preco.toFixed(2);}
+}
+function adicionarItem(){itens.push({produtoId:estado.produtoId||'',qtd:1,valor:100,desc:0});renderItens();}
+function removerItem(i){if(itens.length>1){itens.splice(i,1);renderItens();}}
+function coletarItens(){
+  return itens.map(function(_,i){return{
+    produtoId:(document.getElementById('item_pid_'+i)||{}).value||'',
+    quantidade:parseFloat((document.getElementById('item_qtd_'+i)||{}).value)||1,
+    valorUnitario:parseFloat((document.getElementById('item_val_'+i)||{}).value)||0,
+    valorDesconto:parseFloat((document.getElementById('item_desc_'+i)||{}).value)||0
+  };});
+}
+
+async function emitirNFe(){
+  limparAlerta('alertaEmitir');
+  document.getElementById('resultadoCard').style.display='none';
+  if(!estado.empresaId){mostrarAlerta('alertaEmitir','error','Cadastre a empresa primeiro.');return;}
+  var td=tipoDest;
+  if(td!=='anonimo'&&!estado.clienteId){mostrarAlerta('alertaEmitir','error','Defina o destinatario no Passo 2.');return;}
+  var itensList=coletarItens();
+  if(itensList.some(function(it){return!it.produtoId;})){mostrarAlerta('alertaEmitir','error','Selecione o produto em todos os itens.');return;}
+  spin('spinEmitir',true);
+  try{
+    var body={empresaId:estado.empresaId,clienteId:td==='anonimo'?null:estado.clienteId,naturezaOperacao:v('n_natureza')||'Venda de Mercadoria',serie:v('n_serie')||'1',itens:itensList,valorFrete:parseFloat(v('n_frete'))||0,valorSeguro:0,valorDesconto:parseFloat(v('n_desconto'))||0,informacaoComplementar:v('n_info')||null};
+    if(td==='anonimo'){body.destinatarioCpfCnpj=null;body.destinatarioNome=null;}
+    var res=await fetch(API+'/api/nfe/emitir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var data=await safeJson(res);
+    var card=document.getElementById('resultadoCard');card.style.display='block';
+    if(res.ok&&data.sucesso){
+      estado.ultimaChave=data.chaveAcesso;estado.ultimaNotaId=data.notaFiscalId;
+      document.getElementById('resultadoTitulo').textContent='NF-e Autorizada!';
+      document.getElementById('resultadoSubtitulo').textContent=data.xMotivo||'Autorizado o uso da NF-e';
+      document.getElementById('resultadoBadge').innerHTML='<span class="badge badge-green">cStat: '+data.cStat+'</span>'+(data.protocolo?' <span class="badge badge-blue">Protocolo: '+data.protocolo+'</span>':'')+(data.contingencia?' <span class="badge badge-orange">CONTINGENCIA SVC-AN</span>':'');
+      document.getElementById('consultarNfeBtn').style.display='block';
+    } else {
+      document.getElementById('resultadoTitulo').textContent='Erro na Emissao';
+      document.getElementById('resultadoSubtitulo').textContent=data.xMotivo||data.erro||'Verifique os detalhes.';
+      document.getElementById('resultadoBadge').innerHTML='<span class="badge badge-red">'+(data.cStat?'cStat: '+data.cStat:'HTTP '+res.status)+'</span>';
+      document.getElementById('consultarNfeBtn').style.display='none';
+    }
+    document.getElementById('resultadoJson').innerHTML=jsonBonito(data);
+    card.scrollIntoView({behavior:'smooth'});
+  }catch(e){mostrarAlerta('alertaEmitir','error','Erro: '+e.message);}
+  finally{spin('spinEmitir',false);}
+}
+
+async function consultarUltimaNfeSefaz(){
+  if(!estado.ultimaChave){alert('Emita uma NF-e primeiro.');return;}
+  document.getElementById('cs_empresaId').value=estado.empresaId||'';
+  document.getElementById('cs_chave').value=estado.ultimaChave;
+  document.querySelectorAll('.tab-btn').forEach(function(b,i){b.classList.remove('active');if(i===1)b.classList.add('active');});
+  document.querySelectorAll('.tab-pane').forEach(function(p){p.classList.remove('active');});
+  document.getElementById('tab-consultar').classList.add('active');
+  await consultarSefaz();
+}
+
+async function consultarSefaz(){
+  limparAlerta('alertaConsultar');
+  document.getElementById('resultConsultar').style.display='none';
+  var empresaId=v('cs_empresaId'),chave=v('cs_chave');
+  if(!empresaId||!chave){mostrarAlerta('alertaConsultar','error','EmpresaId e ChaveAcesso sao obrigatorios.');return;}
+  if(chave.length!==44){mostrarAlerta('alertaConsultar','error','Chave de acesso deve ter 44 digitos.');return;}
+  spin('spinConsultar',true);
+  try{
+    var res=await fetch(API+'/api/nfe/consultar-sefaz',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresaId:empresaId,chaveAcesso:chave})});
+    var data=await safeJson(res);
+    mostrarResultado('resultConsultar','rcTitulo','rcBadge','rcJson',data,res.ok&&data.sucesso,'NF-e Autorizada na SEFAZ',data.xMotivo||'Rejeitada ou nao encontrada');
+  }catch(e){mostrarAlerta('alertaConsultar','error','Erro: '+e.message);}
+  finally{spin('spinConsultar',false);}
+}
+
+function preencherUltimaChave(){
+  document.getElementById('cs_empresaId').value=estado.empresaId||'';
+  document.getElementById('cs_chave').value=estado.ultimaChave||'';
+}
+
+async function consultarStatus(){
+  limparAlerta('alertaStatus');
+  document.getElementById('resultStatus').style.display='none';
+  var empresaId=v('st_empresaId');
+  if(!empresaId){mostrarAlerta('alertaStatus','error','EmpresaId e obrigatorio.');return;}
+  spin('spinStatus',true);
+  try{
+    var res=await fetch(API+'/api/nfe/status?empresaId='+encodeURIComponent(empresaId));
+    var data=await safeJson(res);
+    mostrarResultado('resultStatus','stTitulo','stBadge','stJson',data,res.ok&&data.sucesso,'Servico Operacional (cStat 107)','Servico com Problema');
+  }catch(e){mostrarAlerta('alertaStatus','error','Erro: '+e.message);}
+  finally{spin('spinStatus',false);}
+}
+
+async function inutilizar(){
+  limparAlerta('alertaInutilizar');
+  document.getElementById('resultInutilizar').style.display='none';
+  var empresaId=v('in_empresaId'),serie=v('in_serie'),ini=parseInt(v('in_ini')),fim=parseInt(v('in_fim')),just=v('in_justificativa');
+  if(!empresaId){mostrarAlerta('alertaInutilizar','error','EmpresaId obrigatorio.');return;}
+  if(!serie){mostrarAlerta('alertaInutilizar','error','Serie obrigatoria.');return;}
+  if(!ini||fim<ini){mostrarAlerta('alertaInutilizar','error','Numeracao invalida.');return;}
+  if(!just||just.length<15){mostrarAlerta('alertaInutilizar','error','Justificativa deve ter ao menos 15 caracteres.');return;}
+  if(!confirm('Confirmar inutilizacao da serie '+serie+' numeros '+ini+' a '+fim+'?\nEsta operacao e IRREVERSIVEL.'))return;
+  spin('spinInutilizar',true);
+  try{
+    var res=await fetch(API+'/api/nfe/inutilizar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresaId:empresaId,serie:serie,numeroInicial:ini,numeroFinal:fim,justificativa:just})});
+    var data=await safeJson(res);
+    mostrarResultado('resultInutilizar','inTitulo','inBadge','inJson',data,res.ok&&data.sucesso,'Inutilizacao Homologada (cStat 102)',data.xMotivo||'Falha na Inutilizacao');
+  }catch(e){mostrarAlerta('alertaInutilizar','error','Erro: '+e.message);}
+  finally{spin('spinInutilizar',false);}
+}
+
+var tipoManifestacao='CienciaOperacao';
+function selecionarTipo(tipo){
+  tipoManifestacao=tipo;
+  var map={CienciaOperacao:'ciencia',ConfirmacaoOperacao:'confirmacao',Desconhecimento:'desconhecimento',OperacaoNaoRealizada:'nrealizada'};
+  Object.values(map).forEach(function(k){document.getElementById('tipo_'+k).className='tipo-btn';});
+  document.getElementById('tipo_'+map[tipo]).className='tipo-btn selected';
+  document.getElementById('mf_justArea').style.display=tipo==='OperacaoNaoRealizada'?'block':'none';
+}
+
+async function manifestar(){
+  limparAlerta('alertaManifestar');
+  document.getElementById('resultManifestar').style.display='none';
+  var empresaId=v('mf_empresaId'),notaId=v('mf_notaId');
+  if(!empresaId||!notaId){mostrarAlerta('alertaManifestar','error','EmpresaId e NotaFiscalId sao obrigatorios.');return;}
+  if(tipoManifestacao==='OperacaoNaoRealizada'&&v('mf_justificativa').length<15){mostrarAlerta('alertaManifestar','error','Justificativa deve ter ao menos 15 caracteres.');return;}
+  spin('spinManifestar',true);
+  try{
+    var body={notaFiscalId:notaId,empresaId:empresaId,tipoManifestacao:tipoManifestacao,justificativa:tipoManifestacao==='OperacaoNaoRealizada'?v('mf_justificativa'):null};
+    var res=await fetch(API+'/api/nfe/manifestar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var data=await safeJson(res);
+    mostrarResultado('resultManifestar','mfTitulo','mfBadge','mfJson',data,res.ok&&data.sucesso,'Manifestacao Registrada',data.xMotivo||'Falha na Manifestacao');
+  }catch(e){mostrarAlerta('alertaManifestar','error','Erro: '+e.message);}
+  finally{spin('spinManifestar',false);}
+}
+
+function preencherUltimaNotaId(){
+  document.getElementById('mf_empresaId').value=estado.empresaId||'';
+  document.getElementById('mf_notaId').value=estado.ultimaNotaId||'';
+}
+
+async function preencherUltimaNotaAutorizada(){
+  var empresaId=estado.empresaId;
+  if(!empresaId){mostrarAlerta('alertaManifestar','error','Cadastre a empresa primeiro (Passo 1).');return;}
+  var cnpj=estado.cnpj;
+  if(!cnpj){mostrarAlerta('alertaManifestar','error','CNPJ da empresa nao encontrado no estado.');return;}
+  try{
+    var res=await fetch(API+'/api/nfe/nuvem-fiscal?cnpj='+cnpj.replace(/\D/g,''));
+    var data=await safeJson(res);
+    if(!res.ok||!data.sucesso){mostrarAlerta('alertaManifestar','error','Nao foi possivel buscar notas: '+(data.erro||''));return;}
+    var autorizada=data.notas.find(function(n){return n.cStat==='100'||n.status==='Autorizada';});
+    if(!autorizada){mostrarAlerta('alertaManifestar','warn','Nenhuma NF-e autorizada encontrada. Emita uma NF-e primeiro.');return;}
+    document.getElementById('mf_empresaId').value=empresaId;
+    document.getElementById('mf_notaId').value=autorizada.id;
+    mostrarAlerta('alertaManifestar','info','Preenchido com NF-e autorizada numero '+autorizada.numero+' (cStat 100).');
+  }catch(e){mostrarAlerta('alertaManifestar','error','Erro ao buscar notas: '+e.message);}
+}
+
+async function consultarEntrada(){
+  limparAlerta('alertaEntrada');
+  document.getElementById('resultEntrada').style.display='none';
+  var empresaId=v('en_empresaId');
+  if(!empresaId){mostrarAlerta('alertaEntrada','error','EmpresaId obrigatorio.');return;}
+  var nsu=parseInt(v('en_nsu'))||0;
+  spin('spinEntrada',true);
+  try{
+    var res=await fetch(API+'/api/nfe/entrada?empresaId='+encodeURIComponent(empresaId)+'&ultimoNSU='+nsu);
+    var data=await safeJson(res);
+    mostrarResultado('resultEntrada','enTitulo','enBadge','enJson',data,res.ok&&data.sucesso,(data.totalNotas||0)+' nota(s) encontrada(s)','Falha na Consulta');
+  }catch(e){mostrarAlerta('alertaEntrada','error','Erro: '+e.message);}
+  finally{spin('spinEntrada',false);}
+}
+
+async function consultarNuvemFiscal(){
+  limparAlerta('alertaNuvem');
+  document.getElementById('resultNuvem').style.display='none';
+  var cnpj=v('nf_cnpj').replace(/\D/g,'');
+  if(cnpj.length!==14){mostrarAlerta('alertaNuvem','error','CNPJ deve ter 14 digitos.');return;}
+  spin('spinNuvem',true);
+  try{
+    var res=await fetch(API+'/api/nfe/nuvem-fiscal?cnpj='+cnpj);
+    var data=await safeJson(res);
+    document.getElementById('resultNuvem').style.display='block';
+    if(!res.ok||!data.sucesso){
+      document.getElementById('nfTitulo').textContent='Nenhum resultado';
+      document.getElementById('nfBadge').innerHTML='<span class="badge badge-red">Erro</span>';
+      document.getElementById('nfSubtitulo').textContent=data.erro||data.xMotivo||'Erro desconhecido.';
+      document.getElementById('nfTabela').style.display='none';
+      document.getElementById('nfEmpty').style.display='block';
+      return;
+    }
+    document.getElementById('nfTitulo').textContent=data.razaoSocial;
+    document.getElementById('nfBadge').innerHTML='<span class="badge badge-blue">CNPJ: '+data.cnpj+'</span>';
+    document.getElementById('nfSubtitulo').textContent=data.total+' NF-e(s) encontrada(s)';
+    var tbody=document.getElementById('nfLinhas');
+    tbody.innerHTML='';
+    if(!data.notas||data.notas.length===0){
+      document.getElementById('nfTabela').style.display='none';
+      document.getElementById('nfEmpty').style.display='block';
+      return;
+    }
+    document.getElementById('nfTabela').style.display='block';
+    document.getElementById('nfEmpty').style.display='none';
+    var statusColor={'Autorizada':'badge-green','Rejeitada':'badge-red','Rascunho':'badge-gray','Cancelada':'badge-orange'};
+    data.notas.forEach(function(n){
+      var tipoColor=n.tipo==='Entrada'?'badge-blue':'badge-green';
+      var stColor=statusColor[n.status]||'badge-gray';
+      var dt=new Date(n.emitidaEm).toLocaleDateString('pt-BR');
+      var valor='R$ '+n.valorTotal.toFixed(2).replace('.',',');
+      var chave=n.chaveAcesso.substring(0,20)+'...';
+      var manifesta=n.manifestada?'<span class="badge badge-green">Sim</span>':'<span class="badge badge-gray">Nao</span>';
+      var tr=document.createElement('tr');
+      tr.style.borderBottom='1px solid var(--border)';
+      tr.innerHTML='<td style="padding:7px 10px"><span class="badge '+tipoColor+'">'+n.tipo+'</span></td>'
+        +'<td style="padding:7px 10px">'+n.numero+'/'+n.serie+'</td>'
+        +'<td style="padding:7px 10px">'+n.naturezaOperacao+'</td>'
+        +'<td style="padding:7px 10px"><span class="badge '+stColor+'">'+n.status+'</span></td>'
+        +'<td style="padding:7px 10px;white-space:nowrap">'+valor+'</td>'
+        +'<td style="padding:7px 10px;white-space:nowrap">'+dt+'</td>'
+        +'<td style="padding:7px 10px">'+manifesta+'</td>'
+        +'<td style="padding:7px 10px;font-size:.74rem;color:var(--muted)" title="'+n.chaveAcesso+'">'+chave+'</td>'
+        +'<td style="padding:7px 10px;white-space:nowrap"><button class="btn btn-outline" style="font-size:.72rem;padding:4px 8px" onclick="downloadXml(\''+n.id+'\')">&#11015; XML</button> <button class="btn btn-outline" style="font-size:.72rem;padding:4px 8px" onclick="downloadDanfe(\''+n.id+'\')">&#128202; DANFE</button>'+(n.status==='Autorizada'?' <button class="btn btn-danger" style="font-size:.72rem;padding:4px 8px" onclick="cancelarNota(\''+n.id+'\',\''+n.empresaId+'\')">&#10006; Cancelar</button>':'')+'</td>';
+      tbody.appendChild(tr);
+    });
+  }catch(e){mostrarAlerta('alertaNuvem','error','Erro: '+e.message);}
+  finally{spin('spinNuvem',false);}
+}
+
+// -------- NFC-e --------
+var itensNfce=[];
+function renderItensNfce(){
+  if(!itensNfce.length)itensNfce=[{produtoId:estado.produtoId||'',qtd:1,valor:100,desc:0}];
+  if(estado.produtoId&&itensNfce.length===1&&!itensNfce[0].produtoId)itensNfce[0].produtoId=estado.produtoId;
+  var container=document.getElementById('itensContainerNfce');if(!container)return;container.innerHTML='';
+  itensNfce.forEach(function(item,i){
+    var div=document.createElement('div');div.className='item-linha';
+    var opts='<option value="">-- Selecione --</option>';
+    produtosCadastrados.forEach(function(p){opts+='<option value="'+p.id+'"'+(item.produtoId===p.id?' selected':'')+'>'+p.nome+' (R$ '+p.preco.toFixed(2)+')</option>';});
+    if(produtosCadastrados.length){
+      div.innerHTML='<button class="remover" onclick="removerItemNfce('+i+')" title="Remover">x</button>'
+        +'<div class="grid3"><div class="field span3"><label>Produto <span class="req">*</span></label>'
+        +'<select id="nfce_pid_'+i+'" onchange="selecionarProdutoItemNfce('+i+')">'+opts+'</select></div>'
+        +'<div class="field"><label>Quantidade</label><input id="nfce_qtd_'+i+'" type="number" step="0.001" min="0.001" value="'+item.qtd+'"></div>'
+        +'<div class="field"><label>Valor Unitario (R$)</label><input id="nfce_val_'+i+'" type="number" step="0.01" min="0.01" value="'+item.valor+'"></div>'
+        +'<div class="field"><label>Desconto (R$)</label><input id="nfce_desc_'+i+'" type="number" step="0.01" value="'+item.desc+'"></div></div>';
+    } else {
+      div.innerHTML='<button class="remover" onclick="removerItemNfce('+i+')" title="Remover">x</button>'
+        +'<div class="grid3"><div class="field span3"><label>Produto ID <span class="req">*</span></label>'
+        +'<input id="nfce_pid_'+i+'" value="'+(item.produtoId||'')+'" placeholder="UUID do produto"></div>'
+        +'<div class="field"><label>Quantidade</label><input id="nfce_qtd_'+i+'" type="number" step="0.001" min="0.001" value="'+item.qtd+'"></div>'
+        +'<div class="field"><label>Valor Unitario (R$)</label><input id="nfce_val_'+i+'" type="number" step="0.01" min="0.01" value="'+item.valor+'"></div>'
+        +'<div class="field"><label>Desconto (R$)</label><input id="nfce_desc_'+i+'" type="number" step="0.01" value="'+item.desc+'"></div></div>';
+    }
+    container.appendChild(div);
+  });
+}
+function selecionarProdutoItemNfce(i){var sel=document.getElementById('nfce_pid_'+i);var prod=produtosCadastrados.find(function(p){return p.id===sel.value;});if(prod){var valEl=document.getElementById('nfce_val_'+i);if(valEl)valEl.value=prod.preco.toFixed(2);}}
+function adicionarItemNfce(){itensNfce.push({produtoId:estado.produtoId||'',qtd:1,valor:100,desc:0});renderItensNfce();}
+function removerItemNfce(i){if(itensNfce.length>1){itensNfce.splice(i,1);renderItensNfce();}}
+function coletarItensNfce(){return itensNfce.map(function(_,i){return{produtoId:(document.getElementById('nfce_pid_'+i)||{}).value||'',quantidade:parseFloat((document.getElementById('nfce_qtd_'+i)||{}).value)||1,valorUnitario:parseFloat((document.getElementById('nfce_val_'+i)||{}).value)||0,valorDesconto:parseFloat((document.getElementById('nfce_desc_'+i)||{}).value)||0};});}
+
+async function salvarCsc(){
+  limparAlerta('alertaCsc');
+  if(!estado.empresaId){mostrarAlerta('alertaCsc','error','Cadastre a empresa primeiro.');return;}
+  var cscId=v('csc_id'),cscToken=v('csc_token');
+  if(!cscId||!cscToken){mostrarAlerta('alertaCsc','error','Preencha o CSC ID e o Token.');return;}
+  spin('spinCsc',true);
+  try{
+    var res=await fetch(API+'/api/empresa/'+estado.empresaId+'/csc',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({cscId:cscId,cscToken:cscToken})});
+    if(!res.ok){var d=await res.json().catch(function(){return{};});throw new Error(d.erro||'HTTP '+res.status);}
+    estado.cscSalvo=true;atualizarEstadoBar();
+    mostrarAlerta('alertaCsc','success','CSC salvo com sucesso!');
+  }catch(e){mostrarAlerta('alertaCsc','error',e.message);}
+  finally{spin('spinCsc',false);}
+}
+
+async function verificarCscSalvo(){
+  if(!estado.empresaId)return;
+  try{
+    var res=await fetch(API+'/api/empresa/'+estado.empresaId);
+    if(!res.ok)return;
+    var data=await res.json();
+    if(data.cscSalvo){estado.cscSalvo=true;atualizarEstadoBar();mostrarAlerta('alertaCsc','success','CSC ja configurado. Envie novamente para atualizar.');}
+  }catch(e){}
+}
+
+async function emitirNFCe(){
+  limparAlerta('alertaNfce');
+  document.getElementById('resultNfce').style.display='none';
+  if(!estado.empresaId){mostrarAlerta('alertaNfce','error','Empresa nao configurada.');return;}
+  var itensList=coletarItensNfce();
+  if(itensList.some(function(it){return!it.produtoId;})){mostrarAlerta('alertaNfce','error','Selecione o produto em todos os itens.');return;}
+  spin('spinNfce',true);
+  try{
+    var cpf=v('nfce_cpf').replace(/\D/g,'');
+    var body={empresaId:estado.empresaId,itens:itensList,serie:v('nfce_serie')||'1',cpfConsumidor:cpf||null,valorFrete:parseFloat(v('nfce_frete'))||0,valorDesconto:0,formaPagamento:v('nfce_pag')||'01',informacaoComplementar:v('nfce_info')||null};
+    var res=await fetch(API+'/api/nfe/emitir-nfce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var data=await safeJson(res);
+    var resultEl=document.getElementById('resultNfce');resultEl.style.display='block';
+    var ok=res.ok&&data.sucesso;
+    document.getElementById('nfceTitulo').textContent=ok?'NFC-e Autorizada!':'Erro na Emissao NFC-e';
+    var badges='';
+    if(data.cStat)badges+='<span class="badge '+(ok?'badge-green':'badge-red')+'">cStat: '+data.cStat+'</span>';
+    if(data.protocolo)badges+=' <span class="badge badge-blue">Protocolo: '+data.protocolo+'</span>';
+    document.getElementById('nfceBadge').innerHTML=badges;
+    var qrArea=document.getElementById('nfceQrArea');
+    if(ok&&data.qrCodeUrl){qrArea.style.display='block';document.getElementById('nfceQrLink').href=data.qrCodeUrl;document.getElementById('nfceQrLink').textContent=data.qrCodeUrl;}
+    else{qrArea.style.display='none';}
+    document.getElementById('nfceJson').innerHTML=jsonBonito(data);
+    resultEl.scrollIntoView({behavior:'smooth'});
+  }catch(e){mostrarAlerta('alertaNfce','error','Erro: '+e.message);}
+  finally{spin('spinNfce',false);}
+}
+
+// Init
+function toggleConsumidorFinal(){/* legado — nao usado mais */}
+
+function downloadXml(notaId){window.open(API+'/api/nfe/'+notaId+'/xml','_blank');}
+function downloadDanfe(notaId){window.open(API+'/api/nfe/'+notaId+'/danfe','_blank');}
+
+function importarXmlEntrada(){
+  var empId=v('en_empresaId');
+  if(!empId){mostrarAlerta('alertaEntrada','error','Selecione a empresa antes de importar o XML.');return;}
+  var input=document.createElement('input');input.type='file';input.accept='.xml';
+  input.onchange=function(e){
+    var file=e.target.files[0];if(!file)return;
+    var reader=new FileReader();
+    reader.onload=async function(ev){
+      var base64=btoa(ev.target.result);
+      try{
+        var res=await fetchAuth(API+'/api/nfe/importar-xml-entrada',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresaId:empId,xmlBase64:base64})});
+        var data=await safeJson(res);
+        mostrarAlerta('alertaEntrada',data.sucesso?'success':'error',data.mensagem||(data.sucesso?'Importado!':'Erro'));
+      }catch(ex){mostrarAlerta('alertaEntrada','error','Erro: '+ex.message);}
+    };
+    reader.readAsBinaryString(file);
+  };
+  input.click();
+}
+
+function exportarXmlLote(){
+  var ini=prompt('Data inicio (AAAA-MM-DD):');if(!ini)return;
+  var fim=prompt('Data fim (AAAA-MM-DD):');if(!fim)return;
+  var cnpj=v('nf_cnpj');
+  if(!cnpj){alert('Informe o CNPJ do lojista antes de exportar.');return;}
+  // Need empresaId from loaded list: try to find by CNPJ
+  var emp=empresasCadastradas&&empresasCadastradas.find(function(e){return e.cnpj&&e.cnpj.replace(/\D/g,'')===cnpj.replace(/\D/g,'');});
+  if(!emp){alert('Empresa nao encontrada no cadastro local. Busque as NF-es primeiro.');return;}
+  window.open(API+'/api/nfe/exportar-xml-lote?empresaId='+encodeURIComponent(emp.id)+'&dataInicio='+ini+'&dataFim='+fim,'_blank');
+}
+
+async function cancelarNota(notaId, empresaId){
+  var just=prompt('Justificativa do cancelamento (min 15 caracteres):');
+  if(!just||just.trim().length<15){alert('Justificativa deve ter pelo menos 15 caracteres.');return;}
+  if(!confirm('Confirmar cancelamento da nota?'))return;
+  try{
+    var res=await fetchAuth(API+'/api/nfe/cancelar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresaId:empresaId,notaFiscalId:notaId,justificativa:just.trim()})});
+    var data=await safeJson(res);
+    if(res.ok&&data.sucesso)alert('Nota cancelada com sucesso! Protocolo: '+(data.protocolo||'N/A'));
+    else alert('Erro ao cancelar: '+(data.erro||data.xMotivo||'Erro desconhecido'));
+    consultarNuvemFiscal();
+  }catch(e){alert('Erro: '+e.message);}
+}
+
+function downloadSpedBlocoE(){
+  var empId=v('sp_empresaId'),ini=v('sp_ini'),fim=v('sp_fim');
+  if(!empId||!ini||!fim){mostrarAlerta('alertaSped','error','Preencha empresa e periodo.');return;}
+  window.open(API+'/api/nfe/sped?empresaId='+encodeURIComponent(empId)+'&dataInicio='+ini+'&dataFim='+fim,'_blank');
+  mostrarAlerta('alertaSped','info','Bloco E incluido no arquivo SPED EFD (registros E001/E100/E110/E990).');
+}
+
+function downloadSpedBlocoH(){
+  var empId=v('sp_empresaId'),ini=v('sp_ini'),fim=v('sp_fim');
+  if(!empId||!ini||!fim){mostrarAlerta('alertaSped','error','Preencha empresa e periodo.');return;}
+  window.open(API+'/api/nfe/sped?empresaId='+encodeURIComponent(empId)+'&dataInicio='+ini+'&dataFim='+fim,'_blank');
+  mostrarAlerta('alertaSped','info','Bloco H incluido no arquivo SPED EFD (registros H001/H005/H010/H990).');
+}
+
+function downloadEfdContrib(){
+  limparAlerta('alertaEfc');
+  var empId=v('efc_empresaId'),ini=v('efc_ini'),fim=v('efc_fim');
+  if(!empId){mostrarAlerta('alertaEfc','error','EmpresaId e obrigatorio.');return;}
+  if(!ini||!fim){mostrarAlerta('alertaEfc','error','Informe a data de inicio e fim.');return;}
+  window.open(API+'/api/nfe/efd-contribuicoes?empresaId='+encodeURIComponent(empId)+'&dataInicio='+ini+'&dataFim='+fim,'_blank');
+}
+
+function preencherMesAtualEfc(){
+  var now=new Date();
+  var y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0');
+  var ultimo=new Date(y,now.getMonth()+1,0).getDate();
+  document.getElementById('efc_ini').value=y+'-'+m+'-01';
+  document.getElementById('efc_fim').value=y+'-'+m+'-'+String(ultimo).padStart(2,'0');
+}
+
+async function emitirNfse(){
+  limparAlerta('alertaNfse');
+  document.getElementById('resultNfse').style.display='none';
+  var empId=v('nfse_empresaId'),nome=v('nfse_nome'),valor=parseFloat(v('nfse_valor')||0);
+  if(!empId){mostrarAlerta('alertaNfse','error','Selecione a empresa.');return;}
+  if(!nome){mostrarAlerta('alertaNfse','error','Nome do servico e obrigatorio.');return;}
+  if(!valor||valor<=0){mostrarAlerta('alertaNfse','error','Valor do servico deve ser maior que zero.');return;}
+  spin('spinNfse',true);
+  try{
+    var body={empresaId:empId,nomeServico:nome,valorServico:valor};
+    var disc=v('nfse_disc');if(disc)body.discriminacao=disc;
+    var aliq=parseFloat(v('nfse_aliq')||0);if(aliq>0)body.aliquotaISS=aliq;
+    var cpfCnpj=v('nfse_tomCpfCnpj');if(cpfCnpj)body.cpfCnpjTomador=cpfCnpj;
+    var tomNome=v('nfse_tomNome');if(tomNome)body.nomeTomador=tomNome;
+    var codSrv=v('nfse_codSrv');if(codSrv)body.codigoServico=codSrv;
+    var res=await fetchAuth(API+'/api/nfse/emitir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var data=await safeJson(res);
+    document.getElementById('resultNfse').style.display='block';
+    var ok=res.ok&&data.sucesso;
+    document.getElementById('nfseTitulo').textContent=ok?'NFS-e Emitida!':'Erro ao emitir NFS-e';
+    document.getElementById('nfseBadge').innerHTML='<span class="badge '+(ok?'badge-green':'badge-red')+'">'+(ok?'Emitida':'Erro')+'</span>'+(data.numeroNfse?' <span class="badge badge-blue">NFS-e #'+data.numeroNfse+'</span>':'');
+    document.getElementById('nfseJson').innerHTML=jsonBonito(data);
+  }catch(e){mostrarAlerta('alertaNfse','error','Erro: '+e.message);}
+  finally{spin('spinNfse',false);}
+}
+
+function preencherMesAtual(){
+  var now=new Date();
+  var y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0');
+  var ultimo=new Date(y,now.getMonth()+1,0).getDate();
+  document.getElementById('sp_ini').value=y+'-'+m+'-01';
+  document.getElementById('sp_fim').value=y+'-'+m+'-'+String(ultimo).padStart(2,'0');
+}
+
+function downloadSped(){
+  limparAlerta('alertaSped');
+  var empId=v('sp_empresaId'),ini=v('sp_ini'),fim=v('sp_fim');
+  if(!empId){mostrarAlerta('alertaSped','error','EmpresaId e obrigatorio.');return;}
+  if(!ini||!fim){mostrarAlerta('alertaSped','error','Informe a data de inicio e fim.');return;}
+  window.open(API+'/api/nfe/sped?empresaId='+encodeURIComponent(empId)+'&dataInicio='+ini+'&dataFim='+fim,'_blank');
+}
+
+async function enviarCce(){
+  limparAlerta('alertaCce');
+  document.getElementById('resultCce').style.display='none';
+  var empId=v('cce_empresaId'),notaId=v('cce_notaId'),texto=v('cce_texto');
+  if(!empId||!notaId){mostrarAlerta('alertaCce','error','Informe EmpresaId e NotaFiscalId.');return;}
+  if(texto.length<15){mostrarAlerta('alertaCce','error','Texto de correcao deve ter ao menos 15 caracteres.');return;}
+  if(texto.length>1000){mostrarAlerta('alertaCce','error','Texto de correcao deve ter no maximo 1000 caracteres.');return;}
+  spin('spinCce',true);
+  try{
+    var res=await fetch(API+'/api/nfe/cce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresaId:empId,notaFiscalId:notaId,correcaoTexto:texto})});
+    var data=await safeJson(res);
+    document.getElementById('resultCce').style.display='block';
+    var ok=res.ok&&data.sucesso;
+    document.getElementById('cceTitulo').textContent=ok?'CCe Registrada com sucesso!':'Erro ao enviar CCe';
+    document.getElementById('cceBadge').innerHTML='<span class="badge '+(ok?'badge-green':'badge-red')+'">'+(data.cStat||'HTTP '+res.status)+'</span>'+(data.protocolo?' <span class="badge badge-blue">Protocolo: '+data.protocolo+'</span>':'')+(data.xMotivo?' <span style="color:var(--muted);font-size:.8rem;margin-left:6px">'+data.xMotivo+'</span>':'');
+    document.getElementById('cceJson').innerHTML=jsonBonito(data);
+    document.getElementById('resultCce').scrollIntoView({behavior:'smooth'});
+  }catch(e){mostrarAlerta('alertaCce','error','Erro: '+e.message);}
+  finally{spin('spinCce',false);}
+}
+
+// ── Auth local (sem Supabase) ─────────────────────────────────────────────────
+let _authToken = null;
+
+function authHeaders() {
+  return _authToken ? { 'Authorization': 'Bearer ' + _authToken } : {};
+}
+
+async function fetchAuth(url, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign({}, opts.headers || {}, authHeaders());
+  return fetch(url, opts);
+}
+
+async function fazerLogout() {
+  localStorage.removeItem('jubilados_token');
+  window.location.href = '/login.html';
+}
+
+// ── Auth guard: usa token local armazenado no localStorage ──────────────────
+(function() {
+  var token = localStorage.getItem('jubilados_token');
+  if (!token) {
+    window.location.href = '/login.html';
+    return;
+  }
+  _authToken = token;
+  var emailEl = document.getElementById('userEmail');
+  // Decodifica email do JWT (payload é base64)
+  try {
+    var payload = JSON.parse(atob(token.split('.')[1]));
+    if (emailEl && payload.email) emailEl.textContent = payload.email;
+  } catch(e) {}
+  var logoutBtn = document.getElementById('btnLogout');
+  if (logoutBtn) logoutBtn.style.display = '';
+})();
+
+estado.empresaId='dd104b57-010a-4458-8699-d63807e205d3';
+estado.cnpj='21362844000152';
+estado.clienteId='0865f76e-bff7-48ef-8b02-f24b6a468e3d';
+estado.clienteNome='WURTH DO BRASIL';
+estado.tipoDest='cnpj';
+tipoDest='cnpj';
+estado.produtoId='9ae15d08-81e9-4767-911e-8faf96ad2821';
+estado.produtoNome='Produto Teste Homologacao';
+produtosCadastrados=[{id:estado.produtoId,nome:estado.produtoNome,preco:100,unidade:'UN'}];
+clientesCadastrados=[{id:estado.clienteId,nome:estado.clienteNome,cpf_CNPJ:'43648971003170'}];
+estado.ultimaChave='25260421362844000152550010000000241754171544';
+estado.ultimaNotaId='3e7fc1b1-1306-4793-aba0-b1a76ac58207';
+
+document.getElementById('empresaIdLabel').textContent='ID: '+estado.empresaId;
+document.getElementById('clienteIdLabel').textContent='ID: '+estado.clienteId;
+document.getElementById('clienteIdLabelCnpj').textContent='ID: '+estado.clienteId;
+document.getElementById('produtoIdLabel').textContent='ID: '+estado.produtoId;
+
+document.getElementById('e_cnpj').value='21362844000152';
+document.getElementById('e_razao').value='Orlando Lucindo de Pontes Neto Materiais de Construcao';
+document.getElementById('e_fantasia').value='Azulzao da Construcao';
+document.getElementById('e_ie').value='162421303';
+document.getElementById('e_fone').value='83998347220';
+document.getElementById('e_logradouro').value='R OTAVIANO D MONTEIRO P FILHO';
+document.getElementById('e_numero').value='19';
+document.getElementById('e_complemento').value='BOX B';
+document.getElementById('e_bairro').value='FUNCIONARIOS';
+document.getElementById('e_municipio').value='JOAO PESSOA';
+document.getElementById('e_uf').value='PB';
+document.getElementById('e_cep').value='58078340';
+
+document.getElementById('c_nome').value='';
+document.getElementById('c_cpfcnpj').value='';
+
+document.getElementById('c_nome_cnpj').value='WURTH DO BRASIL PECAS DE FIXACAO LTDA';
+document.getElementById('c_cpfcnpj_cnpj').value='43648971003170';
+document.getElementById('c_ie_cnpj').value='161585078';
+document.getElementById('c_fone_cnpj').value='1146131900';
+document.getElementById('c_logradouro_cnpj').value='ROD BR-230';
+document.getElementById('c_numero_cnpj').value='SN';
+document.getElementById('c_complemento_cnpj').value='KM28 SALA 00003';
+document.getElementById('c_bairro_cnpj').value='CRISTO REDENTOR';
+document.getElementById('c_municipio_cnpj').value='JOAO PESSOA';
+document.getElementById('c_codmun_cnpj').value='2507507';
+document.getElementById('c_uf_cnpj').value='PB';
+document.getElementById('c_cep_cnpj').value='58071680';
+
+// inicializa tipo de destinatario no UI (cnpj por padrao com WURTH pre-preenchida)
+selecionarTipoDest('cnpj');
+// restaura cliente/produto apos selecionarTipoDest (que limpa clienteId/clienteNome)
+estado.clienteId='0865f76e-bff7-48ef-8b02-f24b6a468e3d';
+estado.clienteNome='WURTH DO BRASIL';
+estado.produtoId='9ae15d08-81e9-4767-911e-8faf96ad2821';
+estado.produtoNome='Produto Teste Homologacao';
+atualizarEstadoBar();
+
+document.getElementById('cs_chave').value=estado.ultimaChave;
+preencherMesAtual();
+
+mostrarAlerta('alertaEmpresa','success','Empresa Orlando ja cadastrada no banco.');
+mostrarAlerta('alertaClienteCnpj','success','WURTH do Brasil ja cadastrada como destinataria. Clique em Proximo ou selecione outro tipo de destinatario acima.');
+mostrarAlerta('alertaProduto','success','Produto Teste ja registrado. Selecione-o na parte superior da tela.');
+
+atualizarEstadoBar();
+verificarCertificadoSalvo();
+verificarCscSalvo();
+renderItensNfce();
+carregarEmpresasSelects();
+</script>
+</body>
+</html>

@@ -13,6 +13,8 @@ public class JubiladosDbContext : DbContext
     public DbSet<Cliente> Clientes => Set<Cliente>();
     public DbSet<NotaFiscal> NotasFiscais => Set<NotaFiscal>();
     public DbSet<NotaItem> NotaItens => Set<NotaItem>();
+    public DbSet<UsuarioEmpresa> UsuarioEmpresas => Set<UsuarioEmpresa>();
+    public DbSet<Usuario>        Usuarios        => Set<Usuario>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -23,6 +25,8 @@ public class JubiladosDbContext : DbContext
         modelBuilder.ApplyConfiguration(new ClienteConfiguration());
         modelBuilder.ApplyConfiguration(new NotaFiscalConfiguration());
         modelBuilder.ApplyConfiguration(new NotaItemConfiguration());
+        modelBuilder.ApplyConfiguration(new UsuarioEmpresaConfiguration());
+        modelBuilder.ApplyConfiguration(new UsuarioConfiguration());
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

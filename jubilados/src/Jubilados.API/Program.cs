@@ -1,10 +1,13 @@
 using System.Globalization;
+using System.Text;
 using Jubilados.Application.Configuration;
 using Jubilados.Application.Interfaces;
 using Jubilados.Application.Services;
 using Jubilados.Infrastructure.Data;
 using Jubilados.Infrastructure.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 // Garante que todos os formatos numéricos usem ponto (.) como separador decimal
@@ -54,6 +57,9 @@ builder.Services.AddScoped<InotaEntradaService, NotaEntradaService>();
 builder.Services.AddScoped<IManifestacaoService, ManifestacaoService>();
 builder.Services.AddScoped<IDanfeService, DanfeService>();
 builder.Services.AddScoped<ISpedService, SpedService>();
+builder.Services.AddScoped<ICancelamentoService, CancelamentoService>();
+builder.Services.AddScoped<ISpedContribuicoesService, SpedContribuicoesService>();
+builder.Services.AddScoped<INfseService, NfseService>();
 
 // ── Controllers + Validação ───────────────────────────────────────────────────
 builder.Services.AddControllers()
@@ -91,6 +97,46 @@ builder.Services.AddCors(options =>
 builder.Services.AddHealthChecks()
     .AddNpgSql(connectionString, name: "supabase-postgres");
 
+// ── JWT Bearer Authentication (Supabase Auth) ─────────────────────────────────
+var jwtSecret = Environment.GetEnvironmentVariable("SUPABASE_JWT_SECRET")
+    ?? builder.Configuration["Supabase:JwtSecret"]
+    ?? string.Empty;
+
+if (!string.IsNullOrEmpty(jwtSecret))
+{
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+                ValidateIssuer = false,
+                ValidateAudience = false,
+                ClockSkew = TimeSpan.Zero
+            };
+        });
+}
+else
+{
+    // Dev mode: aceita qualquer JWT do Supabase sem validar assinatura (apenas decodifica claims)
+    Console.WriteLine("[STARTUP] AVISO: SUPABASE_JWT_SECRET não configurado — JWT aceito sem validação de assinatura (dev).");
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.MapInboundClaims = false;
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = false,
+                ValidateIssuer           = false,
+                ValidateAudience         = false,
+                ValidateLifetime         = false,
+                SignatureValidator       = (token, _) =>
+                    new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().ReadJwtToken(token)
+            };
+        });
+}
+
 // ── Build App ─────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
@@ -112,6 +158,59 @@ using (var startupScope = app.Services.CreateScope())
         await db.Database.ExecuteSqlRawAsync(@"
             ALTER TABLE notas_fiscais
                 ADD COLUMN IF NOT EXISTS modelo VARCHAR(2) NULL;");
+        // Migration 006b: garante modelo NOT NULL com default '55' (IF NOT EXISTS deixou NULL para registros antigos)
+        await db.Database.ExecuteSqlRawAsync(@"
+            UPDATE notas_fiscais SET modelo = '55' WHERE modelo IS NULL;
+            ALTER TABLE notas_fiscais ALTER COLUMN modelo SET DEFAULT '55';
+            ALTER TABLE notas_fiscais ALTER COLUMN modelo SET NOT NULL;");
+
+        // Migration 004: tabela usuario_empresa (auth Supabase)
+        await db.Database.ExecuteSqlRawAsync(@"
+            CREATE TABLE IF NOT EXISTS usuario_empresa (
+                id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+                supabase_user_id     UUID        NOT NULL UNIQUE,
+                empresa_id           UUID        REFERENCES empresas(id) ON DELETE SET NULL,
+                onboarding_concluido BOOLEAN     NOT NULL DEFAULT false,
+                criado_em            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_usuario_empresa_supabase_user_id
+                ON usuario_empresa (supabase_user_id);");
+
+        // Migration 005: dados fiscais da empresa + estoque produto
+        await db.Database.ExecuteSqlRawAsync(@"
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS ramo                              VARCHAR(50);
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS regime_tributario                 VARCHAR(30);
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS crt                               INTEGER NOT NULL DEFAULT 1;
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS cnae                              VARCHAR(7);
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS inscricao_municipal               VARCHAR(30);
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS emite_nfse                        BOOLEAN NOT NULL DEFAULT false;
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS inscrito_suframa                  BOOLEAN NOT NULL DEFAULT false;
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS csosn_padrao                      VARCHAR(3) DEFAULT '102';
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS cst_icms_padrao                   VARCHAR(3);
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS cst_pis_padrao                    VARCHAR(2);
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS cst_cofins_padrao                 VARCHAR(2);
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS aliquota_pis                      DECIMAL(5,2) DEFAULT 0.65;
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS aliquota_cofins                   DECIMAL(5,2) DEFAULT 3.00;
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS aliquota_iss                      DECIMAL(5,2) DEFAULT 5.00;
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS opera_como_substituto_tributario  BOOLEAN DEFAULT false;
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS mva_padrao                        DECIMAL(5,2);
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS possui_st_bebidas                 BOOLEAN DEFAULT false;
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS contador_nome                     VARCHAR(100);
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS contador_crc                      VARCHAR(20);
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS contador_email                    VARCHAR(100);
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS faixa_simples                     VARCHAR(10);
+            ALTER TABLE produtos ADD COLUMN IF NOT EXISTS quantidade_estoque                DECIMAL(15,4) DEFAULT 0;
+            ALTER TABLE produtos ADD COLUMN IF NOT EXISTS ean                               VARCHAR(14);");
+
+        // Migration 006: tabela de usuarios locais (auth sem Supabase)
+        await db.Database.ExecuteSqlRawAsync(@"
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+                email      VARCHAR(255) NOT NULL UNIQUE,
+                senha_hash TEXT         NOT NULL,
+                criado_em  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+            );");
+
         Console.WriteLine("[STARTUP] Migrations manuais aplicadas.");
 
         // Seed: insere dados iniciais se a empresa de Orlando não existir
@@ -178,6 +277,41 @@ using (var startupScope = app.Services.CreateScope())
             await db.SaveChangesAsync();
             Console.WriteLine("[STARTUP] Seed inicial inserido.");
         }
+
+        // Seed: usuário local pablo9hierro@gmail.com / 123456
+        var userSeedEmail = "pablo9hierro@gmail.com";
+        var userSeedId    = Guid.Parse("a1b2c3d4-0000-0000-0000-000000000001");
+        if (!await db.Usuarios.AnyAsync(u => u.Email == userSeedEmail))
+        {
+            var salt = System.Security.Cryptography.RandomNumberGenerator.GetBytes(16);
+            var hash = System.Security.Cryptography.Rfc2898DeriveBytes.Pbkdf2(
+                "123456", salt, 100_000,
+                System.Security.Cryptography.HashAlgorithmName.SHA256, 32);
+            var senhaHash = Convert.ToBase64String(salt) + "." + Convert.ToBase64String(hash);
+
+            db.Usuarios.Add(new Jubilados.Domain.Entities.Usuario
+            {
+                Id        = userSeedId,
+                Email     = userSeedEmail,
+                SenhaHash = senhaHash,
+                CriadoEm  = DateTime.UtcNow
+            });
+
+            // Vincula o usuário à empresa seed com onboarding já concluído
+            if (!await db.UsuarioEmpresas.AnyAsync(u => u.SupabaseUserId == userSeedId))
+            {
+                db.UsuarioEmpresas.Add(new Jubilados.Domain.Entities.UsuarioEmpresa
+                {
+                    SupabaseUserId      = userSeedId,
+                    EmpresaId           = empresaId,
+                    OnboardingConcluido = true,
+                    CriadoEm            = DateTime.UtcNow
+                });
+            }
+
+            await db.SaveChangesAsync();
+            Console.WriteLine("[STARTUP] Usuário seed pablo9hierro@gmail.com criado.");
+        }
     }
     catch (Exception ex)
     {
@@ -197,6 +331,7 @@ app.UseStaticFiles();
 
 app.UseCors();
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");

@@ -421,6 +421,7 @@ public class NFeService : INFeService
             .OrderByDescending(n => n.EmitidaEm)
             .Select(n => new NuvemFiscalNotaDto(
                 n.Id,
+                n.EmpresaId,
                 n.TipoOperacao,
                 n.ChaveAcesso,
                 n.Numero,
@@ -662,7 +663,10 @@ public class NFeService : INFeService
         sb.AppendLine($"      <nNF>{nota.Numero}</nNF>");
         sb.AppendLine($"      <dhEmi>{dEmi}</dhEmi>");
         sb.AppendLine("      <tpNF>1</tpNF>");
-        sb.AppendLine("      <idDest>1</idDest>");
+        // idDest: 1=interna, 2=interestadual, 3=exterior
+        var ufDest = cliente?.UF ?? empresa.UF;
+        var idDest = dto.DestinoOperacao ?? ((!string.IsNullOrEmpty(ufDest) && ufDest != empresa.UF) ? "2" : "1");
+        sb.AppendLine($"      <idDest>{idDest}</idDest>");
         sb.AppendLine($"      <cMunFG>{_options.CodigoMunicipio}</cMunFG>");
         sb.AppendLine("      <tpImp>1</tpImp>");
         sb.AppendLine($"      <tpEmis>{tpEmis}</tpEmis>");
@@ -670,7 +674,7 @@ public class NFeService : INFeService
         sb.AppendLine($"      <tpAmb>{ambiente}</tpAmb>");
         sb.AppendLine("      <finNFe>1</finNFe>");
         sb.AppendLine("      <indFinal>1</indFinal>");
-        sb.AppendLine("      <indPres>1</indPres>");
+        sb.AppendLine($"      <indPres>{dto.IndPres ?? "1"}</indPres>");
         sb.AppendLine("      <procEmi>0</procEmi>");
         sb.AppendLine("      <verProc>1.0.0</verProc>");
         if (tpEmis != 1)
@@ -698,7 +702,7 @@ public class NFeService : INFeService
         sb.AppendLine("        <xPais>Brasil</xPais>");
         sb.AppendLine("      </enderEmit>");
         sb.AppendLine($"      <IE>{empresa.InscricaoEstadual}</IE>");
-        sb.AppendLine("      <CRT>1</CRT>");
+        sb.AppendLine($"      <CRT>{empresa.CRT}</CRT>");
         sb.AppendLine("    </emit>");
 
         if (cliente is not null)
@@ -768,6 +772,10 @@ public class NFeService : INFeService
             sb.AppendLine("    </dest>");
         }
 
+        // DIFAL EC 87/2015: aplica apenas CRT=2/3, operação interestadual (idDest=2), consumidor final (indFinal=1)
+        var isDifal = empresa.CRT != 1 && idDest == "2";
+        decimal totalVICMSUFDest = 0m;
+
         int nItem = 1;
         foreach (var item in nota.Itens)
         {
@@ -793,23 +801,81 @@ public class NFeService : INFeService
             // Decide grupo de ICMS: Simples Nacional (CSOSN) ou Regime Normal (CST)
             var csosn = produto.CSOSN?.Trim();
             var cst   = produto.CST?.Trim();
-            // CRT=1 (Simples Nacional): NUNCA usar CST para ICMS — sempre CSOSN
-            // Se o produto tem CSOSN definido, usa ele; senão usa 400 (não tributado pelo SN)
-            // NF-e 4.00: CSOSN 102/103/300/400 → elemento ICMSSN102 (não existe ICMSSN400)
-            var csosnFinal = !string.IsNullOrEmpty(csosn) ? csosn.PadLeft(3, '0') : "400";
-            sb.AppendLine("        <ICMS><ICMSSN102>");
-            sb.AppendLine("          <orig>0</orig>");
-            sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
-            sb.AppendLine("        </ICMSSN102></ICMS>");
-            sb.AppendLine("        <PIS><PISNT><CST>07</CST></PISNT></PIS>");
-            sb.AppendLine("        <COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS>");
+            if (empresa.CRT == 1)
+            {
+                // Simples Nacional: usa CSOSN
+                var csosnFinal = !string.IsNullOrEmpty(csosn) ? csosn.PadLeft(3, '0') : "400";
+                sb.AppendLine("        <ICMS><ICMSSN102>");
+                sb.AppendLine("          <orig>0</orig>");
+                sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
+                sb.AppendLine("        </ICMSSN102></ICMS>");
+                sb.AppendLine("        <PIS><PISNT><CST>07</CST></PISNT></PIS>");
+                sb.AppendLine("        <COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS>");
+            }
+            else
+            {
+                // Regime Normal (Lucro Presumido ou Real): usa CST
+                var cstFinal = !string.IsNullOrEmpty(cst) ? cst.PadLeft(2, '0') : "40";
+                if (item.AliquotaICMS > 0 && cstFinal != "40" && cstFinal != "41" && cstFinal != "50")
+                {
+                    sb.AppendLine("        <ICMS><ICMS00>");
+                    sb.AppendLine("          <orig>0</orig>");
+                    sb.AppendLine($"          <CST>{cstFinal}</CST>");
+                    sb.AppendLine("          <modBC>3</modBC>");
+                    sb.AppendLine($"          <vBC>{item.BaseICMS:F2}</vBC>");
+                    sb.AppendLine($"          <pICMS>{item.AliquotaICMS:F2}</pICMS>");
+                    sb.AppendLine($"          <vICMS>{item.ValorICMS:F2}</vICMS>");
+                    sb.AppendLine("        </ICMS00></ICMS>");
+                }
+                else
+                {
+                    sb.AppendLine("        <ICMS><ICMS40>");
+                    sb.AppendLine("          <orig>0</orig>");
+                    sb.AppendLine($"          <CST>{cstFinal}</CST>");
+                    sb.AppendLine("        </ICMS40></ICMS>");
+                }
+                // DIFAL EC 87/2015 — apenas operação interestadual (idDest=2), CRT=2/3, consumidor final
+                if (isDifal && cstFinal != "40" && cstFinal != "41" && cstFinal != "50")
+                {
+                    var vBCDifal = item.BaseICMS > 0 ? item.BaseICMS : item.ValorTotal;
+                    var pUFDest  = AliquotaInternaUF(ufDest);
+                    var pInter   = AliquotaInterestadual(empresa.UF, ufDest);
+                    var pDif     = pUFDest - pInter;
+                    if (pDif > 0)
+                    {
+                        var vDifal = Math.Round(vBCDifal * pDif / 100m, 2);
+                        totalVICMSUFDest += vDifal;
+                        sb.AppendLine("        <ICMSUFDest>");
+                        sb.AppendLine($"          <vBCUFDest>{vBCDifal:F2}</vBCUFDest>");
+                        sb.AppendLine($"          <vBCFCPUFDest>{vBCDifal:F2}</vBCFCPUFDest>");
+                        sb.AppendLine("          <pFCPUFDest>0.00</pFCPUFDest>");
+                        sb.AppendLine($"          <pICMSUFDest>{pUFDest:F2}</pICMSUFDest>");
+                        sb.AppendLine($"          <pICMSInter>{pInter:F2}</pICMSInter>");
+                        sb.AppendLine("          <pICMSInterPart>100.00</pICMSInterPart>");
+                        sb.AppendLine("          <vFCPUFDest>0.00</vFCPUFDest>");
+                        sb.AppendLine($"          <vICMSUFDest>{vDifal:F2}</vICMSUFDest>");
+                        sb.AppendLine("          <vICMSUFRemet>0.00</vICMSUFRemet>");
+                        sb.AppendLine("        </ICMSUFDest>");
+                    }
+                }
+                var cstPis = empresa.CstPisPadrao ?? "07";
+                var cstCof = empresa.CstCofinsPadrao ?? "07";
+                if (item.ValorPIS > 0 && cstPis != "07")
+                    sb.AppendLine($"        <PIS><PISAliq><CST>{cstPis}</CST><vBC>{item.ValorTotal:F2}</vBC><pPIS>{item.AliquotaPIS:F4}</pPIS><vPIS>{item.ValorPIS:F2}</vPIS></PISAliq></PIS>");
+                else
+                    sb.AppendLine("        <PIS><PISNT><CST>07</CST></PISNT></PIS>");
+                if (item.ValorCOFINS > 0 && cstCof != "07")
+                    sb.AppendLine($"        <COFINS><COFINSAliq><CST>{cstCof}</CST><vBC>{item.ValorTotal:F2}</vBC><pCOFINS>{item.AliquotaCOFINS:F4}</pCOFINS><vCOFINS>{item.ValorCOFINS:F2}</vCOFINS></COFINSAliq></COFINS>");
+                else
+                    sb.AppendLine("        <COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS>");
+            }
             sb.AppendLine("      </imposto>");
             sb.AppendLine("    </det>");
         }
 
         sb.AppendLine("    <total><ICMSTot>");
         sb.AppendLine("      <vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson>");
-        sb.AppendLine("      <vFCPUFDest>0.00</vFCPUFDest><vICMSUFDest>0.00</vICMSUFDest><vICMSUFRemet>0.00</vICMSUFRemet>");
+        sb.AppendLine($"      <vFCPUFDest>0.00</vFCPUFDest><vICMSUFDest>{totalVICMSUFDest:F2}</vICMSUFDest><vICMSUFRemet>0.00</vICMSUFRemet>");
         sb.AppendLine("      <vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet>");
         sb.AppendLine($"      <vProd>{nota.ValorProdutos:F2}</vProd>");
         sb.AppendLine($"      <vFrete>{nota.ValorFrete:F2}</vFrete><vSeg>{nota.ValorSeguro:F2}</vSeg>");
@@ -820,10 +886,26 @@ public class NFeService : INFeService
         sb.AppendLine("    </ICMSTot></total>");
 
         sb.AppendLine("    <transp><modFrete>9</modFrete></transp>");
+        // Cobrança / Duplicatas
+        if (dto.Duplicatas?.Count > 0)
+        {
+            sb.AppendLine("    <cobr>");
+            sb.AppendLine($"      <fat><nFat>001</nFat><vOrig>{nota.ValorTotal:F2}</vOrig><vDesc>0.00</vDesc><vLiq>{nota.ValorTotal:F2}</vLiq></fat>");
+            int nDup = 1;
+            foreach (var dup in dto.Duplicatas)
+                sb.AppendLine($"      <dup><nDup>{nDup++:D3}</nDup><dVenc>{dup.Vencimento:yyyy-MM-dd}</dVenc><vDup>{dup.Valor:F2}</vDup></dup>");
+            sb.AppendLine("    </cobr>");
+        }
         sb.AppendLine("    <pag><detPag>");
-        sb.AppendLine("      <tPag>01</tPag>");
+        sb.AppendLine($"      <tPag>{dto.FormaPagamento ?? "01"}</tPag>");
         sb.AppendLine($"      <vPag>{nota.ValorTotal:F2}</vPag>");
         sb.AppendLine("    </detPag></pag>");
+        if (!string.IsNullOrWhiteSpace(dto.InformacaoComplementar))
+        {
+            sb.AppendLine("    <infAdic>");
+            sb.AppendLine($"      <infCpl>{XmlEnc(dto.InformacaoComplementar)}</infCpl>");
+            sb.AppendLine("    </infAdic>");
+        }
         sb.AppendLine("  </infNFe>");
         sb.AppendLine("</NFe>");
         return sb.ToString();
@@ -1105,6 +1187,31 @@ public class NFeService : INFeService
     private static string Limpar(string v) => new(v?.Where(char.IsDigit).ToArray() ?? Array.Empty<char>());
     private static string XmlEnc(string v) => System.Security.SecurityElement.Escape(v ?? string.Empty)!;
 
+    // DIFAL EC 87/2015 — alíquota interna por UF de destino
+    private static decimal AliquotaInternaUF(string uf) => uf?.ToUpperInvariant() switch
+    {
+        "AC" => 17m, "AL" => 19m, "AM" => 20m, "AP" => 18m, "BA" => 20.5m,
+        "CE" => 20m, "DF" => 20m, "ES" => 17m, "GO" => 17m, "MA" => 22m,
+        "MG" => 18m, "MS" => 17m, "MT" => 17m, "PA" => 17m, "PB" => 20m,
+        "PE" => 20.5m, "PI" => 21m, "PR" => 12m, "RJ" => 20m, "RN" => 18m,
+        "RO" => 17.5m, "RR" => 20m, "RS" => 17m, "SC" => 12m, "SE" => 19m,
+        "SP" => 18m, "TO" => 20m,
+        _ => 17m
+    };
+
+    // Alíquota interestadual: 7% quando origem S/SE → N/NE/CO; 12% demais
+    private static decimal AliquotaInterestadual(string ufOrigem, string ufDestino)
+    {
+        var sudeste = new HashSet<string> { "SP", "MG", "RJ", "ES" };
+        var sul     = new HashSet<string> { "PR", "SC", "RS" };
+        var nNeCo   = new HashSet<string> { "AC","AL","AM","AP","BA","CE","DF","GO",
+                                            "MA","MS","MT","PA","PB","PE","PI",
+                                            "RN","RO","RR","SE","TO" };
+        var orig = ufOrigem?.ToUpperInvariant() ?? "";
+        var dest = ufDestino?.ToUpperInvariant() ?? "";
+        return (sudeste.Contains(orig) || sul.Contains(orig)) && nNeCo.Contains(dest) ? 7m : 12m;
+    }
+
     // ────────────────────────────────────────────────────────────────────────────
     // NFC-e (Cupom Fiscal Eletrônico — mod=65)
     // ────────────────────────────────────────────────────────────────────────────
@@ -1280,7 +1387,7 @@ public class NFeService : INFeService
         sb.AppendLine("        <xPais>Brasil</xPais>");
         sb.AppendLine("      </enderEmit>");
         sb.AppendLine($"      <IE>{empresa.InscricaoEstadual}</IE>");
-        sb.AppendLine("      <CRT>1</CRT>");
+        sb.AppendLine($"      <CRT>{empresa.CRT}</CRT>");
         sb.AppendLine("    </emit>");
 
         // Destinatário NFC-e: apenas CPF se identificado; sem endereço

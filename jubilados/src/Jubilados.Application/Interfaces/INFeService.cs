@@ -40,6 +40,27 @@ public interface InotaEntradaService
 {
     /// <summary>Consulta NFes de entrada via NFeDistribuicaoDFe.</summary>
     Task<EntradaResultDto> ConsultarNotasEntradaAsync(ConsultarEntradaDto dto, CancellationToken cancellationToken = default);
+
+    /// <summary>Importa um XML de NF-e de entrada (base64), cria produtos automaticamente e registra a nota.</summary>
+    Task<ImportarXmlResultDto> ImportarXmlEntradaAsync(Guid empresaId, string xmlBase64, CancellationToken cancellationToken = default);
+}
+
+public interface ICancelamentoService
+{
+    /// <summary>Cancela uma NF-e autorizada (tpEvento=110111). Prazo: 24 horas após autorização.</summary>
+    Task<CancelamentoResultDto> CancelarAsync(CancelarNFeDto dto, CancellationToken cancellationToken = default);
+}
+
+public interface ISpedContribuicoesService
+{
+    /// <summary>Gera o arquivo EFD Contribuições (PIS/COFINS) para download.</summary>
+    Task<string> GerarEfdContribuicoesAsync(SpedContribuicoesDto dto, CancellationToken cancellationToken = default);
+}
+
+public interface INfseService
+{
+    /// <summary>Emite uma NFS-e via webservice municipal ABRASF 2.04.</summary>
+    Task<NfseResultDto> EmitirNfseAsync(EmitirNfseDto dto, CancellationToken cancellationToken = default);
 }
 
 public interface IManifestacaoService

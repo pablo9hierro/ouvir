@@ -25,6 +25,8 @@ public class ProdutoConfiguration : IEntityTypeConfiguration<Produto>
         builder.Property(p => p.AliquotaIPI).HasColumnName("aliquota_ipi").HasPrecision(5, 2);
         builder.Property(p => p.AliquotaPIS).HasColumnName("aliquota_pis").HasPrecision(5, 2);
         builder.Property(p => p.AliquotaCOFINS).HasColumnName("aliquota_cofins").HasPrecision(5, 2);
+        builder.Property(p => p.EAN).HasColumnName("ean").HasMaxLength(14);
+        builder.Property(p => p.QuantidadeEstoque).HasColumnName("quantidade_estoque").HasPrecision(15, 4).HasDefaultValue(0m);
         builder.Property(p => p.Ativo).HasColumnName("ativo").HasDefaultValue(true);
         builder.Property(p => p.CriadoEm).HasColumnName("criado_em").HasDefaultValueSql("NOW()");
         builder.Property(p => p.AtualizadoEm).HasColumnName("atualizado_em").HasDefaultValueSql("NOW()");

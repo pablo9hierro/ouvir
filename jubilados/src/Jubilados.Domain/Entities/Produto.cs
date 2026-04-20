@@ -20,6 +20,10 @@ public class Produto
     public decimal AliquotaPIS { get; set; }
     public decimal AliquotaCOFINS { get; set; }
 
+    public string? EAN { get; set; }
+    /// <summary>Quantidade em estoque atual — usado no Bloco H do SPED EFD.</summary>
+    public decimal QuantidadeEstoque { get; set; } = 0;
+
     public bool Ativo { get; set; } = true;
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
     public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;

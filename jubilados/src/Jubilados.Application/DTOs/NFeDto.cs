@@ -22,7 +22,12 @@ public record EmitirNFeDto(
     string? InformacaoComplementar = null,
     // Destinatário avulso (quando ClienteId é null)
     string? DestinatarioCpfCnpj = null,
-    string? DestinatarioNome = null
+    string? DestinatarioNome = null,
+    // Campos opcionais adicionais
+    string? IndPres = null,          // "1"=presencial,"2"=internet,"4"=teleatendimento
+    string? DestinoOperacao = null,  // "1"=interna,"2"=interestadual,"3"=exterior
+    string? FormaPagamento = null,   // "01"=dinheiro (padrão)
+    List<DuplicataDto>? Duplicatas = null
 );
 
 public record ItemNFeDto(
@@ -142,6 +147,7 @@ public record InutilizarResultDto(
 
 public record NuvemFiscalItemDto(
     Guid Id,
+    Guid EmpresaId,
     string Tipo,            // "Saída" ou "Entrada"
     string ChaveAcesso,
     int Numero,
@@ -166,6 +172,7 @@ public record NuvemFiscalResultDto(
 /// <summary>Projeção interna usada pelo serviço para montar NuvemFiscalItemDto.</summary>
 public record NuvemFiscalNotaDto(
     Guid Id,
+    Guid EmpresaId,
     string TipoOperacao,
     string ChaveAcesso,
     int Numero,
@@ -201,4 +208,66 @@ public record SpedDto(
     Guid EmpresaId,
     DateTime DataInicio,
     DateTime DataFim
+);
+
+// ── Duplicatas (cobrança) ────────────────────────────────────────────────────
+public record DuplicataDto(
+    string Numero,
+    DateTime Vencimento,
+    decimal Valor
+);
+
+// ── Cancelamento ─────────────────────────────────────────────────────────────
+public record CancelarNFeDto(
+    Guid EmpresaId,
+    Guid NotaFiscalId,
+    string Justificativa   // min 15 chars
+);
+
+public record CancelamentoResultDto(
+    bool Sucesso,
+    string CStat,
+    string XMotivo,
+    string? Protocolo = null
+);
+
+// ── Importação XML entrada ───────────────────────────────────────────────────
+public record ImportarXmlResultDto(
+    bool Sucesso,
+    string Mensagem,
+    Guid? NotaFiscalId = null,
+    List<ProdutoImportadoDto>? ProdutosCriados = null
+);
+
+public record ProdutoImportadoDto(
+    Guid Id,
+    string Nome,
+    string NCM
+);
+
+// ── EFD Contribuições ────────────────────────────────────────────────────────
+public record SpedContribuicoesDto(
+    Guid EmpresaId,
+    DateTime DataInicio,
+    DateTime DataFim
+);
+
+// ── NFS-e ABRASF ─────────────────────────────────────────────────────────────
+public record EmitirNfseDto(
+    Guid EmpresaId,
+    string NomeServico,
+    decimal ValorServico,
+    string? Discriminacao = null,
+    string? CpfCnpjTomador = null,
+    string? NomeTomador = null,
+    string? CodigoServico = null,  // LC 116/03 código
+    decimal AliquotaISS = 0
+);
+
+public record NfseResultDto(
+    bool Sucesso,
+    string? NumeroNfse = null,
+    string? Protocolo = null,
+    string? XmlRetorno = null,
+    string? Erro = null
 );
