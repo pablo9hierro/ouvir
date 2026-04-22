@@ -58,7 +58,6 @@ builder.Services.AddScoped<IManifestacaoService, ManifestacaoService>();
 builder.Services.AddScoped<IDanfeService, DanfeService>();
 builder.Services.AddScoped<ISpedService, SpedService>();
 builder.Services.AddScoped<ICancelamentoService, CancelamentoService>();
-builder.Services.AddScoped<ISpedContribuicoesService, SpedContribuicoesService>();
 builder.Services.AddScoped<INfseService, NfseService>();
 
 // ── Controllers + Validação ───────────────────────────────────────────────────

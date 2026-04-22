@@ -51,12 +51,6 @@ public interface ICancelamentoService
     Task<CancelamentoResultDto> CancelarAsync(CancelarNFeDto dto, CancellationToken cancellationToken = default);
 }
 
-public interface ISpedContribuicoesService
-{
-    /// <summary>Gera o arquivo EFD Contribuições (PIS/COFINS) para download.</summary>
-    Task<string> GerarEfdContribuicoesAsync(SpedContribuicoesDto dto, CancellationToken cancellationToken = default);
-}
-
 public interface INfseService
 {
     /// <summary>Emite uma NFS-e via webservice municipal ABRASF 2.04.</summary>

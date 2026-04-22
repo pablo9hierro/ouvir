@@ -117,7 +117,6 @@
     <button class="tab-btn" onclick="showTab('nuvemfiscal',this)">☁️ Nuvem Fiscal</button>
     <button class="tab-btn" onclick="showTab('cce',this)">CCe</button>
     <button class="tab-btn" onclick="showTab('sped',this)">SPED EFD</button>
-    <button class="tab-btn" onclick="showTab('efdcontrib',this)">EFD Contribuicoes</button>
     <button class="tab-btn" onclick="showTab('nfse',this)">NFS-e</button>
     <button class="tab-btn" onclick="showTab('nfce',this)">Emitir NFC-e</button>
   </div>
@@ -623,25 +622,6 @@
     </div>
   </div>
 
-  <!-- ABA EFD CONTRIBUICOES -->
-  <div id="tab-efdcontrib" class="tab-pane">
-    <div class="card">
-      <h2>EFD Contribuicoes (PIS/COFINS)</h2>
-      <p class="subtitle">Gera o arquivo EFD Contribuicoes com apuracao de PIS e COFINS. Prazo mensal: ate o 10 dia util do segundo mes subsequente.</p>
-      <div class="alert alert-info">Inclui Blocos 0, C, M (apuracao) e 9. Compatible com Simples Nacional (cumulativo) e Lucro Presumido/Real (nao-cumulativo).</div>
-      <div class="grid2" style="margin-bottom:12px">
-        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="efc_empresaId"><option value="">-- Selecione --</option></select></div>
-        <div class="field"><label>Data Inicio <span class="req">*</span></label><input type="date" id="efc_ini"></div>
-        <div class="field"><label>Data Fim <span class="req">*</span></label><input type="date" id="efc_fim"></div>
-      </div>
-      <div id="alertaEfc"></div>
-      <div class="actions">
-        <button class="btn btn-success" style="font-size:.96rem;padding:11px 24px" onclick="downloadEfdContrib()">&#11015; Baixar EFD Contribuicoes</button>
-        <button class="btn btn-outline" onclick="preencherMesAtualEfc()">Preencher mes atual</button>
-      </div>
-    </div>
-  </div>
-
   <!-- ABA NFS-e -->
   <div id="tab-nfse" class="tab-pane">
     <div class="card">
@@ -729,7 +709,7 @@ async function carregarEmpresasSelects(){
     var res=await fetch(API+'/api/empresa');
     if(!res.ok)return;
     empresasCadastradas=await res.json();
-    var ids=['cs_empresaId','st_empresaId','in_empresaId','mf_empresaId','en_empresaId','cce_empresaId','sp_empresaId','efc_empresaId','nfse_empresaId'];
+    var ids=['cs_empresaId','st_empresaId','in_empresaId','mf_empresaId','en_empresaId','cce_empresaId','sp_empresaId','nfse_empresaId'];
     ids.forEach(function(id){
       var sel=document.getElementById(id);if(!sel)return;
       sel.innerHTML='<option value="">-- Selecione a empresa --</option>';
@@ -1502,22 +1482,6 @@ function downloadSpedBlocoH(){
   if(!empId||!ini||!fim){mostrarAlerta('alertaSped','error','Preencha empresa e periodo.');return;}
   window.open(API+'/api/nfe/sped?empresaId='+encodeURIComponent(empId)+'&dataInicio='+ini+'&dataFim='+fim,'_blank');
   mostrarAlerta('alertaSped','info','Bloco H incluido no arquivo SPED EFD (registros H001/H005/H010/H990).');
-}
-
-function downloadEfdContrib(){
-  limparAlerta('alertaEfc');
-  var empId=v('efc_empresaId'),ini=v('efc_ini'),fim=v('efc_fim');
-  if(!empId){mostrarAlerta('alertaEfc','error','EmpresaId e obrigatorio.');return;}
-  if(!ini||!fim){mostrarAlerta('alertaEfc','error','Informe a data de inicio e fim.');return;}
-  window.open(API+'/api/nfe/efd-contribuicoes?empresaId='+encodeURIComponent(empId)+'&dataInicio='+ini+'&dataFim='+fim,'_blank');
-}
-
-function preencherMesAtualEfc(){
-  var now=new Date();
-  var y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0');
-  var ultimo=new Date(y,now.getMonth()+1,0).getDate();
-  document.getElementById('efc_ini').value=y+'-'+m+'-01';
-  document.getElementById('efc_fim').value=y+'-'+m+'-'+String(ultimo).padStart(2,'0');
 }
 
 async function emitirNfse(){

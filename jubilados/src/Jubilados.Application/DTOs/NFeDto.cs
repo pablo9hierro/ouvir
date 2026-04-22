@@ -245,12 +245,6 @@ public record ProdutoImportadoDto(
     string NCM
 );
 
-// ── EFD Contribuições ────────────────────────────────────────────────────────
-public record SpedContribuicoesDto(
-    Guid EmpresaId,
-    DateTime DataInicio,
-    DateTime DataFim
-);
 
 // ── NFS-e ABRASF ─────────────────────────────────────────────────────────────
 public record EmitirNfseDto(

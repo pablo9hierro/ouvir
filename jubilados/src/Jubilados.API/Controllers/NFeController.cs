@@ -16,7 +16,6 @@ public class NFeController : ControllerBase
     private readonly IDanfeService _danfeService;
     private readonly ISpedService _spedService;
     private readonly ICancelamentoService _cancelamentoService;
-    private readonly ISpedContribuicoesService _spedContribuicoesService;
     private readonly ILogger<NFeController> _logger;
 
     public NFeController(
@@ -26,7 +25,6 @@ public class NFeController : ControllerBase
         IDanfeService danfeService,
         ISpedService spedService,
         ICancelamentoService cancelamentoService,
-        ISpedContribuicoesService spedContribuicoesService,
         ILogger<NFeController> logger)
     {
         _nfeService = nfeService;
@@ -35,7 +33,6 @@ public class NFeController : ControllerBase
         _danfeService = danfeService;
         _spedService = spedService;
         _cancelamentoService = cancelamentoService;
-        _spedContribuicoesService = spedContribuicoesService;
         _logger = logger;
     }
 
@@ -585,39 +582,6 @@ public class NFeController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// GET /api/nfe/efd-contribuicoes?empresaId=&amp;dataInicio=&amp;dataFim=
-    /// Gera EFD Contribuições (PIS/COFINS) para download.
-    /// </summary>
-    [HttpGet("efd-contribuicoes")]
-    public async Task<IActionResult> GerarEfdContribuicoes(
-        [FromQuery] Guid empresaId,
-        [FromQuery] DateTime dataInicio,
-        [FromQuery] DateTime dataFim,
-        CancellationToken cancellationToken)
-    {
-        if (empresaId == Guid.Empty)
-            return BadRequest(new { erro = "empresaId é obrigatório." });
-        if (dataFim < dataInicio)
-            return BadRequest(new { erro = "dataFim deve ser >= dataInicio." });
-        try
-        {
-            var conteudo = await _spedContribuicoesService.GerarEfdContribuicoesAsync(
-                new SpedContribuicoesDto(empresaId, dataInicio, dataFim.AddDays(1).AddSeconds(-1)), cancellationToken);
-            var bytes = System.Text.Encoding.UTF8.GetBytes(conteudo);
-            var fileName = $"EFD_CONTRIB_{dataInicio:yyyyMM}.txt";
-            return File(bytes, "text/plain; charset=utf-8", fileName);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { erro = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[API] Erro ao gerar EFD Contribuições.");
-            return StatusCode(500, new { erro = "Erro interno." });
-        }
-    }
 }
 
 // ── Request helpers ───────────────────────────────────────────────────────────
