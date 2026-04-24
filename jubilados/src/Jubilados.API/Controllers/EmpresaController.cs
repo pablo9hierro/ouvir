@@ -114,7 +114,7 @@ public class EmpresaController : ControllerBase
                 OperaComoSubstitutoTributario = req.OperaComoSubstitutoTributario ?? false,
                 MvaPadrao                     = req.MvaPadrao,
                 PossuiStBebidas               = req.PossuiStBebidas ?? false,
-                CNAE                          = req.CNAE?.Trim(),
+                CNAE                          = req.CNAE == null ? null : new string(req.CNAE.Where(char.IsDigit).ToArray()).Substring(0, Math.Min(7, new string(req.CNAE.Where(char.IsDigit).ToArray()).Length)),
                 CriadoEm                      = DateTime.UtcNow,
                 AtualizadoEm                  = DateTime.UtcNow
             };
@@ -232,7 +232,7 @@ public class EmpresaController : ControllerBase
         empresa.OperaComoSubstitutoTributario = req.OperaComoSubstitutoTributario ?? empresa.OperaComoSubstitutoTributario;
         empresa.MvaPadrao                    = req.MvaPadrao ?? empresa.MvaPadrao;
         empresa.PossuiStBebidas              = req.PossuiStBebidas ?? empresa.PossuiStBebidas;
-        empresa.CNAE                         = req.CNAE?.Trim() ?? empresa.CNAE;
+        empresa.CNAE                         = req.CNAE == null ? empresa.CNAE : new string(req.CNAE.Where(char.IsDigit).ToArray()).Substring(0, Math.Min(7, new string(req.CNAE.Where(char.IsDigit).ToArray()).Length));
         empresa.AtualizadoEm                 = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);

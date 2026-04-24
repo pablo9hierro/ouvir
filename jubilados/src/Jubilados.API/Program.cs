@@ -191,6 +191,10 @@ using (var startupScope = app.Services.CreateScope())
                 criado_em  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
             );");
 
+        // Migration 007: expande cnae para VARCHAR(10)
+        await db.Database.ExecuteSqlRawAsync(@"
+            ALTER TABLE empresas ALTER COLUMN cnae TYPE VARCHAR(10);");
+
         Console.WriteLine("[STARTUP] Migrations manuais aplicadas.");
 
         // Seed: insere dados iniciais se a empresa de Orlando não existir
