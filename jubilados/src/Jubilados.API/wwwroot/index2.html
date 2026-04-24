@@ -96,7 +96,8 @@
   <h1>Jubilados NF-e</h1>
   <span class="env-badge">🟡 HOMOLOGACAO</span>
   <span id="userEmail" style="margin-left:auto;font-size:.8rem;opacity:.85"></span>
-  <button id="btnLogout" onclick="fazerLogout()" style="margin-left:12px;background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.4);border-radius:6px;padding:4px 12px;font-size:.8rem;cursor:pointer;display:none">Sair</button>
+  <button id="btnAlterarSenha" onclick="abrirModalSenha()" style="margin-left:12px;background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.4);border-radius:6px;padding:4px 12px;font-size:.8rem;cursor:pointer;display:none">Alterar senha</button>
+  <button id="btnLogout" onclick="fazerLogout()" style="margin-left:8px;background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.4);border-radius:6px;padding:4px 12px;font-size:.8rem;cursor:pointer;display:none">Sair</button>
 </header>
 <div class="container">
   <div class="estado-bar" id="estadoBar">
@@ -1565,6 +1566,79 @@ async function fazerLogout() {
   window.location.href = '/login.html';
 }
 
+// ── Modal alterar senha ──────────────────────────────────────────────────────
+function abrirModalSenha() {
+  var modal = document.getElementById('modal-senha');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal-senha';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999';
+    modal.innerHTML = '<div style="background:#fff;border-radius:12px;padding:32px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,.2)">'
+      + '<h3 style="margin:0 0 20px;font-size:1.1rem;color:#1a202c">Alterar Senha</h3>'
+      + '<label style="font-size:.85rem;color:#4a5568;margin-bottom:4px;display:block">Senha atual</label>'
+      + '<input type="password" id="ms-atual" placeholder="Sua senha atual" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:1rem;margin-bottom:14px;outline:none" />'
+      + '<label style="font-size:.85rem;color:#4a5568;margin-bottom:4px;display:block">Nova senha (min. 6 caracteres)</label>'
+      + '<input type="password" id="ms-nova" placeholder="Nova senha" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:1rem;margin-bottom:14px;outline:none" />'
+      + '<label style="font-size:.85rem;color:#4a5568;margin-bottom:4px;display:block">Confirmar nova senha</label>'
+      + '<input type="password" id="ms-conf" placeholder="Confirmar nova senha" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:1rem;margin-bottom:20px;outline:none" />'
+      + '<div id="ms-msg" style="display:none;margin-bottom:14px;padding:10px 14px;border-radius:8px;font-size:.9rem"></div>'
+      + '<div style="display:flex;gap:10px">'
+      + '<button onclick="fecharModalSenha()" style="flex:1;padding:10px;border-radius:8px;border:2px solid #e2e8f0;background:#fff;cursor:pointer;font-size:.95rem">Cancelar</button>'
+      + '<button id="ms-btn" onclick="salvarSenha()" style="flex:1;padding:10px;border-radius:8px;border:none;background:#3b82f6;color:#fff;font-weight:600;cursor:pointer;font-size:.95rem">Salvar</button>'
+      + '</div></div>';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function(e) { if (e.target === modal) fecharModalSenha(); });
+  }
+  modal.style.display = 'flex';
+  document.getElementById('ms-atual').value = '';
+  document.getElementById('ms-nova').value  = '';
+  document.getElementById('ms-conf').value  = '';
+  document.getElementById('ms-msg').style.display = 'none';
+  document.getElementById('ms-btn').disabled = false;
+  document.getElementById('ms-btn').textContent = 'Salvar';
+  setTimeout(function() { document.getElementById('ms-atual').focus(); }, 100);
+}
+
+function fecharModalSenha() {
+  var modal = document.getElementById('modal-senha');
+  if (modal) modal.style.display = 'none';
+}
+
+async function salvarSenha() {
+  var atual = document.getElementById('ms-atual').value;
+  var nova  = document.getElementById('ms-nova').value;
+  var conf  = document.getElementById('ms-conf').value;
+  var msgEl = document.getElementById('ms-msg');
+
+  function showMsg(txt, tipo) {
+    msgEl.textContent = txt;
+    msgEl.style.background = tipo === 'error' ? '#fee2e2' : '#d1fae5';
+    msgEl.style.color = tipo === 'error' ? '#991b1b' : '#065f46';
+    msgEl.style.display = '';
+  }
+
+  if (!atual) { showMsg('Digite a senha atual.', 'error'); return; }
+  if (!nova || nova.length < 6) { showMsg('A nova senha deve ter ao menos 6 caracteres.', 'error'); return; }
+  if (nova !== conf) { showMsg('As senhas nao coincidem.', 'error'); return; }
+
+  var btn = document.getElementById('ms-btn');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+
+  try {
+    var res = await fetchAuth('/api/auth/alterar-senha', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ senhaAtual: atual, novaSenha: nova })
+    });
+    var data = await res.json();
+    if (!res.ok) { showMsg(data.error || 'Erro ao alterar senha.', 'error'); btn.disabled = false; btn.textContent = 'Salvar'; return; }
+    showMsg(data.message || 'Senha alterada com sucesso!', 'success');
+    setTimeout(fecharModalSenha, 2000);
+  } catch(e) {
+    showMsg('Falha de rede.', 'error');
+    btn.disabled = false; btn.textContent = 'Salvar';
+  }
+}
+
 // ── Auth guard: usa token local armazenado no localStorage ──────────────────
 (function() {
   var token = localStorage.getItem('jubilados_token');
@@ -1581,6 +1655,8 @@ async function fazerLogout() {
   } catch(e) {}
   var logoutBtn = document.getElementById('btnLogout');
   if (logoutBtn) logoutBtn.style.display = '';
+  var senhaBtn = document.getElementById('btnAlterarSenha');
+  if (senhaBtn) senhaBtn.style.display = '';
 })();
 
 // Carrega dados da empresa do usuário logado dinamicamente

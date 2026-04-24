@@ -195,6 +195,18 @@ using (var startupScope = app.Services.CreateScope())
         await db.Database.ExecuteSqlRawAsync(@"
             ALTER TABLE empresas ALTER COLUMN cnae TYPE VARCHAR(10);");
 
+        // Migration 008: tokens de recuperacao de senha
+        await db.Database.ExecuteSqlRawAsync(@"
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+                usuario_id  UUID        NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                token       VARCHAR(64) NOT NULL UNIQUE,
+                expires_at  TIMESTAMPTZ NOT NULL,
+                used_at     TIMESTAMPTZ NULL,
+                criado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_prt_token ON password_reset_tokens (token);");
+
         Console.WriteLine("[STARTUP] Migrations manuais aplicadas.");
 
         // Seed: insere dados iniciais se a empresa de Orlando não existir

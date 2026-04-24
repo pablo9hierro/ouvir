@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Jubilados â€” Acesso</title>
+  <title>Jubilados &#8212; Acesso</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body {
@@ -49,12 +49,12 @@
 </head>
 <body>
 <div class="card">
-  <h1>Jubilados NFe</h1>
-  <p class="sub">Sistema de emissÃ£o de Nota Fiscal EletrÃ´nica</p>
+  <h1>Jubilados NF-e</h1>
+  <p class="sub">Sistema de emiss&#227;o de Nota Fiscal Eletr&#244;nica</p>
 
   <div class="tabs">
     <button class="tab active" id="tab-login"    onclick="mostrarAba('login')">Entrar</button>
-    <button class="tab"         id="tab-cadastro" onclick="mostrarAba('cadastro')">Cadastrar</button>
+    <button class="tab"        id="tab-cadastro" onclick="mostrarAba('cadastro')">Cadastrar</button>
   </div>
 
   <!-- Login -->
@@ -62,7 +62,7 @@
     <label>E-mail</label>
     <input type="email"    id="login-email" placeholder="seu@email.com" />
     <label>Senha</label>
-    <input type="password" id="login-senha" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
+    <input type="password" id="login-senha" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" />
     <a class="link-forgot" onclick="mostrarAba('forgot')">Esqueci minha senha</a>
     <button class="btn-primary" id="btn-login" onclick="entrar()">Entrar</button>
   </div>
@@ -71,20 +71,23 @@
   <div id="panel-cadastro" style="display:none">
     <label>E-mail</label>
     <input type="email"    id="cad-email"    placeholder="seu@email.com" />
-    <label>Senha (mÃ­nimo 6 caracteres)</label>
-    <input type="password" id="cad-senha"    placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
+    <label>Senha (m&#237;nimo 6 caracteres)</label>
+    <input type="password" id="cad-senha"    placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" />
     <label>Confirmar senha</label>
-    <input type="password" id="cad-confirma" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
+    <input type="password" id="cad-confirma" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" />
     <button class="btn-primary" id="btn-cadastro" onclick="cadastrar()">Criar conta</button>
   </div>
 
   <!-- Recuperar senha -->
   <div id="panel-forgot" style="display:none">
+    <p style="color:#4a5568;font-size:.9rem;margin:0 0 16px">
+      Digite seu e-mail e enviaremos um link para redefinir sua senha.
+    </p>
     <label>E-mail cadastrado</label>
     <input type="email" id="forgot-email" placeholder="seu@email.com" />
-    <button class="btn-primary" id="btn-forgot" onclick="recuperarSenha()">Enviar link de redefiniÃ§Ã£o</button>
+    <button class="btn-primary" id="btn-forgot" onclick="recuperarSenha()">Enviar link de redefini&#231;&#227;o</button>
     <p style="text-align:center;margin-top:12px;">
-      <a onclick="mostrarAba('login')" style="color:#3b82f6;font-size:.88rem;cursor:pointer;">Voltar ao login</a>
+      <a onclick="mostrarAba('login')" style="color:#3b82f6;font-size:.88rem;cursor:pointer;">&larr; Voltar ao login</a>
     </p>
   </div>
 
@@ -92,7 +95,7 @@
 </div>
 
 <script>
-  // â”€â”€ Auto-redirect se jÃ¡ estiver logado â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Auto-redirect se ja estiver logado
   (function() {
     var token = localStorage.getItem('jubilados_token');
     if (!token) return;
@@ -104,7 +107,6 @@
       .catch(function() {});
   })();
 
-  // â”€â”€ UI helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function mostrarAba(aba) {
     document.getElementById('panel-login').style.display    = aba === 'login'    ? '' : 'none';
     document.getElementById('panel-cadastro').style.display = aba === 'cadastro' ? '' : 'none';
@@ -125,7 +127,6 @@
     btn.disabled = ocupado; btn.textContent = txt;
   }
 
-  // â”€â”€ Redireciona apÃ³s login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function redirecionarPosLogin(token) {
     localStorage.setItem('jubilados_token', token);
     try {
@@ -138,81 +139,75 @@
     }
   }
 
-  // â”€â”€ Login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function entrar() {
     var email = document.getElementById('login-email').value.trim();
     var senha = document.getElementById('login-senha').value;
     if (!email || !senha) { mostrarMsg('Preencha e-mail e senha.', 'error'); return; }
 
-    setBusy('btn-login', 'Entrandoâ€¦', true);
+    setBusy('btn-login', 'Entrando...', true);
     try {
       var res  = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email, senha: senha })
       });
       var data = await res.json();
       if (!res.ok) { mostrarMsg(data.error || 'Erro ao fazer login.', 'error'); return; }
       await redirecionarPosLogin(data.token);
     } catch(e) {
-      mostrarMsg('Falha de rede. Verifique se a API estÃ¡ rodando.', 'error');
+      mostrarMsg('Falha de rede. Verifique a conexao.', 'error');
     } finally {
       setBusy('btn-login', 'Entrar', false);
     }
   }
 
-  // â”€â”€ Cadastro â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function cadastrar() {
     var email    = document.getElementById('cad-email').value.trim();
     var senha    = document.getElementById('cad-senha').value;
     var confirma = document.getElementById('cad-confirma').value;
     if (!email || !senha) { mostrarMsg('Preencha todos os campos.', 'error'); return; }
-    if (senha !== confirma) { mostrarMsg('As senhas nÃ£o coincidem.', 'error'); return; }
+    if (senha !== confirma) { mostrarMsg('As senhas nao coincidem.', 'error'); return; }
     if (senha.length < 6)  { mostrarMsg('A senha deve ter ao menos 6 caracteres.', 'error'); return; }
 
-    setBusy('btn-cadastro', 'Criandoâ€¦', true);
+    setBusy('btn-cadastro', 'Criando...', true);
     try {
       var res  = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email, senha: senha })
       });
       var data = await res.json();
       if (!res.ok) { mostrarMsg(data.error || 'Erro ao criar conta.', 'error'); return; }
       await redirecionarPosLogin(data.token);
     } catch(e) {
-      mostrarMsg('Falha de rede. Verifique se a API estÃ¡ rodando.', 'error');
+      mostrarMsg('Falha de rede. Verifique a conexao.', 'error');
     } finally {
       setBusy('btn-cadastro', 'Criar conta', false);
     }
   }
 
-  // â”€â”€ Recuperar senha â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function recuperarSenha() {
     var email = document.getElementById('forgot-email').value.trim();
     if (!email) { mostrarMsg('Digite seu e-mail.', 'error'); return; }
 
-    setBusy('btn-forgot', 'Enviandoâ€¦', true);
+    setBusy('btn-forgot', 'Enviando...', true);
     try {
       var res  = await fetch('/api/auth/recuperar-senha', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email })
       });
       var data = await res.json();
-      mostrarMsg(data.message || 'Se o e-mail existir, um link serÃ¡ enviado.', 'success');
+      mostrarMsg(data.message || 'Se o e-mail existir, um link sera enviado.', 'success');
     } catch(e) {
       mostrarMsg('Falha de rede.', 'error');
     } finally {
-      setBusy('btn-forgot', 'Enviar link de redefiniÃ§Ã£o', false);
+      setBusy('btn-forgot', 'Enviar link de redefini\u00e7\u00e3o', false);
     }
   }
 
-  // â”€â”€ Enter nas inputs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   document.addEventListener('keydown', function(e) {
     if (e.key !== 'Enter') return;
     if (document.getElementById('panel-login').style.display    !== 'none') entrar();
     if (document.getElementById('panel-cadastro').style.display !== 'none') cadastrar();
+    if (document.getElementById('panel-forgot').style.display   !== 'none') recuperarSenha();
   });
 </script>
 </body>

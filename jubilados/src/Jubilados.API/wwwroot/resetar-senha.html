@@ -1,0 +1,108 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jubilados &#8212; Redefinir Senha</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, sans-serif; background: #f0f4f8;
+      display: flex; align-items: center; justify-content: center; min-height: 100vh;
+    }
+    .card {
+      background: #fff; border-radius: 12px; padding: 40px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.10); width: 100%; max-width: 420px;
+    }
+    h1 { margin: 0 0 8px; font-size: 1.5rem; color: #1a202c; }
+    p.sub { margin: 0 0 24px; color: #718096; font-size: .9rem; }
+    label { display: block; font-size: .85rem; color: #4a5568; margin-bottom: 4px; }
+    input {
+      width: 100%; padding: 10px 12px; border: 1.5px solid #e2e8f0;
+      border-radius: 8px; font-size: 1rem; outline: none; margin-bottom: 16px;
+      transition: border-color .15s;
+    }
+    input:focus { border-color: #3b82f6; }
+    button.btn-primary {
+      width: 100%; padding: 12px; background: #3b82f6; color: #fff; border: none;
+      border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer;
+      transition: background .15s;
+    }
+    button.btn-primary:hover { background: #2563eb; }
+    button.btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+    .msg { margin-top: 14px; padding: 10px 14px; border-radius: 8px; font-size: .9rem; }
+    .msg.error { background: #fee2e2; color: #991b1b; }
+    .msg.success { background: #d1fae5; color: #065f46; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>Redefinir Senha</h1>
+  <p class="sub">Crie uma nova senha para sua conta Jubilados NF-e.</p>
+
+  <div id="form-reset">
+    <label>Nova senha (m&#237;nimo 6 caracteres)</label>
+    <input type="password" id="nova-senha"    placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" />
+    <label>Confirmar nova senha</label>
+    <input type="password" id="conf-senha"    placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" />
+    <button class="btn-primary" id="btn-reset" onclick="resetarSenha()">Salvar nova senha</button>
+  </div>
+
+  <div id="msg" style="display:none" class="msg"></div>
+</div>
+
+<script>
+  // Le o token da URL
+  var params = new URLSearchParams(window.location.search);
+  var token  = params.get('token');
+
+  if (!token) {
+    document.getElementById('form-reset').style.display = 'none';
+    var el = document.getElementById('msg');
+    el.textContent = 'Link invalido. Solicite um novo link de recuperacao de senha.';
+    el.className = 'msg error'; el.style.display = '';
+  }
+
+  function mostrarMsg(txt, tipo) {
+    var el = document.getElementById('msg');
+    el.textContent = txt; el.className = 'msg ' + tipo; el.style.display = '';
+  }
+
+  async function resetarSenha() {
+    var novaSenha = document.getElementById('nova-senha').value;
+    var confSenha = document.getElementById('conf-senha').value;
+
+    if (!novaSenha) { mostrarMsg('Digite a nova senha.', 'error'); return; }
+    if (novaSenha.length < 6) { mostrarMsg('A senha deve ter ao menos 6 caracteres.', 'error'); return; }
+    if (novaSenha !== confSenha) { mostrarMsg('As senhas nao coincidem.', 'error'); return; }
+
+    var btn = document.getElementById('btn-reset');
+    btn.disabled = true; btn.textContent = 'Salvando...';
+
+    try {
+      var res = await fetch('/api/auth/resetar-senha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: token, novaSenha: novaSenha })
+      });
+      var data = await res.json();
+      if (!res.ok) {
+        mostrarMsg(data.error || 'Erro ao redefinir senha.', 'error');
+        btn.disabled = false; btn.textContent = 'Salvar nova senha';
+        return;
+      }
+      document.getElementById('form-reset').style.display = 'none';
+      mostrarMsg(data.message + ' Redirecionando para o login...', 'success');
+      setTimeout(function() { window.location.href = '/login.html'; }, 2500);
+    } catch(e) {
+      mostrarMsg('Falha de rede. Tente novamente.', 'error');
+      btn.disabled = false; btn.textContent = 'Salvar nova senha';
+    }
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && token) resetarSenha();
+  });
+</script>
+</body>
+</html>

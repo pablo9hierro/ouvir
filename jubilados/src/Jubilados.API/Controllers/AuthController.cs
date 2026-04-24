@@ -74,13 +74,115 @@ public class AuthController : ControllerBase
         return Ok(new { token });
     }
 
-    // ── Recuperar senha (stub local) ─────────────────────────────────────────
+    // ── Recuperar senha ───────────────────────────────────────────────────────
     [HttpPost("recuperar-senha")]
     [AllowAnonymous]
-    public IActionResult RecuperarSenha([FromBody] RecuperarRequest req)
+    public async Task<IActionResult> RecuperarSenha([FromBody] RecuperarRequest req, CancellationToken ct)
     {
-        // Em ambiente local não há envio de e-mail real; apenas confirma.
-        return Ok(new { message = "Se o e-mail existir, um link seria enviado (simulado em dev)." });
+        const string okMsg = "Se o e-mail estiver cadastrado, voce recebera um link em breve.";
+        if (string.IsNullOrWhiteSpace(req.Email))
+            return BadRequest(new { error = "E-mail obrigatorio." });
+
+        var email = req.Email.ToLower().Trim();
+        var user  = await _db.Usuarios.FirstOrDefaultAsync(u => u.Email == email, ct);
+        if (user is null) return Ok(new { message = okMsg }); // evita enumeracao de e-mails
+
+        // Token URL-safe de 32 bytes = 43 chars base64
+        var tokenBytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
+        var token = Convert.ToBase64String(tokenBytes).Replace("+", "-").Replace("/", "_").TrimEnd('=');
+
+        await _db.Database.ExecuteSqlRawAsync(
+            "INSERT INTO password_reset_tokens (id, usuario_id, token, expires_at) VALUES (gen_random_uuid(), {0}, {1}, {2})",
+            user.Id, token, DateTime.UtcNow.AddHours(1));
+
+        var baseUrl  = Environment.GetEnvironmentVariable("APP_BASE_URL") ?? $"{Request.Scheme}://{Request.Host}";
+        var resetUrl = $"{baseUrl}/resetar-senha.html?token={Uri.EscapeDataString(token)}";
+
+        _ = EnviarEmailAsync(email, "Redefinicao de senha - Jubilados NF-e",
+            $"Voce solicitou a redefinicao da sua senha.\n\n"
+          + $"Clique no link abaixo para criar uma nova senha:\n{resetUrl}\n\n"
+          + "Este link expira em 1 hora. Ignore este e-mail se nao foi voce quem solicitou.");
+
+        return Ok(new { message = okMsg });
+    }
+
+    // ── Resetar senha via token (link do e-mail) ──────────────────────────────
+    [HttpPost("resetar-senha")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResetarSenha([FromBody] ResetarSenhaRequest req, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(req.Token) || string.IsNullOrWhiteSpace(req.NovaSenha))
+            return BadRequest(new { error = "Token e nova senha sao obrigatorios." });
+
+        if (req.NovaSenha.Length < 6)
+            return BadRequest(new { error = "A senha deve ter ao menos 6 caracteres." });
+
+        var conn = _db.Database.GetDbConnection();
+        await _db.Database.OpenConnectionAsync(ct);
+        try
+        {
+            Guid usuarioId;
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = @"SELECT usuario_id FROM password_reset_tokens
+                    WHERE token = @t AND expires_at > NOW() AND used_at IS NULL LIMIT 1";
+                var p = cmd.CreateParameter(); p.ParameterName = "@t"; p.Value = req.Token;
+                cmd.Parameters.Add(p);
+                var result = await cmd.ExecuteScalarAsync(ct);
+                if (result is null or DBNull)
+                    return BadRequest(new { error = "Link invalido ou expirado. Solicite um novo." });
+                usuarioId = (Guid)result;
+            }
+
+            var newHash = HashSenha(req.NovaSenha);
+
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "UPDATE usuarios SET senha_hash = @h WHERE id = @id";
+                var p1 = cmd.CreateParameter(); p1.ParameterName = "@h";  p1.Value = newHash;    cmd.Parameters.Add(p1);
+                var p2 = cmd.CreateParameter(); p2.ParameterName = "@id"; p2.Value = usuarioId;  cmd.Parameters.Add(p2);
+                await cmd.ExecuteNonQueryAsync(ct);
+            }
+
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "UPDATE password_reset_tokens SET used_at = NOW() WHERE token = @t";
+                var p = cmd.CreateParameter(); p.ParameterName = "@t"; p.Value = req.Token;
+                cmd.Parameters.Add(p);
+                await cmd.ExecuteNonQueryAsync(ct);
+            }
+
+            return Ok(new { message = "Senha redefinida com sucesso! Faca login com a nova senha." });
+        }
+        finally
+        {
+            await _db.Database.CloseConnectionAsync();
+        }
+    }
+
+    // ── Alterar senha (usuario logado) ────────────────────────────────────────
+    [HttpPost("alterar-senha")]
+    [Authorize]
+    public async Task<IActionResult> AlterarSenha([FromBody] AlterarSenhaRequest req, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(req.SenhaAtual) || string.IsNullOrWhiteSpace(req.NovaSenha))
+            return BadRequest(new { error = "Senha atual e nova senha sao obrigatorias." });
+
+        if (req.NovaSenha.Length < 6)
+            return BadRequest(new { error = "A nova senha deve ter ao menos 6 caracteres." });
+
+        var userId = ObterSupabaseUserId();
+        if (userId == Guid.Empty) return Unauthorized();
+
+        var user = await _db.Usuarios.FindAsync(new object[] { userId }, ct);
+        if (user is null) return NotFound();
+
+        if (!VerificarSenha(req.SenhaAtual, user.SenhaHash))
+            return BadRequest(new { error = "Senha atual incorreta." });
+
+        user.SenhaHash = HashSenha(req.NovaSenha);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { message = "Senha alterada com sucesso!" });
     }
 
     // ── Perfil (protegido) ────────────────────────────────────────────────────
@@ -215,8 +317,38 @@ public class AuthController : ControllerBase
         return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(actual, expected);
     }
 
+    private static async Task EnviarEmailAsync(string para, string assunto, string corpo)
+    {
+        var host = Environment.GetEnvironmentVariable("SMTP_HOST");
+        if (string.IsNullOrEmpty(host))
+        {
+            Console.WriteLine($"[EMAIL-SIMULADO] Para: {para}\nAssunto: {assunto}\n{corpo}\n");
+            return;
+        }
+        try
+        {
+            var port = int.TryParse(Environment.GetEnvironmentVariable("SMTP_PORT"), out var p) ? p : 587;
+            var user = Environment.GetEnvironmentVariable("SMTP_USER") ?? "";
+            var pass = Environment.GetEnvironmentVariable("SMTP_PASS") ?? "";
+            var from = Environment.GetEnvironmentVariable("SMTP_FROM") ?? user;
+            using var client = new System.Net.Mail.SmtpClient(host, port)
+            {
+                Credentials = new System.Net.NetworkCredential(user, pass),
+                EnableSsl   = true
+            };
+            var msg = new System.Net.Mail.MailMessage(from, para, assunto, corpo);
+            await client.SendMailAsync(msg);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SMTP-ERROR] {ex.Message}");
+        }
+    }
+
     public record LoginRequest(string Email, string Senha);
     public record RegisterRequest(string Email, string Senha);
     public record RecuperarRequest(string Email);
+    public record ResetarSenhaRequest(string Token, string NovaSenha);
+    public record AlterarSenhaRequest(string SenhaAtual, string NovaSenha);
     public record AssociarEmpresaRequest(string CNPJ);
 }
