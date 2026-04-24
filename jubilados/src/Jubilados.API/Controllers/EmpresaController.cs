@@ -70,24 +70,64 @@ public class EmpresaController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> CriarAsync([FromBody] Empresa empresa, CancellationToken ct)
+    public async Task<IActionResult> CriarAsync([FromBody] AtualizarEmpresaRequest req, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(empresa.CNPJ) || string.IsNullOrWhiteSpace(empresa.RazaoSocial))
-            return BadRequest(new { erro = "CNPJ e RazaoSocial são obrigatórios." });
+        if (string.IsNullOrWhiteSpace(req.CNPJ) || string.IsNullOrWhiteSpace(req.RazaoSocial))
+            return BadRequest(new { erro = "CNPJ e RazaoSocial sao obrigatorios." });
+
+        var cnpjLimpo = new string(req.CNPJ.Where(char.IsDigit).ToArray()).PadLeft(14, '0');
 
         try
         {
-            empresa.Id = Guid.NewGuid();
+            var empresa = new Empresa
+            {
+                Id                            = Guid.NewGuid(),
+                CNPJ                          = cnpjLimpo,
+                RazaoSocial                   = req.RazaoSocial?.Trim() ?? string.Empty,
+                NomeFantasia                  = req.NomeFantasia?.Trim() ?? string.Empty,
+                InscricaoEstadual             = req.InscricaoEstadual?.Trim() ?? string.Empty,
+                Logradouro                    = req.Logradouro?.Trim() ?? string.Empty,
+                Numero                        = req.Numero?.Trim() ?? string.Empty,
+                Complemento                   = req.Complemento?.Trim() ?? string.Empty,
+                Bairro                        = req.Bairro?.Trim() ?? string.Empty,
+                Municipio                     = req.Municipio?.Trim() ?? string.Empty,
+                UF                            = req.UF?.Trim().ToUpper() ?? string.Empty,
+                CEP                           = new string((req.CEP ?? "").Where(char.IsDigit).ToArray()),
+                Telefone                      = req.Telefone?.Trim() ?? string.Empty,
+                Email                         = req.Email?.Trim().ToLower() ?? string.Empty,
+                Ramo                          = req.Ramo,
+                RegimeTributario              = req.RegimeTributario,
+                CRT                           = req.CRT > 0 ? req.CRT : 1,
+                FaixaSimples                  = req.FaixaSimples,
+                EmiteNfse                     = req.EmiteNfse ?? false,
+                InscricaoMunicipal            = req.InscricaoMunicipal?.Trim(),
+                InscritoSuframa               = req.InscritoSuframa ?? false,
+                ContadorNome                  = req.ContadorNome?.Trim(),
+                ContadorCrc                   = req.ContadorCrc?.Trim(),
+                ContadorEmail                 = req.ContadorEmail?.Trim().ToLower(),
+                AliquotaPis                   = req.AliquotaPis ?? 0.65m,
+                AliquotaCofins                = req.AliquotaCofins ?? 3.00m,
+                CsosnPadrao                   = req.CsosnPadrao ?? "400",
+                CstIcmsPadrao                 = req.CstIcmsPadrao,
+                CstPisPadrao                  = req.CstPisPadrao,
+                CstCofinsPadrao               = req.CstCofinsPadrao,
+                OperaComoSubstitutoTributario = req.OperaComoSubstitutoTributario ?? false,
+                MvaPadrao                     = req.MvaPadrao,
+                PossuiStBebidas               = req.PossuiStBebidas ?? false,
+                CNAE                          = req.CNAE?.Trim(),
+                CriadoEm                      = DateTime.UtcNow,
+                AtualizadoEm                  = DateTime.UtcNow
+            };
             _db.Empresas.Add(empresa);
             await _db.SaveChangesAsync(ct);
             return Ok(new { empresa.Id });
         }
         catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
         {
-            _logger.LogError(ex, "Erro ao cadastrar empresa CNPJ={CNPJ}", empresa.CNPJ);
+            _logger.LogError(ex, "Erro ao cadastrar empresa CNPJ={CNPJ}", cnpjLimpo);
             var msg = ex.InnerException?.Message ?? ex.Message;
             if (msg.Contains("unique", StringComparison.OrdinalIgnoreCase) || msg.Contains("duplicate", StringComparison.OrdinalIgnoreCase))
-                return Conflict(new { erro = "Já existe uma empresa cadastrada com este CNPJ." });
+                return Conflict(new { erro = "Ja existe uma empresa cadastrada com este CNPJ." });
             return StatusCode(500, new { erro = "Erro ao salvar empresa: " + msg });
         }
         catch (Exception ex)
