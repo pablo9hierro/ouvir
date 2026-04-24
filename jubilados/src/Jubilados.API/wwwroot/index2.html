@@ -1583,74 +1583,58 @@ async function fazerLogout() {
   if (logoutBtn) logoutBtn.style.display = '';
 })();
 
-estado.empresaId='dd104b57-010a-4458-8699-d63807e205d3';
-estado.cnpj='21362844000152';
-estado.clienteId='0865f76e-bff7-48ef-8b02-f24b6a468e3d';
-estado.clienteNome='WURTH DO BRASIL';
-estado.tipoDest='cnpj';
-tipoDest='cnpj';
-estado.produtoId='9ae15d08-81e9-4767-911e-8faf96ad2821';
-estado.produtoNome='Produto Teste Homologacao';
-produtosCadastrados=[{id:estado.produtoId,nome:estado.produtoNome,preco:100,unidade:'UN'}];
-clientesCadastrados=[{id:estado.clienteId,nome:estado.clienteNome,cpf_CNPJ:'43648971003170'}];
-estado.ultimaChave='25260421362844000152550010000000241754171544';
-estado.ultimaNotaId='3e7fc1b1-1306-4793-aba0-b1a76ac58207';
+// Carrega dados da empresa do usuário logado dinamicamente
+async function carregarDadosEmpresa() {
+  try {
+    const res = await fetchAuth('/api/auth/me');
+    if (!res.ok) { window.location.href = '/login.html'; return; }
+    const perfil = await res.json();
+    if (!perfil.onboardingConcluido) { window.location.href = '/onboarding.html'; return; }
 
-document.getElementById('empresaIdLabel').textContent='ID: '+estado.empresaId;
-document.getElementById('clienteIdLabel').textContent='ID: '+estado.clienteId;
-document.getElementById('clienteIdLabelCnpj').textContent='ID: '+estado.clienteId;
-document.getElementById('produtoIdLabel').textContent='ID: '+estado.produtoId;
+    const empresaId = perfil.empresaId || perfil.empresa?.id;
+    if (!empresaId) { window.location.href = '/onboarding.html'; return; }
 
-document.getElementById('e_cnpj').value='21362844000152';
-document.getElementById('e_razao').value='Orlando Lucindo de Pontes Neto Materiais de Construcao';
-document.getElementById('e_fantasia').value='Azulzao da Construcao';
-document.getElementById('e_ie').value='162421303';
-document.getElementById('e_fone').value='83998347220';
-document.getElementById('e_logradouro').value='R OTAVIANO D MONTEIRO P FILHO';
-document.getElementById('e_numero').value='19';
-document.getElementById('e_complemento').value='BOX B';
-document.getElementById('e_bairro').value='FUNCIONARIOS';
-document.getElementById('e_municipio').value='JOAO PESSOA';
-document.getElementById('e_uf').value='PB';
-document.getElementById('e_cep').value='58078340';
+    // Busca dados completos da empresa
+    const resE = await fetchAuth('/api/empresa/' + empresaId);
+    if (!resE.ok) throw new Error('Empresa não encontrada.');
+    const e = await resE.json();
 
-document.getElementById('c_nome').value='';
-document.getElementById('c_cpfcnpj').value='';
+    estado.empresaId = e.id || e.Id;
+    estado.cnpj      = e.cnpj || e.CNPJ || '';
 
-document.getElementById('c_nome_cnpj').value='WURTH DO BRASIL PECAS DE FIXACAO LTDA';
-document.getElementById('c_cpfcnpj_cnpj').value='43648971003170';
-document.getElementById('c_ie_cnpj').value='161585078';
-document.getElementById('c_fone_cnpj').value='1146131900';
-document.getElementById('c_logradouro_cnpj').value='ROD BR-230';
-document.getElementById('c_numero_cnpj').value='SN';
-document.getElementById('c_complemento_cnpj').value='KM28 SALA 00003';
-document.getElementById('c_bairro_cnpj').value='CRISTO REDENTOR';
-document.getElementById('c_municipio_cnpj').value='JOAO PESSOA';
-document.getElementById('c_codmun_cnpj').value='2507507';
-document.getElementById('c_uf_cnpj').value='PB';
-document.getElementById('c_cep_cnpj').value='58071680';
+    // Preenche formulário de emissão
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+    set('e_cnpj',        e.cnpj        || e.CNPJ);
+    set('e_razao',       e.razaoSocial || e.RazaoSocial);
+    set('e_fantasia',    e.nomeFantasia || e.NomeFantasia);
+    set('e_ie',          e.inscricaoEstadual || e.InscricaoEstadual);
+    set('e_fone',        e.telefone    || e.Telefone);
+    set('e_email',       e.email       || e.Email);
+    set('e_logradouro',  e.logradouro  || e.Logradouro);
+    set('e_numero',      e.numero      || e.Numero);
+    set('e_complemento', e.complemento || e.Complemento);
+    set('e_bairro',      e.bairro      || e.Bairro);
+    set('e_municipio',   e.municipio   || e.Municipio);
+    set('e_uf',          e.uf          || e.UF || 'PB');
+    set('e_cep',         e.cep         || e.CEP);
+    const lbEl = document.getElementById('empresaIdLabel');
+    if (lbEl) lbEl.textContent = 'ID: ' + estado.empresaId;
+    mostrarAlerta('alertaEmpresa', 'success',
+      'Empresa ' + (e.razaoSocial || e.CNPJ || estado.cnpj) + ' carregada.');
+  } catch (err) {
+    console.error('Erro ao carregar empresa:', err);
+    mostrarAlerta('alertaEmpresa', 'error', 'Não foi possível carregar os dados da empresa: ' + err.message);
+  }
 
-// inicializa tipo de destinatario no UI (cnpj por padrao com WURTH pre-preenchida)
-selecionarTipoDest('cnpj');
-// restaura cliente/produto apos selecionarTipoDest (que limpa clienteId/clienteNome)
-estado.clienteId='0865f76e-bff7-48ef-8b02-f24b6a468e3d';
-estado.clienteNome='WURTH DO BRASIL';
-estado.produtoId='9ae15d08-81e9-4767-911e-8faf96ad2821';
-estado.produtoNome='Produto Teste Homologacao';
-atualizarEstadoBar();
+  atualizarEstadoBar();
+  verificarCertificadoSalvo();
+  verificarCscSalvo();
+  renderItensNfce();
+  carregarEmpresasSelects();
+}
 
-document.getElementById('cs_chave').value=estado.ultimaChave;
+carregarDadosEmpresa();
 preencherMesAtual();
-
-mostrarAlerta('alertaEmpresa','success','Empresa Orlando ja cadastrada no banco.');
-mostrarAlerta('alertaClienteCnpj','success','WURTH do Brasil ja cadastrada como destinataria. Clique em Proximo ou selecione outro tipo de destinatario acima.');
-mostrarAlerta('alertaProduto','success','Produto Teste ja registrado. Selecione-o na parte superior da tela.');
-
-atualizarEstadoBar();
-verificarCertificadoSalvo();
-verificarCscSalvo();
-renderItensNfce();
-carregarEmpresasSelects();
 </script>
 </body>
 </html>

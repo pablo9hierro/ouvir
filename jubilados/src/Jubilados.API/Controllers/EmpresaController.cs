@@ -132,6 +132,74 @@ public class EmpresaController : ControllerBase
     }
 
     /// <summary>
+    /// GET /api/empresa/por-cnpj/{cnpj}
+    /// Busca empresa pelo CNPJ (14 dígitos, sem máscara).
+    /// </summary>
+    [HttpGet("por-cnpj/{cnpj}")]
+    public async Task<IActionResult> BuscarPorCnpjAsync(string cnpj, CancellationToken ct)
+    {
+        var cnpjLimpo = new string(cnpj.Where(char.IsDigit).ToArray()).PadLeft(14, '0');
+        var empresa = await _db.Empresas.AsNoTracking()
+            .FirstOrDefaultAsync(e =>
+                e.CNPJ == cnpjLimpo ||
+                e.CNPJ.Replace(".", "").Replace("/", "").Replace("-", "") == cnpjLimpo, ct);
+        if (empresa is null) return NotFound(new { erro = "Empresa não encontrada com este CNPJ." });
+        return Ok(new { empresa.Id, empresa.CNPJ, empresa.RazaoSocial, empresa.NomeFantasia,
+            empresa.InscricaoEstadual, empresa.Logradouro, empresa.Numero, empresa.Complemento,
+            empresa.Bairro, empresa.Municipio, empresa.UF, empresa.CEP,
+            empresa.Telefone, empresa.Email, empresa.CRT, empresa.RegimeTributario, empresa.Ramo });
+    }
+
+    /// <summary>
+    /// PUT /api/empresa/{id}
+    /// Atualiza os dados cadastrais completos de uma empresa.
+    /// </summary>
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> AtualizarAsync(Guid id, [FromBody] AtualizarEmpresaRequest req, CancellationToken ct)
+    {
+        var empresa = await _db.Empresas.FindAsync(new object[] { id }, ct);
+        if (empresa is null) return NotFound();
+
+        empresa.CNPJ                         = new string(req.CNPJ.Where(char.IsDigit).ToArray()).PadLeft(14, '0');
+        empresa.RazaoSocial                  = req.RazaoSocial?.Trim() ?? empresa.RazaoSocial;
+        empresa.NomeFantasia                 = req.NomeFantasia?.Trim() ?? empresa.NomeFantasia;
+        empresa.InscricaoEstadual            = req.InscricaoEstadual?.Trim() ?? empresa.InscricaoEstadual;
+        empresa.Logradouro                   = req.Logradouro?.Trim() ?? empresa.Logradouro;
+        empresa.Numero                       = req.Numero?.Trim() ?? empresa.Numero;
+        empresa.Complemento                  = req.Complemento?.Trim() ?? empresa.Complemento;
+        empresa.Bairro                       = req.Bairro?.Trim() ?? empresa.Bairro;
+        empresa.Municipio                    = req.Municipio?.Trim() ?? empresa.Municipio;
+        empresa.UF                           = req.UF?.Trim().ToUpper() ?? empresa.UF;
+        empresa.CEP                          = new string((req.CEP ?? "").Where(char.IsDigit).ToArray());
+        empresa.Telefone                     = req.Telefone?.Trim() ?? empresa.Telefone;
+        empresa.Email                        = req.Email?.Trim().ToLower() ?? empresa.Email;
+        empresa.Ramo                         = req.Ramo ?? empresa.Ramo;
+        empresa.RegimeTributario             = req.RegimeTributario ?? empresa.RegimeTributario;
+        empresa.CRT                          = req.CRT > 0 ? req.CRT : empresa.CRT;
+        empresa.FaixaSimples                 = req.FaixaSimples ?? empresa.FaixaSimples;
+        empresa.EmiteNfse                    = req.EmiteNfse ?? empresa.EmiteNfse;
+        empresa.InscricaoMunicipal           = req.InscricaoMunicipal?.Trim() ?? empresa.InscricaoMunicipal;
+        empresa.InscritoSuframa              = req.InscritoSuframa ?? empresa.InscritoSuframa;
+        empresa.ContadorNome                 = req.ContadorNome?.Trim() ?? empresa.ContadorNome;
+        empresa.ContadorCrc                  = req.ContadorCrc?.Trim() ?? empresa.ContadorCrc;
+        empresa.ContadorEmail                = req.ContadorEmail?.Trim().ToLower() ?? empresa.ContadorEmail;
+        empresa.AliquotaPis                  = req.AliquotaPis ?? empresa.AliquotaPis;
+        empresa.AliquotaCofins               = req.AliquotaCofins ?? empresa.AliquotaCofins;
+        empresa.CsosnPadrao                  = req.CsosnPadrao ?? empresa.CsosnPadrao;
+        empresa.CstIcmsPadrao                = req.CstIcmsPadrao ?? empresa.CstIcmsPadrao;
+        empresa.CstPisPadrao                 = req.CstPisPadrao ?? empresa.CstPisPadrao;
+        empresa.CstCofinsPadrao              = req.CstCofinsPadrao ?? empresa.CstCofinsPadrao;
+        empresa.OperaComoSubstitutoTributario = req.OperaComoSubstitutoTributario ?? empresa.OperaComoSubstitutoTributario;
+        empresa.MvaPadrao                    = req.MvaPadrao ?? empresa.MvaPadrao;
+        empresa.PossuiStBebidas              = req.PossuiStBebidas ?? empresa.PossuiStBebidas;
+        empresa.CNAE                         = req.CNAE?.Trim() ?? empresa.CNAE;
+        empresa.AtualizadoEm                 = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { empresa.Id });
+    }
+
+    /// <summary>
     /// GET /api/empresa/{id}/alerta-certificado
     /// Retorna alerta sobre validade do certificado digital.
     /// </summary>
@@ -159,3 +227,15 @@ public class EmpresaController : ControllerBase
 
 public record AtualizarCertificadoRequest(string Base64, string Senha, DateTime? Validade);
 public record AtualizarCscRequest(string CscId, string CscToken);
+
+public record AtualizarEmpresaRequest(
+    string CNPJ, string? RazaoSocial, string? NomeFantasia, string? InscricaoEstadual,
+    string? Logradouro, string? Numero, string? Complemento, string? Bairro,
+    string? Municipio, string? UF, string? CEP, string? Telefone, string? Email,
+    string? Ramo, string? RegimeTributario, int CRT, string? FaixaSimples,
+    bool? EmiteNfse, string? InscricaoMunicipal, bool? InscritoSuframa,
+    string? ContadorNome, string? ContadorCrc, string? ContadorEmail,
+    decimal? AliquotaPis, decimal? AliquotaCofins,
+    string? CsosnPadrao, string? CstIcmsPadrao, string? CstPisPadrao, string? CstCofinsPadrao,
+    bool? OperaComoSubstitutoTributario, decimal? MvaPadrao, bool? PossuiStBebidas,
+    string? CNAE);

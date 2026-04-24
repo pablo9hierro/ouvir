@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Jubilados — Configuração Fiscal</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body {
@@ -104,7 +103,8 @@
     <div class="step ativo" id="s1"><div class="step-circle">1</div><span class="step-label">Empresa</span></div>
     <div class="step" id="s2"><div class="step-circle">2</div><span class="step-label">Regime</span></div>
     <div class="step" id="s3"><div class="step-circle">3</div><span class="step-label">Tributação</span></div>
-    <div class="step" id="s4"><div class="step-circle">4</div><span class="step-label">Revisar</span></div>
+    <div class="step" id="s4"><div class="step-circle">4</div><span class="step-label">Ramo</span></div>
+    <div class="step" id="s5"><div class="step-circle">5</div><span class="step-label">Revisar</span></div>
   </div>
 
   <!-- Passo 1: Dados da empresa -->
@@ -117,25 +117,68 @@
       </div>
       <div>
         <label>Ramo de atividade *</label>
-        <select id="p1-ramo">
+        <select id="p1-ramo" onchange="atualizarRamo()">
           <option value="">Selecione…</option>
           <option value="material_construcao">Material de Construção</option>
           <option value="ferragens">Ferragens</option>
-          <option value="vestuario">Vestuário</option>
+          <option value="vestuario">Vestuário / Moda</option>
           <option value="deposito_bebidas">Depósito de Bebidas</option>
           <option value="conveniencia_mercadinho">Conveniência / Mercadinho</option>
           <option value="farmacia">Farmácia</option>
           <option value="petshop">Pet Shop</option>
-          <option value="distribuidora">Distribuidora</option>
+          <option value="distribuidora">Distribuidora / Atacado</option>
           <option value="restaurante">Restaurante / Alimentação</option>
+          <option value="eletroeletronicos">Eletroeletrônicos / Informática</option>
+          <option value="autopecas">Autopeças</option>
+          <option value="combustiveis">Combustíveis</option>
           <option value="outros">Outros</option>
         </select>
       </div>
     </div>
     <label>Razão Social *</label>
-    <input id="p1-razao" type="text" placeholder="Nome conforme registro" />
+    <input id="p1-razao" type="text" placeholder="Nome conforme registro na Receita Federal" />
     <label>Nome Fantasia</label>
-    <input id="p1-fantasia" type="text" placeholder="Nome comercial" />
+    <input id="p1-fantasia" type="text" placeholder="Nome comercial (se diferente da razão social)" />
+    <div class="row3">
+      <div>
+        <label>Insc. Estadual</label>
+        <input id="p1-ie" type="text" placeholder="000000000" />
+      </div>
+      <div>
+        <label>Telefone</label>
+        <input id="p1-fone" type="text" placeholder="(83) 99999-9999" maxlength="15" />
+      </div>
+      <div>
+        <label>E-mail da empresa</label>
+        <input id="p1-email" type="email" placeholder="contato@empresa.com.br" />
+      </div>
+    </div>
+
+    <p style="font-size:.82rem;font-weight:700;color:#4a5568;margin:18px 0 4px;text-transform:uppercase;letter-spacing:.04em">Endereço</p>
+    <div class="row2">
+      <div>
+        <label>Logradouro *</label>
+        <input id="p1-logradouro" type="text" placeholder="Rua, Av., Rodovia…" />
+      </div>
+      <div>
+        <label>Número *</label>
+        <input id="p1-numero" type="text" placeholder="100 ou S/N" maxlength="10" />
+      </div>
+    </div>
+    <div class="row3">
+      <div>
+        <label>Complemento</label>
+        <input id="p1-complemento" type="text" placeholder="Sala, Bloco…" />
+      </div>
+      <div>
+        <label>Bairro *</label>
+        <input id="p1-bairro" type="text" placeholder="Centro" />
+      </div>
+      <div>
+        <label>Município *</label>
+        <input id="p1-municipio" type="text" placeholder="João Pessoa" />
+      </div>
+    </div>
     <div class="row3">
       <div>
         <label>UF *</label>
@@ -157,8 +200,8 @@
         <input id="p1-cep" type="text" placeholder="00000-000" maxlength="9" />
       </div>
       <div>
-        <label>Insc. Estadual</label>
-        <input id="p1-ie" type="text" placeholder="Opcional" />
+        <label>CNAE principal</label>
+        <input id="p1-cnae" type="text" placeholder="Ex.: 4744-0/01" maxlength="10" />
       </div>
     </div>
     <div class="btns">
@@ -221,7 +264,65 @@
   <!-- Passo 3: Tributação NF-e -->
   <div id="panel3" class="panel">
     <div class="info-box" id="info-crt"></div>
-    <div class="row3">
+
+    <!-- Campos CRT 1 (Simples Nacional) -->
+    <div id="bloco-sn" style="display:none">
+      <label>CSOSN padrão *</label>
+      <select id="p3-csosn">
+        <option value="400">400 — Não tributado pelo Simples (comércio típico)</option>
+        <option value="102">102 — Sem permissão de crédito</option>
+        <option value="103">103 — Isento de ICMS</option>
+        <option value="300">300 — Imune de ICMS</option>
+        <option value="500">500 — ICMS cobrado anteriormente por ST</option>
+        <option value="201">201 — Com crédito + ST</option>
+        <option value="202">202 — Sem crédito + ST</option>
+        <option value="900">900 — Outros (Simples com tributação especial)</option>
+      </select>
+      <div style="margin-top:8px;font-size:.82rem;color:#718096">
+        Use 400 para comércio varejista sem substituição tributária. Use 500 se o ICMS já foi pago pelo fornecedor (ST).
+      </div>
+    </div>
+
+    <!-- Campos CRT 2/3 (Lucro Presumido / Real) -->
+    <div id="bloco-lr" style="display:none">
+      <div class="row3">
+        <div>
+          <label>CST ICMS padrão</label>
+          <select id="p3-cst-icms">
+            <option value="40">40 — Não tributado</option>
+            <option value="41">41 — Não tributado (sem débito de ICMS)</option>
+            <option value="00">00 — Tributado integralmente</option>
+            <option value="20">20 — Com redução de base de cálculo</option>
+            <option value="60">60 — ICMS cobrado anteriormente por ST</option>
+            <option value="70">70 — Com redução + ST retida</option>
+          </select>
+        </div>
+        <div>
+          <label>CST PIS padrão</label>
+          <select id="p3-cst-pis">
+            <option value="07">07 — Isento (operação de revenda)</option>
+            <option value="01">01 — Op. tributável alíquota básica</option>
+            <option value="02">02 — Op. tributável alíquota diferenciada</option>
+            <option value="49">49 — Outras operações de saída</option>
+            <option value="50">50 — Op. tributável — aquisição</option>
+            <option value="99">99 — Outras operações</option>
+          </select>
+        </div>
+        <div>
+          <label>CST COFINS padrão</label>
+          <select id="p3-cst-cofins">
+            <option value="07">07 — Isento (operação de revenda)</option>
+            <option value="01">01 — Op. tributável alíquota básica</option>
+            <option value="02">02 — Op. tributável alíquota diferenciada</option>
+            <option value="49">49 — Outras operações de saída</option>
+            <option value="50">50 — Op. tributável — aquisição</option>
+            <option value="99">99 — Outras operações</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="row2" style="margin-top:14px">
       <div>
         <label>Alíquota PIS (%)</label>
         <input id="p3-pis" type="number" step="0.01" min="0" max="10" value="0.65" />
@@ -229,15 +330,6 @@
       <div>
         <label>Alíquota COFINS (%)</label>
         <input id="p3-cofins" type="number" step="0.01" min="0" max="10" value="3.00" />
-      </div>
-      <div>
-        <label>CSOSN padrão</label>
-        <select id="p3-csosn">
-          <option value="102">102 — Imune/isenta</option>
-          <option value="103">103 — Isento ICMS</option>
-          <option value="400" selected>400 — Não tributado</option>
-          <option value="500">500 — ICMS cobrado anteriormente</option>
-        </select>
       </div>
     </div>
 
@@ -265,14 +357,323 @@
     </div>
   </div>
 
-  <!-- Passo 4: Revisão + Salvar -->
+  <!-- Passo 4: Informações específicas do Ramo -->
   <div id="panel4" class="panel">
+    <div class="info-box" id="info-ramo-desc">Preencha os campos específicos para o seu ramo de atividade.</div>
+
+    <!-- deposito_bebidas -->
+    <div id="ramo-deposito_bebidas" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Depósito de Bebidas — campos fiscais</p>
+      <p style="font-size:.82rem;color:#718096;margin-bottom:12px">Distribuidores e depósitos de bebidas têm regras especiais de ICMS-ST e IPI. Marque os tipos que sua empresa comercializa:</p>
+      <div class="check-group"><input type="checkbox" id="rb-cerveja"/><label for="rb-cerveja">Cerveja / Chope</label></div>
+      <div class="check-group"><input type="checkbox" id="rb-refrigerante"/><label for="rb-refrigerante">Refrigerante / Agua gaseificada</label></div>
+      <div class="check-group"><input type="checkbox" id="rb-destilados"/><label for="rb-destilados">Destilados (cachaça, whisky, vodka…)</label></div>
+      <div class="check-group"><input type="checkbox" id="rb-vinho"/><label for="rb-vinho">Vinho / Espumante</label></div>
+      <div class="check-group"><input type="checkbox" id="rb-isotonico"/><label for="rb-isotonico">Isotônico / Energético</label></div>
+      <div class="check-group"><input type="checkbox" id="rb-agua"/><label for="rb-agua">Água mineral / Água sem gás</label></div>
+      <div style="margin-top:12px">
+        <div class="check-group"><input type="checkbox" id="rb-pauta-fiscal"/><label for="rb-pauta-fiscal">Usar pauta fiscal estadual para base de cálculo do ICMS-ST</label></div>
+        <div class="check-group"><input type="checkbox" id="rb-ipi-bebidas"/><label for="rb-ipi-bebidas">Minha empresa destaca IPI nas notas (distribuidora que vende a estabelecimentos com IPI)</label></div>
+      </div>
+    </div>
+
+    <!-- farmacia -->
+    <div id="ramo-farmacia" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Farmácia — campos fiscais</p>
+      <div class="check-group"><input type="checkbox" id="rf-st-medicamentos"/><label for="rf-st-medicamentos">Opera com ICMS-ST para medicamentos (Protocolo ICMS 76/2007)</label></div>
+      <div class="check-group"><input type="checkbox" id="rf-controlados"/><label for="rf-controlados">Vende medicamentos controlados (receituário C1/C2/C3)</label></div>
+      <div class="check-group"><input type="checkbox" id="rf-higiene"/><label for="rf-higiene">Vende produtos de higiene/perfumaria com ST</label></div>
+      <div style="margin-top:12px">
+        <label>Número de autorização ANVISA (opcional)</label>
+        <input id="rf-anvisa" type="text" placeholder="Ex.: 6.0008.0001" />
+      </div>
+      <div class="info-box" style="margin-top:12px;font-size:.82rem">
+        Produtos com preço regulado pela ANVISA exigem o campo &lt;med&gt; com cProdANVISA e vPMC na NF-e. Esses dados devem ser informados produto a produto no cadastro de itens.
+      </div>
+    </div>
+
+    <!-- material_construcao e ferragens -->
+    <div id="ramo-material_construcao" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Material de Construção — campos fiscais</p>
+      <div class="check-group"><input type="checkbox" id="rmc-st-tintas"/><label for="rmc-st-tintas">Opera com ST em tintas e vernizes (Protocolo ICMS 54/2007)</label></div>
+      <div class="check-group"><input type="checkbox" id="rmc-st-materiais"/><label for="rmc-st-materiais">Opera com ST em materiais elétricos/hidráulicos/ferramentas</label></div>
+      <div class="check-group"><input type="checkbox" id="rmc-st-cimento"/><label for="rmc-st-cimento">Opera com ST em cimento (Protocolo ICMS 26/2009)</label></div>
+      <div class="check-group"><input type="checkbox" id="rmc-st-ceramica"/><label for="rmc-st-ceramica">Opera com ST em pisos/revestimentos cerâmicos</label></div>
+    </div>
+
+    <div id="ramo-ferragens" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Ferragens — campos fiscais</p>
+      <div class="check-group"><input type="checkbox" id="rfe-st-ferragens"/><label for="rfe-st-ferragens">Opera com ST em ferragens e artefatos metálicos (Protocolo ICMS 32/2009)</label></div>
+      <div class="check-group"><input type="checkbox" id="rfe-st-ferramentas"/><label for="rfe-st-ferramentas">Opera com ST em ferramentas manuais e mecanizadas</label></div>
+    </div>
+
+    <!-- conveniencia_mercadinho -->
+    <div id="ramo-conveniencia_mercadinho" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Conveniência / Mercadinho — campos fiscais</p>
+      <div class="check-group"><input type="checkbox" id="rcv-bebidas-st"/><label for="rcv-bebidas-st">Vende bebidas com ICMS-ST</label></div>
+      <div class="check-group"><input type="checkbox" id="rcv-tabaco"/><label for="rcv-tabaco">Vende cigarros / tabaco (ST obrigatório — Prot. ICMS 37/2007)</label></div>
+      <div class="check-group"><input type="checkbox" id="rcv-higiene"/><label for="rcv-higiene">Vende produtos de higiene/perfumaria com ST</label></div>
+      <div id="bloco-tabaco" style="display:none;margin-top:10px">
+        <label>CNPJ autorizado pelo MAPA para comércio de cigarro (se aplicável)</label>
+        <input id="rcv-mapa-cnpj" type="text" placeholder="CNPJ da autorização" maxlength="18" />
+      </div>
+    </div>
+
+    <!-- petshop -->
+    <div id="ramo-petshop" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Pet Shop — campos fiscais</p>
+      <div class="check-group"><input type="checkbox" id="rps-vet"/><label for="rps-vet">Vende medicamentos veterinários (exige NCMs específicos 30.04.xx)</label></div>
+      <div class="check-group"><input type="checkbox" id="rps-racao"/><label for="rps-racao">Vende rações / suplementos com ST</label></div>
+    </div>
+
+    <!-- distribuidora -->
+    <div id="ramo-distribuidora" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Distribuidora / Atacado — campos fiscais</p>
+      <p style="font-size:.82rem;color:#718096;margin-bottom:10px">Marque as categorias com substituição tributária que sua distribuidora opera:</p>
+      <div class="check-group"><input type="checkbox" id="rd-bebidas"/><label for="rd-bebidas">Bebidas</label></div>
+      <div class="check-group"><input type="checkbox" id="rd-alimentos"/><label for="rd-alimentos">Alimentos / Confectionery</label></div>
+      <div class="check-group"><input type="checkbox" id="rd-higiene"/><label for="rd-higiene">Higiene / Perfumaria</label></div>
+      <div class="check-group"><input type="checkbox" id="rd-eletro"/><label for="rd-eletro">Eletroeletrônicos / Informática</label></div>
+      <div class="check-group"><input type="checkbox" id="rd-autopecas"/><label for="rd-autopecas">Autopeças</label></div>
+      <div class="check-group"><input type="checkbox" id="rd-combustivel"/><label for="rd-combustivel">Combustíveis (PMPF obrigatório)</label></div>
+    </div>
+
+    <!-- restaurante -->
+    <div id="ramo-restaurante" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Restaurante / Alimentação — campos fiscais</p>
+      <div class="check-group"><input type="checkbox" id="rr-nfce"/><label for="rr-nfce">Emite NFC-e (cupom fiscal) para consumo no local / delivery</label></div>
+      <div class="check-group"><input type="checkbox" id="rr-iss"/><label for="rr-iss">Emite NFS-e (nota de serviço) para buffet / eventos</label></div>
+    </div>
+
+    <!-- eletroeletronicos -->
+    <div id="ramo-eletroeletronicos" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Eletroeletrônicos / Informática — campos fiscais</p>
+      <div class="check-group"><input type="checkbox" id="rel-st"/><label for="rel-st">Opera com ICMS-ST (Convênio ICMS 52/2017)</label></div>
+      <div class="check-group"><input type="checkbox" id="rel-suframa"/><label for="rel-suframa">Vende para a Zona Franca de Manaus (SUFRAMA)</label></div>
+    </div>
+
+    <!-- autopecas -->
+    <div id="ramo-autopecas" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Autopeças — campos fiscais</p>
+      <div class="check-group"><input type="checkbox" id="rap-st"/><label for="rap-st">Opera com ICMS-ST em autopeças (Convênio ICMS 142/2018)</label></div>
+      <div class="check-group"><input type="checkbox" id="rap-comb"/><label for="rap-comb">Vende fluidos/lubrificantes (PMPF)</label></div>
+    </div>
+
+    <!-- combustiveis -->
+    <div id="ramo-combustiveis" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Combustíveis — campos fiscais</p>
+      <div class="info-box" style="font-size:.82rem">
+        Distribuidoras e postos de combustíveis têm regime especial de ICMS monofásico (Convênio ICMS 110/2007). O PMPF (Preço Médio Ponderado a Consumidor Final) é obrigatório na NF-e.
+      </div>
+      <div class="check-group"><input type="checkbox" id="rcb-pmpf"/><label for="rcb-pmpf">Utilizo PMPF como base de cálculo do ICMS</label></div>
+      <div class="check-group"><input type="checkbox" id="rcb-anp"/><label for="rcb-anp">Tenho registro na ANP como distribuidor de combustíveis</label></div>
+    </div>
+
+    <!-- outros -->
+    <div id="ramo-outros" style="display:none">
+      <p style="font-size:.82rem;color:#718096">Para outros ramos de atividade, configure as alíquotas e CST/CSOSN individualmente em cada produto cadastrado.</p>
+    </div>
+
+    <!-- vestuario -->
+    <div id="ramo-vestuario" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Vestuário / Moda — campos fiscais</p>
+      <div class="check-group"><input type="checkbox" id="rv-st"/><label for="rv-st">Opera com ICMS-ST em vestuário (verificar protocolo do estado)</label></div>
+      <div class="check-group"><input type="checkbox" id="rv-importa"/><label for="rv-importa">Importa mercadorias (II e IPI podem incidir)</label></div>
+    </div>
+
+    <div class="btns">
+      <button class="btn btn-outline" onclick="irPasso(3)">← Voltar</button>
+      <button class="btn btn-primary" onclick="irPasso(5)">Próximo →</button>
+    </div>
+  </div>
+
+  <!-- Passo 5: Revisão + Salvar -->
+  <div id="panel5" class="panel">
     <div class="info-box" style="background:#f0fdf4;border-color:#bbf7d0;color:#166534;">
       Revise as informações antes de finalizar. Você poderá alterar tudo depois em "Configurações".
     </div>
     <dl class="revisao-grid" id="revisao"></dl>
     <div class="btns">
+      <button class="btn btn-outline" onclick="irPasso(4isição</option>
+            <option value="99">99 — Outras operações</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="row2" style="margin-top:14px">
+      <div>
+        <label>Alíquota PIS (%)</label>
+        <input id="p3-pis" type="number" step="0.01" min="0" max="10" value="0.65" />
+      </div>
+      <div>
+        <label>Alíquota COFINS (%)</label>
+        <input id="p3-cofins" type="number" step="0.01" min="0" max="10" value="3.00" />
+      </div>
+    </div>
+
+    <div class="check-group">
+      <input type="checkbox" id="p3-st" onchange="atualizarST()" />
+      <label for="p3-st">Minha empresa opera como Substituta Tributária (ICMS-ST)</label>
+    </div>
+
+    <div id="bloco-st" style="display:none; margin-top:10px;">
+      <div class="row2">
+        <div>
+          <label>MVA padrão (%)</label>
+          <input id="p3-mva" type="number" step="0.01" min="0" value="30" />
+        </div>
+        <div>
+          <label>Opera com ST em bebidas</label>
+          <input type="checkbox" id="p3-st-bebidas" style="margin-top:12px;width:auto;" />
+        </div>
+      </div>
+    </div>
+
+    <div class="btns">
+      <button class="btn btn-outline" onclick="irPasso(2)">← Voltar</button>
+      <button class="btn btn-primary" onclick="irPasso(4)">Próximo →</button>
+    </div>
+  </div>
+
+  <!-- Passo 4: Informações específicas do Ramo -->
+  <div id="panel4" class="panel">
+    <div class="info-box" id="info-ramo-desc">Preencha os campos específicos para o seu ramo de atividade.</div>
+
+    <!-- deposito_bebidas -->
+    <div id="ramo-deposito_bebidas" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Depósito de Bebidas — campos fiscais</p>
+      <p style="font-size:.82rem;color:#718096;margin-bottom:12px">Distribuidores e depósitos de bebidas têm regras especiais de ICMS-ST e IPI. Marque os tipos que sua empresa comercializa:</p>
+      <div class="check-group"><input type="checkbox" id="rb-cerveja"/><label for="rb-cerveja">Cerveja / Chope</label></div>
+      <div class="check-group"><input type="checkbox" id="rb-refrigerante"/><label for="rb-refrigerante">Refrigerante / Agua gaseificada</label></div>
+      <div class="check-group"><input type="checkbox" id="rb-destilados"/><label for="rb-destilados">Destilados (cachaça, whisky, vodka…)</label></div>
+      <div class="check-group"><input type="checkbox" id="rb-vinho"/><label for="rb-vinho">Vinho / Espumante</label></div>
+      <div class="check-group"><input type="checkbox" id="rb-isotonico"/><label for="rb-isotonico">Isotônico / Energético</label></div>
+      <div class="check-group"><input type="checkbox" id="rb-agua"/><label for="rb-agua">Água mineral / Água sem gás</label></div>
+      <div style="margin-top:12px">
+        <div class="check-group"><input type="checkbox" id="rb-pauta-fiscal"/><label for="rb-pauta-fiscal">Usar pauta fiscal estadual para base de cálculo do ICMS-ST</label></div>
+        <div class="check-group"><input type="checkbox" id="rb-ipi-bebidas"/><label for="rb-ipi-bebidas">Minha empresa destaca IPI nas notas (distribuidora que vende a estabelecimentos com IPI)</label></div>
+      </div>
+    </div>
+
+    <!-- farmacia -->
+    <div id="ramo-farmacia" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Farmácia — campos fiscais</p>
+      <div class="check-group"><input type="checkbox" id="rf-st-medicamentos"/><label for="rf-st-medicamentos">Opera com ICMS-ST para medicamentos (Protocolo ICMS 76/2007)</label></div>
+      <div class="check-group"><input type="checkbox" id="rf-controlados"/><label for="rf-controlados">Vende medicamentos controlados (receituário C1/C2/C3)</label></div>
+      <div class="check-group"><input type="checkbox" id="rf-higiene"/><label for="rf-higiene">Vende produtos de higiene/perfumaria com ST</label></div>
+      <div style="margin-top:12px">
+        <label>Número de autorização ANVISA (opcional)</label>
+        <input id="rf-anvisa" type="text" placeholder="Ex.: 6.0008.0001" />
+      </div>
+      <div class="info-box" style="margin-top:12px;font-size:.82rem">
+        Produtos com preço regulado pela ANVISA exigem o campo &lt;med&gt; com cProdANVISA e vPMC na NF-e. Esses dados devem ser informados produto a produto no cadastro de itens.
+      </div>
+    </div>
+
+    <!-- material_construcao e ferragens -->
+    <div id="ramo-material_construcao" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Material de Construção — campos fiscais</p>
+      <div class="check-group"><input type="checkbox" id="rmc-st-tintas"/><label for="rmc-st-tintas">Opera com ST em tintas e vernizes (Protocolo ICMS 54/2007)</label></div>
+      <div class="check-group"><input type="checkbox" id="rmc-st-materiais"/><label for="rmc-st-materiais">Opera com ST em materiais elétricos/hidráulicos/ferramentas</label></div>
+      <div class="check-group"><input type="checkbox" id="rmc-st-cimento"/><label for="rmc-st-cimento">Opera com ST em cimento (Protocolo ICMS 26/2009)</label></div>
+      <div class="check-group"><input type="checkbox" id="rmc-st-ceramica"/><label for="rmc-st-ceramica">Opera com ST em pisos/revestimentos cerâmicos</label></div>
+    </div>
+
+    <div id="ramo-ferragens" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Ferragens — campos fiscais</p>
+      <div class="check-group"><input type="checkbox" id="rfe-st-ferragens"/><label for="rfe-st-ferragens">Opera com ST em ferragens e artefatos metálicos (Protocolo ICMS 32/2009)</label></div>
+      <div class="check-group"><input type="checkbox" id="rfe-st-ferramentas"/><label for="rfe-st-ferramentas">Opera com ST em ferramentas manuais e mecanizadas</label></div>
+    </div>
+
+    <!-- conveniencia_mercadinho -->
+    <div id="ramo-conveniencia_mercadinho" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Conveniência / Mercadinho — campos fiscais</p>
+      <div class="check-group"><input type="checkbox" id="rcv-bebidas-st"/><label for="rcv-bebidas-st">Vende bebidas com ICMS-ST</label></div>
+      <div class="check-group"><input type="checkbox" id="rcv-tabaco"/><label for="rcv-tabaco">Vende cigarros / tabaco (ST obrigatório — Prot. ICMS 37/2007)</label></div>
+      <div class="check-group"><input type="checkbox" id="rcv-higiene"/><label for="rcv-higiene">Vende produtos de higiene/perfumaria com ST</label></div>
+      <div id="bloco-tabaco" style="display:none;margin-top:10px">
+        <label>CNPJ autorizado pelo MAPA para comércio de cigarro (se aplicável)</label>
+        <input id="rcv-mapa-cnpj" type="text" placeholder="CNPJ da autorização" maxlength="18" />
+      </div>
+    </div>
+
+    <!-- petshop -->
+    <div id="ramo-petshop" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Pet Shop — campos fiscais</p>
+      <div class="check-group"><input type="checkbox" id="rps-vet"/><label for="rps-vet">Vende medicamentos veterinários (exige NCMs específicos 30.04.xx)</label></div>
+      <div class="check-group"><input type="checkbox" id="rps-racao"/><label for="rps-racao">Vende rações / suplementos com ST</label></div>
+    </div>
+
+    <!-- distribuidora -->
+    <div id="ramo-distribuidora" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Distribuidora / Atacado — campos fiscais</p>
+      <p style="font-size:.82rem;color:#718096;margin-bottom:10px">Marque as categorias com substituição tributária que sua distribuidora opera:</p>
+      <div class="check-group"><input type="checkbox" id="rd-bebidas"/><label for="rd-bebidas">Bebidas</label></div>
+      <div class="check-group"><input type="checkbox" id="rd-alimentos"/><label for="rd-alimentos">Alimentos / Confectionery</label></div>
+      <div class="check-group"><input type="checkbox" id="rd-higiene"/><label for="rd-higiene">Higiene / Perfumaria</label></div>
+      <div class="check-group"><input type="checkbox" id="rd-eletro"/><label for="rd-eletro">Eletroeletrônicos / Informática</label></div>
+      <div class="check-group"><input type="checkbox" id="rd-autopecas"/><label for="rd-autopecas">Autopeças</label></div>
+      <div class="check-group"><input type="checkbox" id="rd-combustivel"/><label for="rd-combustivel">Combustíveis (PMPF obrigatório)</label></div>
+    </div>
+
+    <!-- restaurante -->
+    <div id="ramo-restaurante" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Restaurante / Alimentação — campos fiscais</p>
+      <div class="check-group"><input type="checkbox" id="rr-nfce"/><label for="rr-nfce">Emite NFC-e (cupom fiscal) para consumo no local / delivery</label></div>
+      <div class="check-group"><input type="checkbox" id="rr-iss"/><label for="rr-iss">Emite NFS-e (nota de serviço) para buffet / eventos</label></div>
+    </div>
+
+    <!-- eletroeletronicos -->
+    <div id="ramo-eletroeletronicos" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Eletroeletrônicos / Informática — campos fiscais</p>
+      <div class="check-group"><input type="checkbox" id="rel-st"/><label for="rel-st">Opera com ICMS-ST (Convênio ICMS 52/2017)</label></div>
+      <div class="check-group"><input type="checkbox" id="rel-suframa"/><label for="rel-suframa">Vende para a Zona Franca de Manaus (SUFRAMA)</label></div>
+    </div>
+
+    <!-- autopecas -->
+    <div id="ramo-autopecas" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Autopeças — campos fiscais</p>
+      <div class="check-group"><input type="checkbox" id="rap-st"/><label for="rap-st">Opera com ICMS-ST em autopeças (Convênio ICMS 142/2018)</label></div>
+      <div class="check-group"><input type="checkbox" id="rap-comb"/><label for="rap-comb">Vende fluidos/lubrificantes (PMPF)</label></div>
+    </div>
+
+    <!-- combustiveis -->
+    <div id="ramo-combustiveis" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Combustíveis — campos fiscais</p>
+      <div class="info-box" style="font-size:.82rem">
+        Distribuidoras e postos de combustíveis têm regime especial de ICMS monofásico (Convênio ICMS 110/2007). O PMPF (Preço Médio Ponderado a Consumidor Final) é obrigatório na NF-e.
+      </div>
+      <div class="check-group"><input type="checkbox" id="rcb-pmpf"/><label for="rcb-pmpf">Utilizo PMPF como base de cálculo do ICMS</label></div>
+      <div class="check-group"><input type="checkbox" id="rcb-anp"/><label for="rcb-anp">Tenho registro na ANP como distribuidor de combustíveis</label></div>
+    </div>
+
+    <!-- outros -->
+    <div id="ramo-outros" style="display:none">
+      <p style="font-size:.82rem;color:#718096">Para outros ramos de atividade, configure as alíquotas e CST/CSOSN individualmente em cada produto cadastrado.</p>
+    </div>
+
+    <!-- vestuario -->
+    <div id="ramo-vestuario" style="display:none">
+      <p style="font-weight:700;margin-bottom:8px">Vestuário / Moda — campos fiscais</p>
+      <div class="check-group"><input type="checkbox" id="rv-st"/><label for="rv-st">Opera com ICMS-ST em vestuário (verificar protocolo do estado)</label></div>
+      <div class="check-group"><input type="checkbox" id="rv-importa"/><label for="rv-importa">Importa mercadorias (II e IPI podem incidir)</label></div>
+    </div>
+
+    <div class="btns">
       <button class="btn btn-outline" onclick="irPasso(3)">← Voltar</button>
+      <button class="btn btn-primary" onclick="irPasso(5)">Próximo →</button>
+    </div>
+  </div>
+
+  <!-- Passo 5: Revisão + Salvar -->
+  <div id="panel5" class="panel">
+    <div class="info-box" style="background:#f0fdf4;border-color:#bbf7d0;color:#166534;">
+      Revise as informações antes de finalizar. Você poderá alterar tudo depois em "Configurações".
+    </div>
+    <dl class="revisao-grid" id="revisao"></dl>
+    <div class="btns">
+      <button class="btn btn-outline" onclick="irPasso(4)">← Voltar</button>
       <button class="btn btn-success" id="btn-finalizar" onclick="finalizarOnboarding()">✓ Finalizar configuração</button>
     </div>
   </div>
@@ -281,18 +682,12 @@
 </div>
 
 <script>
-  const SUPABASE_URL  = 'https://cumdvosqimugvzxlqtsu.supabase.co';
-  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1bWR2b3NxaW11Z3Z6eGxxdHN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3ODUxODcsImV4cCI6MjA5MTM2MTE4N30.UubUbIAB2FQzY4jfR6kHLShkt8Ld9xCGZKjXqFIe5k8';
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
-  let token = null;
-
-  // Verifica autenticação
-  supabase.auth.getSession().then(({ data }) => {
-    if (!data.session) { window.location.href = '/login.html'; return; }
-    token = data.session.access_token;
-  });
+  // ── Auth: usa JWT local (localStorage) em vez de Supabase ─────────────────
+  let token = localStorage.getItem('jubilados_token');
+  if (!token) { window.location.href = '/login.html'; }
 
   let passoAtual = 1;
+  const NUM_PASSOS = 5;
 
   function irPasso(n) {
     if (!validarPasso(passoAtual)) return;
@@ -305,7 +700,8 @@
       s.querySelector('.step-circle').textContent = i + 1 < n ? '✓' : i + 1;
     });
     if (n === 3) prepararPasso3();
-    if (n === 4) preencherRevisao();
+    if (n === 4) prepararPasso4();
+    if (n === 5) preencherRevisao();
     esconderMsg();
     window.scrollTo(0, 0);
   }
@@ -320,17 +716,28 @@
         return mostrarMsg('Informe a razão social.', 'error'), false;
       if (!document.getElementById('p1-uf').value)
         return mostrarMsg('Selecione a UF.', 'error'), false;
+      if (!document.getElementById('p1-logradouro').value.trim())
+        return mostrarMsg('Informe o logradouro (endereço).', 'error'), false;
+      if (!document.getElementById('p1-numero').value.trim())
+        return mostrarMsg('Informe o número do endereço.', 'error'), false;
+      if (!document.getElementById('p1-bairro').value.trim())
+        return mostrarMsg('Informe o bairro.', 'error'), false;
+      if (!document.getElementById('p1-municipio').value.trim())
+        return mostrarMsg('Informe o município.', 'error'), false;
+      if (!document.getElementById('p1-cep').value.replace(/\D/g,'').length)
+        return mostrarMsg('Informe o CEP.', 'error'), false;
     }
     if (n === 2) {
-      if (!document.getElementById('p2-regime').value)
-        return mostrarMsg('Selecione o regime tributário.', 'error'), false;
+      const r = document.getElementById('p2-regime').value;
+      if (!r) return mostrarMsg('Selecione o regime tributário.', 'error'), false;
+      if (r === 'mei') return mostrarMsg('MEI não é suportado neste módulo. Selecione outro regime.', 'error'), false;
     }
     return true;
   }
 
   function atualizarPasso2() {
     const r = document.getElementById('p2-regime').value;
-    document.getElementById('bloco-simples').style.display   = (r === 'simples_nacional' || r === 'mei') ? '' : 'none';
+    document.getElementById('bloco-simples').style.display   = (r === 'simples_nacional') ? '' : 'none';
     document.getElementById('bloco-contador').style.display  = (r === 'lucro_presumido'  || r === 'lucro_real') ? '' : 'none';
   }
 
@@ -345,24 +752,94 @@
 
   function prepararPasso3() {
     const r = document.getElementById('p2-regime').value;
-    const crt = r === 'mei' ? 1 : r === 'simples_nacional' ? 1 : r === 'lucro_presumido' ? 2 : 3;
-    const msgs = { 1: 'CRT 1 — Simples Nacional / MEI: CSOSN é usado em vez de CST ICMS.', 2: 'CRT 2 — Lucro Presumido: usa CST ICMS e alíquotas normais.', 3: 'CRT 3 — Lucro Real: usa CST ICMS e pode ter débito/crédito de PIS/COFINS.' };
+    const crt = r === 'simples_nacional' ? 1 : r === 'lucro_presumido' ? 2 : 3;
+    const msgs = {
+      1: 'CRT 1 — Simples Nacional: usa CSOSN (não CST ICMS). PIS e COFINS ficam isentos (CST 07) nas saídas.',
+      2: 'CRT 2 — Lucro Presumido: usa CST ICMS, CST PIS e CST COFINS. Alíquota PIS=1,65%, COFINS=7,6% se não-cumulativo, ou PIS=0,65%/COFINS=3% se cumulativo.',
+      3: 'CRT 3 — Lucro Real: usa CST ICMS e pode ter crédito/débito de PIS/COFINS não-cumulativo.'
+    };
     document.getElementById('info-crt').textContent = msgs[crt] || '';
+    // Mostra o bloco correto
+    document.getElementById('bloco-sn').style.display = crt === 1 ? '' : 'none';
+    document.getElementById('bloco-lr').style.display = crt !== 1 ? '' : 'none';
+    // Ajusta alíquotas padrão por regime
+    if (crt === 1) {
+      document.getElementById('p3-pis').value   = '0.65';
+      document.getElementById('p3-cofins').value = '3.00';
+    } else {
+      document.getElementById('p3-pis').value   = '1.65';
+      document.getElementById('p3-cofins').value = '7.60';
+    }
+  }
+
+  function atualizarRamo() {
+    // Pode ser chamado no passo 4 para atualizar a exibição
+  }
+
+  function prepararPasso4() {
+    const ramo = document.getElementById('p1-ramo').value;
+    // Esconde todos os blocos de ramo
+    document.querySelectorAll('[id^="ramo-"]').forEach(el => el.style.display = 'none');
+    // Mostra o bloco do ramo selecionado
+    const blocoRamo = document.getElementById('ramo-' + ramo);
+    if (blocoRamo) {
+      blocoRamo.style.display = '';
+    } else {
+      document.getElementById('ramo-outros').style.display = '';
+    }
+    // Descrição
+    const descs = {
+      material_construcao: 'Material de Construção — Verifique os protocolos de ICMS-ST aplicáveis ao seu estado.',
+      ferragens: 'Ferragens — Verifique a lista de CEST para ferragens e artefatos metálicos.',
+      deposito_bebidas: 'Depósito de Bebidas — ICMS-ST é obrigatório para a maioria das bebidas. Informe os tipos comercializados.',
+      conveniencia_mercadinho: 'Conveniência / Mercadinho — Identifique os produtos sujeitos à ST.',
+      farmacia: 'Farmácia — Medicamentos têm ST e regras da ANVISA. Informe as categorias.',
+      petshop: 'Pet Shop — Medicamentos veterinários têm NCMs específicos.',
+      distribuidora: 'Distribuidora / Atacado — Informe as categorias com ST.',
+      restaurante: 'Restaurante / Alimentação — NFC-e para consumo no local, NFS-e para serviços.',
+      eletroeletronicos: 'Eletroeletrônicos / Informática — ICMS-ST pelo Convênio 52/2017.',
+      autopecas: 'Autopeças — ICMS-ST pelo Convênio 142/2018.',
+      combustiveis: 'Combustíveis — Regime especial monofásico; PMPF obrigatório.',
+      vestuario: 'Vestuário — Verifique se há protocolo de ST para o seu estado.',
+      outros: 'Configure os tributos individualmente por produto no cadastro de produtos.'
+    };
+    document.getElementById('info-ramo-desc').textContent = descs[ramo] || 'Preencha os campos específicos do seu ramo.';
+
+    // Tabaco: exibe campo MAPA
+    const tabaco = document.getElementById('rcv-tabaco');
+    if (tabaco) {
+      tabaco.addEventListener('change', function() {
+        const el = document.getElementById('bloco-tabaco');
+        if (el) el.style.display = this.checked ? '' : 'none';
+      });
+    }
   }
 
   function preencherRevisao() {
     const regime = document.getElementById('p2-regime');
     const ramo   = document.getElementById('p1-ramo');
+    const crt = regime.value === 'simples_nacional' ? 1 : regime.value === 'lucro_presumido' ? 2 : 3;
     const fields = [
       ['CNPJ',            document.getElementById('p1-cnpj').value],
       ['Razão Social',    document.getElementById('p1-razao').value],
       ['Nome Fantasia',   document.getElementById('p1-fantasia').value || '—'],
-      ['UF',              document.getElementById('p1-uf').value],
       ['Ramo',            ramo.selectedOptions[0]?.text || '—'],
+      ['Endereço',        [document.getElementById('p1-logradouro').value, document.getElementById('p1-numero').value, document.getElementById('p1-bairro').value].filter(Boolean).join(', ') || '—'],
+      ['Município/UF',    (document.getElementById('p1-municipio').value || '—') + ' / ' + (document.getElementById('p1-uf').value || '—')],
+      ['CEP',             document.getElementById('p1-cep').value || '—'],
+      ['IE',              document.getElementById('p1-ie').value || '—'],
       ['Regime',          regime.selectedOptions[0]?.text || '—'],
+      ['CRT',             crt],
       ['PIS',             document.getElementById('p3-pis').value + '%'],
       ['COFINS',          document.getElementById('p3-cofins').value + '%'],
-      ['CSOSN padrão',    document.getElementById('p3-csosn').selectedOptions[0]?.text || '—'],
+      ...(crt === 1
+        ? [['CSOSN padrão', document.getElementById('p3-csosn')?.selectedOptions[0]?.text || '—']]
+        : [
+            ['CST ICMS',  document.getElementById('p3-cst-icms')?.selectedOptions[0]?.text || '—'],
+            ['CST PIS',   document.getElementById('p3-cst-pis')?.selectedOptions[0]?.text  || '—'],
+            ['CST COFINS',document.getElementById('p3-cst-cofins')?.selectedOptions[0]?.text || '—'],
+          ]
+      ),
       ['Opera com ST',    document.getElementById('p3-st').checked ? 'Sim' : 'Não'],
       ['Emite NFS-e',     document.getElementById('p2-nfse').checked ? 'Sim' : 'Não'],
     ];
@@ -375,7 +852,7 @@
     btn.disabled = true; btn.textContent = 'Salvando…';
 
     const regimeVal = document.getElementById('p2-regime').value;
-    const crt = regimeVal === 'mei' ? 1 : regimeVal === 'simples_nacional' ? 1 : regimeVal === 'lucro_presumido' ? 2 : 3;
+    const crt = regimeVal === 'simples_nacional' ? 1 : regimeVal === 'lucro_presumido' ? 2 : 3;
 
     const payload = {
       cnpj:               document.getElementById('p1-cnpj').value.replace(/\D/g,''),
@@ -384,6 +861,14 @@
       uf:                 document.getElementById('p1-uf').value,
       cep:                document.getElementById('p1-cep').value.replace(/\D/g,''),
       inscricaoEstadual:  document.getElementById('p1-ie').value.trim() || null,
+      logradouro:         document.getElementById('p1-logradouro').value.trim(),
+      numero:             document.getElementById('p1-numero').value.trim(),
+      complemento:        document.getElementById('p1-complemento').value.trim() || null,
+      bairro:             document.getElementById('p1-bairro').value.trim(),
+      municipio:          document.getElementById('p1-municipio').value.trim(),
+      telefone:           document.getElementById('p1-fone').value.trim() || null,
+      email:              document.getElementById('p1-email').value.trim() || null,
+      cnae:               document.getElementById('p1-cnae').value.trim() || null,
       ramo:               document.getElementById('p1-ramo').value,
       regimeTributario:   regimeVal,
       crt,
@@ -396,7 +881,10 @@
       contadorEmail:      document.getElementById('p2-cont-email').value.trim() || null,
       aliquotaPis:        parseFloat(document.getElementById('p3-pis').value) || 0.65,
       aliquotaCofins:     parseFloat(document.getElementById('p3-cofins').value) || 3.00,
-      csosnPadrao:        document.getElementById('p3-csosn').value,
+      csosnPadrao:        crt === 1 ? (document.getElementById('p3-csosn')?.value || '400') : null,
+      cstIcmsPadrao:      crt !== 1 ? (document.getElementById('p3-cst-icms')?.value || '40') : null,
+      cstPisPadrao:       crt !== 1 ? (document.getElementById('p3-cst-pis')?.value || '07') : null,
+      cstCofinsPadrao:    crt !== 1 ? (document.getElementById('p3-cst-cofins')?.value || '07') : null,
       operaComoSubstitutoTributario: document.getElementById('p3-st').checked,
       mvaPadrao:          document.getElementById('p3-st').checked
                             ? parseFloat(document.getElementById('p3-mva').value) || null
@@ -405,40 +893,48 @@
     };
 
     try {
-      // 1. Cria ou atualiza empresa via API
+      // 1. Tenta criar empresa
       let res = await fetch('/api/empresa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
         body: JSON.stringify(payload)
       });
 
-      if (!res.ok) {
-        // Pode já existir: tenta PUT
-        const empresaRes = await fetch('/api/empresa?cnpj=' + payload.cnpj, {
+      let empresaId = null;
+
+      if (res.ok) {
+        const data = await res.json();
+        empresaId = data.id;
+      } else if (res.status === 409) {
+        // CNPJ já existe — busca pelo CNPJ e atualiza
+        const cnpjLimpo = payload.cnpj;
+        const buscaRes = await fetch('/api/empresa/por-cnpj/' + cnpjLimpo, {
           headers: { 'Authorization': 'Bearer ' + token }
         });
-        if (empresaRes.ok) {
-          const list = await empresaRes.json();
-          const id = Array.isArray(list) ? list[0]?.id : list?.id;
-          if (id) {
-            res = await fetch('/api/empresa/' + id, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-              body: JSON.stringify(payload)
-            });
-          }
+        if (buscaRes.ok) {
+          const existing = await buscaRes.json();
+          empresaId = existing.id;
+          // Atualiza os dados da empresa existente
+          await fetch('/api/empresa/' + empresaId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify(payload)
+          });
+        } else {
+          throw new Error('CNPJ já cadastrado e não foi possível encontrar a empresa.');
         }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.erro || 'Erro ao salvar empresa: ' + res.status);
       }
 
-      if (!res.ok) throw new Error('Erro ao salvar empresa: ' + res.status);
-      const empresa = await res.json();
-
-      // 2. Associa usuário à empresa
-      await fetch('/api/auth/associar-empresa', {
+      // 2. Associa o usuário à empresa criada/atualizada
+      const assocRes = await fetch('/api/auth/associar-empresa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
         body: JSON.stringify({ cnpj: payload.cnpj })
       });
+      if (!assocRes.ok) throw new Error('Erro ao associar usuário à empresa.');
 
       // 3. Marca onboarding concluído
       await fetch('/api/auth/onboarding-concluido', {

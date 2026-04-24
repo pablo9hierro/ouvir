@@ -775,6 +775,8 @@ public class NFeService : INFeService
         // DIFAL EC 87/2015: aplica apenas CRT=2/3, operação interestadual (idDest=2), consumidor final (indFinal=1)
         var isDifal = empresa.CRT != 1 && idDest == "2";
         decimal totalVICMSUFDest = 0m;
+        decimal totalVBC  = 0m;
+        decimal totalVICMS = 0m;
 
         int nItem = 1;
         foreach (var item in nota.Itens)
@@ -803,12 +805,50 @@ public class NFeService : INFeService
             var cst   = produto.CST?.Trim();
             if (empresa.CRT == 1)
             {
-                // Simples Nacional: usa CSOSN
+                // Simples Nacional: usa CSOSN — grupo varia por CSOSN
                 var csosnFinal = !string.IsNullOrEmpty(csosn) ? csosn.PadLeft(3, '0') : "400";
-                sb.AppendLine("        <ICMS><ICMSSN102>");
-                sb.AppendLine("          <orig>0</orig>");
-                sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
-                sb.AppendLine("        </ICMSSN102></ICMS>");
+                if (csosnFinal == "500")
+                {
+                    // CSOSN 500: ICMS cobrado anteriormente por ST — usa ICMSSN500
+                    sb.AppendLine("        <ICMS><ICMSSN500>");
+                    sb.AppendLine("          <orig>0</orig>");
+                    sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
+                    sb.AppendLine("          <vBCSTRet>0.00</vBCSTRet><pST>0.00</pST><vICMSSTRet>0.00</vICMSSTRet>");
+                    sb.AppendLine("        </ICMSSN500></ICMS>");
+                }
+                else if (csosnFinal == "201" || csosnFinal == "202" || csosnFinal == "203")
+                {
+                    // CSOSN 201/202/203: com ST — usa ICMSSN202
+                    sb.AppendLine("        <ICMS><ICMSSN202>");
+                    sb.AppendLine("          <orig>0</orig>");
+                    sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
+                    sb.AppendLine("          <modBCST>4</modBCST>");
+                    sb.AppendLine("          <pMVAST>0.00</pMVAST><pRedBCST>0.00</pRedBCST>");
+                    sb.AppendLine("          <vBCST>0.00</vBCST><pICMSST>0.00</pICMSST><vICMSST>0.00</vICMSST>");
+                    sb.AppendLine("          <vBCFCPST>0.00</vBCFCPST><pFCPST>0.00</pFCPST><vFCPST>0.00</vFCPST>");
+                    sb.AppendLine("        </ICMSSN202></ICMS>");
+                }
+                else if (csosnFinal == "900")
+                {
+                    // CSOSN 900: outros — usa ICMSSN900
+                    sb.AppendLine("        <ICMS><ICMSSN900>");
+                    sb.AppendLine("          <orig>0</orig>");
+                    sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
+                    sb.AppendLine("          <modBC>3</modBC><pRedBC>0.00</pRedBC>");
+                    sb.AppendLine($"          <vBC>{item.BaseICMS:F2}</vBC><pICMS>{item.AliquotaICMS:F2}</pICMS><vICMS>{item.ValorICMS:F2}</vICMS>");
+                    sb.AppendLine("          <modBCST>4</modBCST><pMVAST>0.00</pMVAST><pRedBCST>0.00</pRedBCST>");
+                    sb.AppendLine("          <vBCST>0.00</vBCST><pICMSST>0.00</pICMSST><vICMSST>0.00</vICMSST>");
+                    sb.AppendLine("          <vBCFCPST>0.00</vBCFCPST><pFCPST>0.00</pFCPST><vFCPST>0.00</vFCPST>");
+                    sb.AppendLine("        </ICMSSN900></ICMS>");
+                }
+                else
+                {
+                    // CSOSN 102, 103, 300, 400 → ICMSSN102
+                    sb.AppendLine("        <ICMS><ICMSSN102>");
+                    sb.AppendLine("          <orig>0</orig>");
+                    sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
+                    sb.AppendLine("        </ICMSSN102></ICMS>");
+                }
                 sb.AppendLine("        <PIS><PISNT><CST>07</CST></PISNT></PIS>");
                 sb.AppendLine("        <COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS>");
             }
@@ -818,6 +858,8 @@ public class NFeService : INFeService
                 var cstFinal = !string.IsNullOrEmpty(cst) ? cst.PadLeft(2, '0') : "40";
                 if (item.AliquotaICMS > 0 && cstFinal != "40" && cstFinal != "41" && cstFinal != "50")
                 {
+                    totalVBC  += item.BaseICMS;
+                    totalVICMS += item.ValorICMS;
                     sb.AppendLine("        <ICMS><ICMS00>");
                     sb.AppendLine("          <orig>0</orig>");
                     sb.AppendLine($"          <CST>{cstFinal}</CST>");
@@ -874,7 +916,7 @@ public class NFeService : INFeService
         }
 
         sb.AppendLine("    <total><ICMSTot>");
-        sb.AppendLine("      <vBC>0.00</vBC><vICMS>0.00</vICMS><vICMSDeson>0.00</vICMSDeson>");
+        sb.AppendLine($"      <vBC>{totalVBC:F2}</vBC><vICMS>{totalVICMS:F2}</vICMS><vICMSDeson>0.00</vICMSDeson>");
         sb.AppendLine($"      <vFCPUFDest>0.00</vFCPUFDest><vICMSUFDest>{totalVICMSUFDest:F2}</vICMSUFDest><vICMSUFRemet>0.00</vICMSUFRemet>");
         sb.AppendLine("      <vFCP>0.00</vFCP><vBCST>0.00</vBCST><vST>0.00</vST><vFCPST>0.00</vFCPST><vFCPSTRet>0.00</vFCPSTRet>");
         sb.AppendLine($"      <vProd>{nota.ValorProdutos:F2}</vProd>");
@@ -1423,10 +1465,33 @@ public class NFeService : INFeService
             sb.AppendLine("      </prod>");
             sb.AppendLine("      <imposto>");
             var csosnFinal = !string.IsNullOrEmpty(produto.CSOSN?.Trim()) ? produto.CSOSN!.Trim().PadLeft(3, '0') : "400";
-            sb.AppendLine("        <ICMS><ICMSSN102>");
-            sb.AppendLine("          <orig>0</orig>");
-            sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
-            sb.AppendLine("        </ICMSSN102></ICMS>");
+            if (csosnFinal == "500")
+            {
+                sb.AppendLine("        <ICMS><ICMSSN500>");
+                sb.AppendLine("          <orig>0</orig>");
+                sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
+                sb.AppendLine("          <vBCSTRet>0.00</vBCSTRet><pST>0.00</pST><vICMSSTRet>0.00</vICMSSTRet>");
+                sb.AppendLine("        </ICMSSN500></ICMS>");
+            }
+            else if (csosnFinal == "201" || csosnFinal == "202" || csosnFinal == "203")
+            {
+                sb.AppendLine("        <ICMS><ICMSSN202>");
+                sb.AppendLine("          <orig>0</orig>");
+                sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
+                sb.AppendLine("          <modBCST>4</modBCST>");
+                sb.AppendLine("          <pMVAST>0.00</pMVAST><pRedBCST>0.00</pRedBCST>");
+                sb.AppendLine("          <vBCST>0.00</vBCST><pICMSST>0.00</pICMSST><vICMSST>0.00</vICMSST>");
+                sb.AppendLine("          <vBCFCPST>0.00</vBCFCPST><pFCPST>0.00</pFCPST><vFCPST>0.00</vFCPST>");
+                sb.AppendLine("        </ICMSSN202></ICMS>");
+            }
+            else
+            {
+                // CSOSN 102, 103, 300, 400, 900 → ICMSSN102
+                sb.AppendLine("        <ICMS><ICMSSN102>");
+                sb.AppendLine("          <orig>0</orig>");
+                sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
+                sb.AppendLine("        </ICMSSN102></ICMS>");
+            }
             sb.AppendLine("        <PIS><PISNT><CST>07</CST></PISNT></PIS>");
             sb.AppendLine("        <COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS>");
             sb.AppendLine("      </imposto>");
