@@ -14,8 +14,10 @@ namespace Jubilados.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly JubiladosDbContext _db;
-    // Chave dev local — não precisa ser secreta (JWT validado sem checar assinatura em dev)
-    private const string DevSecret = "jubilados-dev-secret-jwt-key-32bytes!!";
+    // Mesmo segredo usado em Program.cs para validar — lê JWT_SECRET ou usa fallback dev
+    private static readonly string JwtSecret =
+        Environment.GetEnvironmentVariable("JWT_SECRET")
+        ?? "jubilados-dev-secret-jwt-key-32bytes!!";
 
     public AuthController(JubiladosDbContext db) => _db = db;
 
@@ -177,7 +179,7 @@ public class AuthController : ControllerBase
 
     private static string GerarJwt(Guid userId, string email)
     {
-        var key   = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(DevSecret));
+        var key   = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtSecret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken(
             claims: new[]

@@ -96,45 +96,26 @@ builder.Services.AddCors(options =>
 builder.Services.AddHealthChecks()
     .AddNpgSql(connectionString, name: "supabase-postgres");
 
-// ── JWT Bearer Authentication (Supabase Auth) ─────────────────────────────────
-var jwtSecret = Environment.GetEnvironmentVariable("SUPABASE_JWT_SECRET")
-    ?? builder.Configuration["Supabase:JwtSecret"]
-    ?? string.Empty;
+// ── JWT Bearer Authentication (auth local) ────────────────────────────────────
+// JWT_SECRET é o segredo usado tanto para assinar (AuthController) quanto para validar.
+// Fallback = DevSecret hardcoded (igual ao AuthController) — funciona sem configuração extra.
+const string devFallbackSecret = "jubilados-dev-secret-jwt-key-32bytes!!";
+var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? devFallbackSecret;
+Console.WriteLine($"[STARTUP] JWT: {(jwtSecret == devFallbackSecret ? "usando DevSecret (fallback)" : "usando JWT_SECRET env var")}");
 
-if (!string.IsNullOrEmpty(jwtSecret))
-{
-    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-        .AddJwtBearer(options =>
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters = new TokenValidationParameters
         {
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
-                ValidateIssuer = false,
-                ValidateAudience = false,
-                ClockSkew = TimeSpan.Zero
-            };
-        });
-}
-else
-{
-    // Dev mode: aceita qualquer JWT do Supabase sem validar assinatura (apenas decodifica claims)
-    Console.WriteLine("[STARTUP] AVISO: SUPABASE_JWT_SECRET não configurado — JWT aceito sem validação de assinatura (dev).");
-    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-        .AddJwtBearer(options =>
-        {
-            options.MapInboundClaims = false;
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuerSigningKey = false,
-                ValidateIssuer           = false,
-                ValidateAudience         = false,
-                ValidateLifetime         = false,
-                SignatureValidator       = (token, _) =>
-                    new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().ReadJwtToken(token)
-            };
-        });
-}
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+            ValidateIssuer           = false,
+            ValidateAudience         = false,
+            ClockSkew                = TimeSpan.Zero
+        };
+    });
 
 // ── Build App ─────────────────────────────────────────────────────────────────
 var app = builder.Build();
