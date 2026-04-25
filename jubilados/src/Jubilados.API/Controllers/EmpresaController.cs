@@ -1,7 +1,9 @@
 using Jubilados.Domain.Entities;
 using Jubilados.Infrastructure.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace Jubilados.API.Controllers;
 
@@ -23,12 +25,24 @@ public class EmpresaController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IActionResult> ListarAsync(CancellationToken ct)
     {
+        var userId = ObterUserId();
+        if (userId == Guid.Empty) return Unauthorized();
+
         try
         {
+            // Retorna apenas as empresas vinculadas ao usuário autenticado
+            var empresaIds = await _db.UsuarioEmpresas
+                .AsNoTracking()
+                .Where(ue => ue.SupabaseUserId == userId && ue.EmpresaId != null)
+                .Select(ue => ue.EmpresaId!.Value)
+                .ToListAsync(ct);
+
             var empresas = await _db.Empresas
                 .AsNoTracking()
+                .Where(e => empresaIds.Contains(e.Id))
                 .Select(e => new { e.Id, e.CNPJ, e.RazaoSocial, e.Email, e.CertificadoValidade })
                 .ToListAsync(ct);
             return Ok(empresas);
@@ -70,6 +84,7 @@ public class EmpresaController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize]
     public async Task<IActionResult> CriarAsync([FromBody] AtualizarEmpresaRequest req, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(req.CNPJ) || string.IsNullOrWhiteSpace(req.RazaoSocial))
@@ -120,6 +135,23 @@ public class EmpresaController : ControllerBase
             };
             _db.Empresas.Add(empresa);
             await _db.SaveChangesAsync(ct);
+
+            // Vincula a empresa ao usuário autenticado (multi-tenant)
+            var userId = ObterUserId();
+            if (userId != Guid.Empty)
+            {
+                var vinculo = await _db.UsuarioEmpresas
+                    .FirstOrDefaultAsync(ue => ue.SupabaseUserId == userId, ct);
+                if (vinculo is null)
+                {
+                    vinculo = new Domain.Entities.UsuarioEmpresa { SupabaseUserId = userId, CriadoEm = DateTime.UtcNow };
+                    _db.UsuarioEmpresas.Add(vinculo);
+                }
+                vinculo.EmpresaId = empresa.Id;
+                vinculo.OnboardingConcluido = true;
+                await _db.SaveChangesAsync(ct);
+            }
+
             return Ok(new { empresa.Id });
         }
         catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
@@ -262,6 +294,14 @@ public class EmpresaController : ControllerBase
                 : null;
 
         return Ok(new { expiradoOuFaltando = expirado, diasRestantes = dias, mensagem });
+    }
+
+    // ── Helper ────────────────────────────────────────────────────────────────
+    private Guid ObterUserId()
+    {
+        var sub = User.FindFirstValue("sub")
+               ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(sub, out var id) ? id : Guid.Empty;
     }
 }
 

@@ -110,14 +110,14 @@
   </div>
   <div class="tabs">
     <button class="tab-btn active" onclick="showTab('emitir',this)">Emitir NF-e</button>
-    <button class="tab-btn" onclick="showTab('consultar',this)">Consultar SEFAZ</button>
+    <button class="tab-btn" onclick="showTab('consultar',this)">Movimentação</button>
     <button class="tab-btn" onclick="showTab('status',this)">Status Servico</button>
     <button class="tab-btn" onclick="showTab('inutilizar',this)">Inutilizar</button>
     <button class="tab-btn" onclick="showTab('manifestar',this)">Manifestacao</button>
     <button class="tab-btn" onclick="showTab('entrada',this)">Notas Entrada</button>
     <button class="tab-btn" onclick="showTab('nuvemfiscal',this)">☁️ Nuvem Fiscal</button>
     <button class="tab-btn" onclick="showTab('cce',this)">CCe</button>
-    <button class="tab-btn" onclick="showTab('sped',this)">SPED EFD</button>
+    <button class="tab-btn" onclick="showTab('sped',this)">SPED Fiscal</button>
     <button class="tab-btn" onclick="showTab('nfse',this)">NFS-e</button>
     <button class="tab-btn" onclick="showTab('nfce',this)">Emitir NFC-e</button>
   </div>
@@ -208,12 +208,8 @@
         <p class="subtitle">Selecione o tipo de destinatario para a nota.</p>
 
         <!-- Tipo selector -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px">
-          <button id="tipodest_anonimo" class="tipo-btn" onclick="selecionarTipoDest('anonimo')">
-            <div style="font-size:1.4rem;margin-bottom:4px">🙈</div>
-            <strong>Consumidor Anonimo</strong><br>
-            <small style="color:var(--muted);font-weight:400">Venda balcao sem identificacao</small>
-          </button>
+        <div class="alert alert-warn" style="margin-bottom:14px">&#9888; <strong>NF-e modelo 55 (DANFE) exige CPF ou CNPJ do destinatário.</strong> Para venda ao consumidor sem identificação utilize a NFC-e (cupom fiscal).</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
           <button id="tipodest_cpf" class="tipo-btn selected" onclick="selecionarTipoDest('cpf')">
             <div style="font-size:1.4rem;margin-bottom:4px">👤</div>
             <strong>Pessoa Fisica (CPF)</strong><br>
@@ -224,11 +220,6 @@
             <strong>Empresa (CNPJ)</strong><br>
             <small style="color:var(--muted);font-weight:400">B2B — exige endereco completo</small>
           </button>
-        </div>
-
-        <!-- Anonimo -->
-        <div id="area_anonimo" style="display:none">
-          <div class="alert alert-info">&#9432; Nenhum dado do destinatario e necessario. A nota sera emitida com <strong>CONSUMIDOR NAO IDENTIFICADO</strong>. Permitido por lei para vendas de varejo ate R$ 10.000 (ICMS).</div>
         </div>
 
         <!-- CPF -->
@@ -402,8 +393,8 @@
   <!-- ABA CONSULTAR -->
   <div id="tab-consultar" class="tab-pane">
     <div class="card">
-      <h2>Consultar NF-e na SEFAZ</h2>
-      <p class="subtitle">Consulta direta ao WebService NFeConsultaProtocolo4 da SEFAZ homologacao usando a chave de acesso.</p>
+      <h2>Movimentação de Notas</h2>
+      <p class="subtitle">Consulta as notas fiscais emitidas. Selecione a empresa e a nota para verificar status ou consultar diretamente na SEFAZ.</p>
       <div class="grid2">
         <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="cs_empresaId"><option value="">-- Selecione --</option></select></div>
         <div class="field span2"><label>Nota emitida (preenche a chave automaticamente)</label><select id="cs_nota_sel" onchange="selecionarNotaConsultar()"><option value="">-- Selecione uma nota --</option></select></div>
@@ -533,16 +524,28 @@
   <div id="tab-nuvemfiscal" class="tab-pane">
     <div class="card">
       <h2>☁️ Nuvem Fiscal</h2>
-      <p class="subtitle">Informe o CNPJ do lojista para listar todas as NF-e (entrada e saída) registradas.</p>
-      <div class="grid2">
-        <div class="field span2"><label>CNPJ do Lojista <span class="req">*</span></label>
-          <input id="nf_cnpj" placeholder="00.000.000/0000-00 ou 14 dígitos" maxlength="18"></div>
+      <p class="subtitle">Lista todas as NF-e (entrada e saída) registradas para o CNPJ da empresa. Filtre por período e tipo de nota.</p>
+      <div class="grid3">
+        <div class="field span3"><label>CNPJ do Lojista <span class="req">*</span></label>
+          <input id="nf_cnpj" placeholder="14 dígitos" maxlength="18"></div>
+        <div class="field"><label>Data Início</label><input type="date" id="nf_dtini"></div>
+        <div class="field"><label>Data Fim</label><input type="date" id="nf_dtfim"></div>
+        <div class="field"><label>Tipo de Nota</label>
+          <select id="nf_tipo">
+            <option value="">Todos</option>
+            <option value="NF-e">NF-e (DANFE)</option>
+            <option value="NFC-e">NFC-e (Cupom)</option>
+            <option value="NFS-e">NFS-e (Serviço)</option>
+            <option value="CT-e">CT-e</option>
+            <option value="Entrada">Entrada</option>
+          </select>
+        </div>
       </div>
       <div id="alertaNuvem"></div>
       <div class="actions">
-        <button class="btn btn-primary" onclick="consultarNuvemFiscal()"><span id="spinNuvem" class="spinner" style="display:none"></span> Buscar NF-es</button>
-        <button class="btn btn-outline" onclick="document.getElementById('nf_cnpj').value='21362844000152'">Usar empresa cadastrada</button>
+        <button class="btn btn-primary" onclick="consultarNuvemFiscal()"><span id="spinNuvem" class="spinner" style="display:none"></span> Buscar Notas</button>
         <button class="btn btn-outline" onclick="exportarXmlLote()">&#11015; Exportar XML Lote (ZIP)</button>
+        <button class="btn btn-outline" onclick="exportarRelatorioExcel()">&#128202; Exportar Excel</button>
       </div>
     </div>
     <div id="resultNuvem" style="display:none">
@@ -605,8 +608,8 @@
   <!-- ABA SPED -->
   <div id="tab-sped" class="tab-pane">
     <div class="card">
-      <h2>SPED EFD ICMS/IPI</h2>
-      <p class="subtitle">Gera o arquivo SPED EFD (Registros 0, C e 9) com as NF-e autorizadas no periodo. Prazo mensal: ate o dia 15 do mes seguinte.</p>
+      <h2>SPED Fiscal</h2>
+      <p class="subtitle">Gera o arquivo SPED Fiscal (Registros 0, C e 9) com as NF-e autorizadas no periodo. Prazo mensal: ate o dia 15 do mes seguinte.</p>
       <div class="alert alert-info">O arquivo gerado cobre as NF-e com cStat=100 (Autorizado) no periodo informado. Formato: texto delimitado por pipe (|).</div>
       <div class="grid2" style="margin-bottom:12px">
         <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="sp_empresaId"><option value="">-- Selecione --</option></select></div>
@@ -630,13 +633,32 @@
       <p class="subtitle">Emite NFS-e via webservice municipal ABRASF 2.04. Apenas para empresas com Inscricao Municipal cadastrada.</p>
       <div class="grid2" style="margin-bottom:12px">
         <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="nfse_empresaId"><option value="">-- Selecione --</option></select></div>
-        <div class="field span2"><label>Nome do Servico <span class="req">*</span></label><input id="nfse_nome" placeholder="Ex: Desenvolvimento de software"></div>
-        <div class="field"><label>Valor do Servico <span class="req">*</span></label><input type="number" id="nfse_valor" step="0.01" min="0.01" placeholder="0.00"></div>
-        <div class="field"><label>Aliquota ISS (%) </label><input type="number" id="nfse_aliq" step="0.01" min="0" placeholder="5.00"></div>
-        <div class="field span2"><label>Discriminacao</label><textarea id="nfse_disc" rows="3" placeholder="Descricao detalhada do servico prestado"></textarea></div>
+        <div class="field span2"><label>Código do Serviço (LC 116/03) <span class="req">*</span></label>
+          <select id="nfse_codSrv">
+            <option value="">-- Selecione o serviço --</option>
+            <option value="01.01">01.01 – Análise e desenvolvimento de sistemas</option>
+            <option value="01.02">01.02 – Programação</option>
+            <option value="01.03">01.03 – Processamento de dados</option>
+            <option value="01.04">01.04 – Elaboração de programas de computadores</option>
+            <option value="01.05">01.05 – Licenciamento de software</option>
+            <option value="01.07">01.07 – Suporte técnico em informática</option>
+            <option value="04.02">04.02 – Medicina, enfermagem e demais da área de saúde</option>
+            <option value="06.02">06.02 – Assessoria e consultoria</option>
+            <option value="07.01">07.01 – Engenharia, agronomia, topografia</option>
+            <option value="07.02">07.02 – Execução de projetos e obras</option>
+            <option value="10.09">10.09 – Recrutamento, agenciamento, seleção de pessoal</option>
+            <option value="14.01">14.01 – Lubrificação, limpeza, manutenção e conservação</option>
+            <option value="17.01">17.01 – Assessoria ou consultoria financeira</option>
+            <option value="17.06">17.06 – Propaganda e publicidade</option>
+            <option value="17.19">17.19 – Outros serviços</option>
+          </select>
+        </div>
+        <div class="field span2"><label>Discriminação do Serviço <span class="req">*</span></label><textarea id="nfse_disc" rows="3" placeholder="Descreva detalhadamente o serviço prestado"></textarea></div>
+        <div class="field"><label>Valor do Serviço <span class="req">*</span></label><input type="number" id="nfse_valor" step="0.01" min="0.01" placeholder="0.00"></div>
+        <div class="field"><label>Alíquota ISS (%)</label><input type="number" id="nfse_aliq" step="0.01" min="0" placeholder="5.00"></div>
         <div class="field"><label>CPF/CNPJ Tomador</label><input id="nfse_tomCpfCnpj" placeholder="Opcional"></div>
         <div class="field"><label>Nome Tomador</label><input id="nfse_tomNome" placeholder="Opcional"></div>
-        <div class="field"><label>Codigo Servico LC 116/03</label><input id="nfse_codSrv" placeholder="Ex: 14.01"></div>
+        <div class="field" style="display:none"><input id="nfse_nome" value="Serviço"></div>
       </div>
       <div id="alertaNfse"></div>
       <div class="actions">
@@ -761,6 +783,7 @@ function showTab(name,btn){
   if(name==='consultar'){carregarNotasParaSelect('cs_nota_sel');}
   if(name==='manifestar'){carregarNotasParaSelect('mf_notaId');}
   if(name==='cce'){carregarNotasParaSelect('cce_notaId');}
+  if(name==='nuvemfiscal' && estado.cnpj){var nfCnpjEl=document.getElementById('nf_cnpj');if(nfCnpjEl&&!nfCnpjEl.value)nfCnpjEl.value=estado.cnpj.replace(/\D/g,'');}
 }
 
 let passoAtual=0;
@@ -821,8 +844,7 @@ function atualizarEstadoBar(){
   cert.textContent=estado.certEnviado?'enviado ok':'nao enviado';
   // Destinatario: varia por tipo
   var stCl=document.getElementById('stCliente');
-  if(estado.tipoDest==='anonimo'){stCl.className='badge badge-blue';stCl.textContent='Anonimo';}
-  else if(estado.tipoDest==='cpf'&&estado.clienteNome){stCl.className='badge badge-green';stCl.textContent=estado.clienteNome;}
+  if(estado.tipoDest==='cpf'&&estado.clienteNome){stCl.className='badge badge-green';stCl.textContent=estado.clienteNome;}
   else if(estado.tipoDest==='cnpj'&&estado.clienteNome){stCl.className='badge badge-green';stCl.textContent=estado.clienteNome;}
   else{stCl.className='badge badge-red';stCl.textContent='nao definido';}
   s('stProduto',!!estado.produtoId,estado.produtoNome||'Produto ok');
@@ -896,15 +918,11 @@ async function enviarCertificado(){
 var tipoDest = 'cpf';
 function selecionarTipoDest(tipo){
   tipoDest=tipo; estado.tipoDest=tipo;
-  ['anonimo','cpf','cnpj'].forEach(function(t){
+  ['cpf','cnpj'].forEach(function(t){
     document.getElementById('tipodest_'+t).className='tipo-btn'+(t===tipo?' selected':'');
     document.getElementById('area_'+t).style.display=t===tipo?'block':'none';
   });
-  if(tipo==='anonimo'){
-    estado.clienteId=null; estado.clienteNome='Consumidor Anonimo';
-    document.getElementById('stCliente').className='badge badge-blue';
-    document.getElementById('stCliente').textContent='Anonimo';
-  } else if(tipo==='cpf') {
+  if(tipo==='cpf') {
     estado.clienteId=null; estado.clienteNome=null; atualizarEstadoBar();
   } else {
     estado.clienteId=null; estado.clienteNome=null; atualizarEstadoBar();
@@ -915,9 +933,7 @@ function selecionarTipoDest(tipo){
 function atualizarResumoDestinatario(){
   var el=document.getElementById('resumoDestinatario');
   if(!el)return;
-  if(tipoDest==='anonimo'){
-    el.innerHTML='<strong>Destinatario:</strong> <span class="badge badge-blue">Consumidor Anonimo</span> — nenhum dado necessario.';
-  } else if(tipoDest==='cpf'&&estado.clienteNome){
+  if(tipoDest==='cpf'&&estado.clienteNome){
     el.innerHTML='<strong>Destinatario:</strong> <span class="badge badge-green">'+estado.clienteNome+'</span> (CPF) — ID: '+estado.clienteId;
   } else if(tipoDest==='cnpj'&&estado.clienteNome){
     el.innerHTML='<strong>Destinatario:</strong> <span class="badge badge-green">'+estado.clienteNome+'</span> (CNPJ) — ID: '+estado.clienteId;
@@ -1128,13 +1144,12 @@ async function emitirNFe(){
   document.getElementById('resultadoCard').style.display='none';
   if(!estado.empresaId){mostrarAlerta('alertaEmitir','error','Cadastre a empresa primeiro.');return;}
   var td=tipoDest;
-  if(td!=='anonimo'&&!estado.clienteId){mostrarAlerta('alertaEmitir','error','Defina o destinatario no Passo 2.');return;}
+  if(!estado.clienteId){mostrarAlerta('alertaEmitir','error','Defina o destinatario (CPF ou CNPJ) no Passo 2.');return;}
   var itensList=coletarItens();
   if(itensList.some(function(it){return!it.produtoId;})){mostrarAlerta('alertaEmitir','error','Selecione o produto em todos os itens.');return;}
   spin('spinEmitir',true);
   try{
-    var body={empresaId:estado.empresaId,clienteId:td==='anonimo'?null:estado.clienteId,naturezaOperacao:v('n_natureza')||'Venda de Mercadoria',serie:v('n_serie')||'1',itens:itensList,valorFrete:parseFloat(v('n_frete'))||0,valorSeguro:0,valorDesconto:parseFloat(v('n_desconto'))||0,informacaoComplementar:v('n_info')||null};
-    if(td==='anonimo'){body.destinatarioCpfCnpj=null;body.destinatarioNome=null;}
+    var body={empresaId:estado.empresaId,clienteId:estado.clienteId,naturezaOperacao:v('n_natureza')||'Venda de Mercadoria',serie:v('n_serie')||'1',itens:itensList,valorFrete:parseFloat(v('n_frete'))||0,valorSeguro:0,valorDesconto:parseFloat(v('n_desconto'))||0,informacaoComplementar:v('n_info')||null};
     var res=await fetch(API+'/api/nfe/emitir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     var data=await safeJson(res);
     var card=document.getElementById('resultadoCard');card.style.display='block';
@@ -1488,18 +1503,22 @@ function downloadSpedBlocoH(){
 async function emitirNfse(){
   limparAlerta('alertaNfse');
   document.getElementById('resultNfse').style.display='none';
-  var empId=v('nfse_empresaId'),nome=v('nfse_nome'),valor=parseFloat(v('nfse_valor')||0);
+  var empId=v('nfse_empresaId'),valor=parseFloat(v('nfse_valor')||0);
+  var codSrv=v('nfse_codSrv');
   if(!empId){mostrarAlerta('alertaNfse','error','Selecione a empresa.');return;}
-  if(!nome){mostrarAlerta('alertaNfse','error','Nome do servico e obrigatorio.');return;}
+  if(!codSrv){mostrarAlerta('alertaNfse','error','Selecione o codigo do servico (LC 116/03).');return;}
   if(!valor||valor<=0){mostrarAlerta('alertaNfse','error','Valor do servico deve ser maior que zero.');return;}
+  // Deriva o nome do serviço a partir da opção selecionada
+  var selSrv=document.getElementById('nfse_codSrv');
+  var nomeServico='Servico';
+  if(selSrv&&selSrv.selectedIndex>0)nomeServico=selSrv.options[selSrv.selectedIndex].text.replace(/^\S+ \u2013 /,'');
   spin('spinNfse',true);
   try{
-    var body={empresaId:empId,nomeServico:nome,valorServico:valor};
+    var body={empresaId:empId,nomeServico:nomeServico,valorServico:valor,codigoServico:codSrv};
     var disc=v('nfse_disc');if(disc)body.discriminacao=disc;
     var aliq=parseFloat(v('nfse_aliq')||0);if(aliq>0)body.aliquotaISS=aliq;
     var cpfCnpj=v('nfse_tomCpfCnpj');if(cpfCnpj)body.cpfCnpjTomador=cpfCnpj;
     var tomNome=v('nfse_tomNome');if(tomNome)body.nomeTomador=tomNome;
-    var codSrv=v('nfse_codSrv');if(codSrv)body.codigoServico=codSrv;
     var res=await fetchAuth(API+'/api/nfse/emitir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     var data=await safeJson(res);
     document.getElementById('resultNfse').style.display='block';
@@ -1517,6 +1536,16 @@ function preencherMesAtual(){
   var ultimo=new Date(y,now.getMonth()+1,0).getDate();
   document.getElementById('sp_ini').value=y+'-'+m+'-01';
   document.getElementById('sp_fim').value=y+'-'+m+'-'+String(ultimo).padStart(2,'0');
+}
+
+function exportarRelatorioExcel(){
+  var cnpj=v('nf_cnpj').replace(/\D/g,'');
+  if(cnpj.length!==14){alert('Informe o CNPJ antes de exportar.');return;}
+  var ini=v('nf_dtini'),fim=v('nf_dtfim');
+  var emp=empresasCadastradas&&empresasCadastradas.find(function(e){return e.cnpj&&e.cnpj.replace(/\D/g,'')===cnpj;});
+  if(!emp){alert('Empresa nao encontrada no cadastro. Busque as notas primeiro.');return;}
+  var url=API+'/api/nfe/relatorio-excel?empresaId='+encodeURIComponent(emp.id)+(ini?'&dataInicio='+ini:'')+(fim?'&dataFim='+fim:'');
+  window.open(url,'_blank');
 }
 
 function downloadSped(){
@@ -1647,6 +1676,16 @@ async function salvarSenha() {
     return;
   }
   _authToken = token;
+
+  // Intercepta todos os fetch para chamadas same-origin e adiciona JWT automaticamente
+  var _origFetch = window.fetch.bind(window);
+  window.fetch = function(url, opts) {
+    if (_authToken && typeof url === 'string' && (url.startsWith('/') || url.startsWith(window.location.origin))) {
+      opts = opts || {};
+      opts.headers = Object.assign({'Authorization': 'Bearer ' + _authToken}, opts.headers || {});
+    }
+    return _origFetch(url, opts);
+  };
   var emailEl = document.getElementById('userEmail');
   // Decodifica email do JWT (payload é base64)
   try {
