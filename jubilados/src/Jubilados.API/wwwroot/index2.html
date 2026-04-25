@@ -120,6 +120,7 @@
     <button class="tab-btn" onclick="showTab('sped',this)">SPED Fiscal</button>
     <button class="tab-btn" onclick="showTab('nfse',this)">NFS-e</button>
     <button class="tab-btn" onclick="showTab('nfce',this)">Emitir NFC-e</button>
+    <button class="tab-btn" onclick="showTab('estoque',this)">&#128230; Estoque</button>
   </div>
 
   <!-- ABA EMITIR -->
@@ -753,10 +754,51 @@
       <pre class="result-box" id="nfceJson"></pre>
     </div>
   </div>
+  <!-- ABA ESTOQUE -->
+  <div id="tab-estoque" class="tab-pane">
+    <div class="card">
+      <h2>&#128230; Controle de Estoque</h2>
+      <p class="subtitle">Balanço de entradas e saídas por produto, calculado a partir das NF-e autorizadas. O saldo atual reflete o campo <strong>Quantidade em Estoque</strong> cadastrado em cada produto.</p>
+      <div class="grid2">
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="est_empresaId" onchange="limparEstoque()"><option value="">-- Selecione --</option></select></div>
+        <div class="field"><label>Período: Data Início</label><input type="date" id="est_dtini"></div>
+        <div class="field"><label>Período: Data Fim</label><input type="date" id="est_dtfim"></div>
+      </div>
+      <div id="alertaEstoque"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="carregarEstoque()"><span id="spinEst" class="spinner" style="display:none"></span> Ver Estoque</button>
+        <button id="btnEstoqueCsv" class="btn btn-outline" style="display:none" onclick="exportarEstoqueCsv()">&#128202; Exportar CSV / Excel</button>
+      </div>
+    </div>
+    <div id="resultEstoque" style="display:none" class="card">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <h2 style="margin:0">Balanço de Estoque</h2>
+        <span id="estBadgeProd"></span>
+        <span id="estBadgeValor"></span>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="tabelaEstoque" style="width:100%;border-collapse:collapse;font-size:.82rem">
+          <thead>
+            <tr style="background:var(--bg);text-align:left">
+              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Produto</th>
+              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">NCM</th>
+              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Un.</th>
+              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Preço Unit.</th>
+              <th style="padding:8px 10px;border-bottom:2px solid var(--border);text-align:right">Entradas (NF)</th>
+              <th style="padding:8px 10px;border-bottom:2px solid var(--border);text-align:right">Saídas (NF)</th>
+              <th style="padding:8px 10px;border-bottom:2px solid var(--border);text-align:right">Saldo Atual</th>
+              <th style="padding:8px 10px;border-bottom:2px solid var(--border);text-align:right">Valor em Estoque</th>
+            </tr>
+          </thead>
+          <tbody id="estLinhas"></tbody>
+          <tfoot id="estTotais"></tfoot>
+        </table>
+      </div>
+      <p id="estEmpty" style="display:none;text-align:center;padding:32px;color:var(--muted)">Nenhum produto encontrado para esta empresa.</p>
+    </div>
+  </div>
 
-</div>
-<script>
-const estado = { empresaId:null, cnpj:null, clienteId:null, clienteNome:null, tipoDest:'cpf', produtoId:null, produtoNome:null, certEnviado:false, cscSalvo:false, pfxBase64:null, pfxNome:null, ultimaChave:null, ultimaNotaId:null };
+ empresaId:null, cnpj:null, clienteId:null, clienteNome:null, tipoDest:'cpf', produtoId:null, produtoNome:null, certEnviado:false, cscSalvo:false, pfxBase64:null, pfxNome:null, ultimaChave:null, ultimaNotaId:null };
 var clientesCadastrados = [];
 var produtosCadastrados = [];
 var empresasCadastradas = [];
@@ -768,7 +810,7 @@ async function carregarEmpresasSelects(){
     var res=await fetch(API+'/api/empresa');
     if(!res.ok)return;
     empresasCadastradas=await res.json();
-    var ids=['cs_empresaId','mov_empresaId','st_empresaId','in_empresaId','mf_empresaId','en_empresaId','cce_empresaId','sp_empresaId','nfse_empresaId'];
+    var ids=['cs_empresaId','mov_empresaId','st_empresaId','in_empresaId','mf_empresaId','en_empresaId','cce_empresaId','sp_empresaId','nfse_empresaId','est_empresaId'];
     ids.forEach(function(id){
       var sel=document.getElementById(id);if(!sel)return;
       sel.innerHTML='<option value="">-- Selecione a empresa --</option>';
@@ -1864,6 +1906,77 @@ async function carregarDadosEmpresa() {
 
 carregarDadosEmpresa();
 preencherMesAtual();
+
+// ======================== ESTOQUE ========================
+async function carregarEstoque(){
+  limparAlerta('alertaEstoque');
+  document.getElementById('resultEstoque').style.display='none';
+  document.getElementById('btnEstoqueCsv').style.display='none';
+  var empId=v('est_empresaId');
+  if(!empId){mostrarAlerta('alertaEstoque','error','Selecione a empresa.');return;}
+  var params=new URLSearchParams({empresaId:empId});
+  var ini=v('est_dtini'),fim=v('est_dtfim');
+  if(ini)params.set('dtIni',ini);if(fim)params.set('dtFim',fim);
+  spin('spinEst',true);
+  try{
+    var res=await fetchAuth(API+'/api/produto/estoque?'+params.toString());
+    var data=await safeJson(res);
+    if(!res.ok||!data.sucesso){mostrarAlerta('alertaEstoque','error',data.erro||'Erro ao carregar estoque.');return;}
+    renderEstoque(data);
+    document.getElementById('btnEstoqueCsv').style.display='inline-flex';
+  }catch(e){mostrarAlerta('alertaEstoque','error','Erro: '+e.message);}
+  finally{spin('spinEst',false);}
+}
+
+function renderEstoque(data){
+  document.getElementById('resultEstoque').style.display='block';
+  document.getElementById('estBadgeProd').innerHTML='<span class="badge badge-blue">'+data.totalProdutos+' produto(s)</span>';
+  document.getElementById('estBadgeValor').innerHTML='<span class="badge badge-green">Total: R$ '+data.valorTotalEstoque.toFixed(2).replace('.',',')+' </span>';
+  var tbody=document.getElementById('estLinhas');
+  tbody.innerHTML='';
+  if(!data.itens||data.itens.length===0){
+    document.getElementById('estEmpty').style.display='block';
+    document.getElementById('tabelaEstoque').style.display='none';
+    return;
+  }
+  document.getElementById('estEmpty').style.display='none';
+  document.getElementById('tabelaEstoque').style.display='table';
+  data.itens.forEach(function(p){
+    var saldoStyle=p.saldoAtual<=0?'color:#ef4444;font-weight:700':p.saldoAtual<5?'color:#f97316;font-weight:600':'';
+    var tr=document.createElement('tr');
+    tr.style.borderBottom='1px solid var(--border)';
+    tr.innerHTML=
+      '<td style="padding:7px 10px">'+p.nome+'</td>'
+      +'<td style="padding:7px 10px;color:var(--muted);font-size:.78rem">'+p.ncm+'</td>'
+      +'<td style="padding:7px 10px">'+p.unidade+'</td>'
+      +'<td style="padding:7px 10px;text-align:right">R$ '+p.precoUnitario.toFixed(2).replace('.',',')+'</td>'
+      +'<td style="padding:7px 10px;text-align:right;color:#22c55e">+'+p.totalEntradas.toFixed(3)+'</td>'
+      +'<td style="padding:7px 10px;text-align:right;color:#ef4444">−'+p.totalSaidas.toFixed(3)+'</td>'
+      +'<td style="padding:7px 10px;text-align:right;'+saldoStyle+'">'+p.saldoAtual.toFixed(3)+'</td>'
+      +'<td style="padding:7px 10px;text-align:right;font-weight:600">R$ '+p.valorEstoque.toFixed(2).replace('.',',')+'</td>';
+    tbody.appendChild(tr);
+  });
+  var tfoot=document.getElementById('estTotais');
+  tfoot.innerHTML='<tr style="background:var(--bg);font-weight:700">'
+    +'<td colspan="7" style="padding:8px 10px;border-top:2px solid var(--border)">TOTAL</td>'
+    +'<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right">R$ '+data.valorTotalEstoque.toFixed(2).replace('.',',')+'</td>'
+    +'</tr>';
+}
+
+function limparEstoque(){
+  document.getElementById('resultEstoque').style.display='none';
+  document.getElementById('btnEstoqueCsv').style.display='none';
+  limparAlerta('alertaEstoque');
+}
+
+function exportarEstoqueCsv(){
+  var empId=v('est_empresaId');
+  if(!empId){alert('Selecione a empresa primeiro.');return;}
+  var params=new URLSearchParams({empresaId:empId});
+  var ini=v('est_dtini'),fim=v('est_dtfim');
+  if(ini)params.set('dtIni',ini);if(fim)params.set('dtFim',fim);
+  window.open(API+'/api/produto/estoque/csv?'+params.toString(),'_blank');
+}
 </script>
 </body>
 </html>
