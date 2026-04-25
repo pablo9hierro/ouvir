@@ -69,64 +69,72 @@ public class ProdutoController : ControllerBase
         if (empresaId == Guid.Empty)
             return BadRequest(new { erro = "empresaId é obrigatório." });
 
-        DateTime? ini = DateTime.TryParse(dtIni, out var d1) ? d1.Date : null;
-        DateTime? fim = DateTime.TryParse(dtFim, out var d2) ? d2.Date.AddDays(1).AddTicks(-1) : null;
-
-        var produtos = await _db.Produtos
-            .AsNoTracking()
-            .Where(p => p.EmpresaId == empresaId && p.Ativo)
-            .Select(p => new
-            {
-                p.Id, p.Nome, p.Unidade, p.Preco, p.NCM, p.QuantidadeEstoque
-            })
-            .ToListAsync(ct);
-
-        // Carrega movimentações de itens de notas autorizadas da empresa no período
-        var itensQuery = _db.NotaItens
-            .AsNoTracking()
-            .Where(i => i.NotaFiscal.EmpresaId == empresaId
-                        && i.NotaFiscal.Status == Jubilados.Domain.Enums.StatusNota.Autorizada);
-        if (ini.HasValue) itensQuery = itensQuery.Where(i => i.NotaFiscal.EmitidaEm >= ini.Value);
-        if (fim.HasValue) itensQuery = itensQuery.Where(i => i.NotaFiscal.EmitidaEm <= fim.Value);
-
-        var movs = await itensQuery
-            .Select(i => new
-            {
-                i.ProdutoId,
-                i.Quantidade,
-                TipoOperacao = i.NotaFiscal.TipoOperacao   // "0"=entrada, "1"=saída
-            })
-            .ToListAsync(ct);
-
-        var entradas = movs.Where(m => m.TipoOperacao == "0")
-            .GroupBy(m => m.ProdutoId)
-            .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantidade));
-        var saidas = movs.Where(m => m.TipoOperacao == "1")
-            .GroupBy(m => m.ProdutoId)
-            .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantidade));
-
-        var itens = produtos.Select(p => new
+        try
         {
-            p.Id,
-            p.Nome,
-            p.Unidade,
-            p.NCM,
-            PrecoUnitario = p.Preco,
-            SaldoAtual = p.QuantidadeEstoque,
-            TotalEntradas = entradas.TryGetValue(p.Id, out var e) ? e : 0m,
-            TotalSaidas   = saidas.TryGetValue(p.Id, out var s) ? s : 0m,
-            ValorEstoque  = p.QuantidadeEstoque * p.Preco
-        }).ToList();
+            DateTime? ini = DateTime.TryParse(dtIni, out var d1) ? d1.Date : null;
+            DateTime? fim = DateTime.TryParse(dtFim, out var d2) ? d2.Date.AddDays(1).AddTicks(-1) : null;
 
-        return Ok(new
+            var produtos = await _db.Produtos
+                .AsNoTracking()
+                .Where(p => p.EmpresaId == empresaId && p.Ativo)
+                .Select(p => new
+                {
+                    p.Id, p.Nome, p.Unidade, p.Preco, p.NCM, p.QuantidadeEstoque
+                })
+                .ToListAsync(ct);
+
+            // Carrega movimentações de itens de notas autorizadas da empresa no período
+            var itensQuery = _db.NotaItens
+                .AsNoTracking()
+                .Include(i => i.NotaFiscal)
+                .Where(i => i.NotaFiscal.EmpresaId == empresaId
+                            && i.NotaFiscal.Status == Jubilados.Domain.Enums.StatusNota.Autorizada);
+            if (ini.HasValue) itensQuery = itensQuery.Where(i => i.NotaFiscal.EmitidaEm >= ini.Value);
+            if (fim.HasValue) itensQuery = itensQuery.Where(i => i.NotaFiscal.EmitidaEm <= fim.Value);
+
+            var movs = await itensQuery
+                .Select(i => new
+                {
+                    i.ProdutoId,
+                    i.Quantidade,
+                    TipoOperacao = i.NotaFiscal.TipoOperacao   // "0"=entrada, "1"=saída
+                })
+                .ToListAsync(ct);
+
+            var entradas = movs.Where(m => m.TipoOperacao == "0")
+                .GroupBy(m => m.ProdutoId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantidade));
+            var saidas = movs.Where(m => m.TipoOperacao == "1")
+                .GroupBy(m => m.ProdutoId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantidade));
+
+            var itens = produtos.Select(p => new
+            {
+                p.Id,
+                p.Nome,
+                p.Unidade,
+                p.NCM,
+                PrecoUnitario = p.Preco,
+                SaldoAtual = p.QuantidadeEstoque,
+                TotalEntradas = entradas.TryGetValue(p.Id, out var e) ? e : 0m,
+                TotalSaidas   = saidas.TryGetValue(p.Id, out var s) ? s : 0m,
+                ValorEstoque  = p.QuantidadeEstoque * p.Preco
+            }).ToList();
+
+            return Ok(new
+            {
+                sucesso = true,
+                empresaId,
+                dtIni, dtFim,
+                totalProdutos = itens.Count,
+                valorTotalEstoque = itens.Sum(i => i.ValorEstoque),
+                itens
+            });
+        }
+        catch (Exception ex)
         {
-            sucesso = true,
-            empresaId,
-            dtIni, dtFim,
-            totalProdutos = itens.Count,
-            valorTotalEstoque = itens.Sum(i => i.ValorEstoque),
-            itens
-        });
+            return StatusCode(500, new { sucesso = false, erro = ex.InnerException?.Message ?? ex.Message });
+        }
     }
 
     /// <summary>

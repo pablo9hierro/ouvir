@@ -1923,7 +1923,7 @@ async function carregarEstoque(){
   try{
     var res=await fetchAuth(API+'/api/produto/estoque?'+params.toString());
     var data=await safeJson(res);
-    if(!res.ok||!data.sucesso){mostrarAlerta('alertaEstoque','error',data.erro||'Erro ao carregar estoque.');return;}
+    if(!res.ok||!data.sucesso){mostrarAlerta('alertaEstoque','error','Erro '+res.status+': '+(data.erro||'Erro ao carregar estoque.'));return;}
     renderEstoque(data);
     document.getElementById('btnEstoqueCsv').style.display='inline-flex';
   }catch(e){mostrarAlerta('alertaEstoque','error','Erro: '+e.message);}
