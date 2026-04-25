@@ -71,8 +71,8 @@ public class ProdutoController : ControllerBase
 
         try
         {
-            DateTime? ini = DateTime.TryParse(dtIni, out var d1) ? d1.Date : null;
-            DateTime? fim = DateTime.TryParse(dtFim, out var d2) ? d2.Date.AddDays(1).AddTicks(-1) : null;
+            DateTime? ini = DateTime.TryParse(dtIni, out var d1) ? DateTime.SpecifyKind(d1.Date, DateTimeKind.Utc) : null;
+            DateTime? fim = DateTime.TryParse(dtFim, out var d2) ? DateTime.SpecifyKind(d2.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc) : null;
 
             var produtos = await _db.Produtos
                 .AsNoTracking()
