@@ -300,14 +300,17 @@ public class NFeController : ControllerBase
     }
 
     /// <summary>
-    /// GET /api/nfe/nuvem-fiscal?cnpj={cnpj} — Lista todas as NF-e (entrada e saída) vinculadas a um CNPJ.
+    /// GET /api/nfe/nuvem-fiscal?cnpj={cnpj} — Lista todas as NF-e (entrada e saída) vinculadas a um CNPJ, com filtros opcionais.
     /// </summary>
     [HttpGet("nuvem-fiscal")]
     [ProducesResponseType(typeof(NuvemFiscalResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> NuvemFiscal(
         [FromQuery] string cnpj,
-        CancellationToken cancellationToken)
+        [FromQuery] string? dtIni = null,
+        [FromQuery] string? dtFim = null,
+        [FromQuery] string? tipo = null,
+        CancellationToken cancellationToken = default)
     {
         var cnpjLimpo = new string((cnpj ?? "").Where(char.IsDigit).ToArray());
         if (cnpjLimpo.Length != 14)
@@ -320,20 +323,18 @@ public class NFeController : ControllerBase
         var notas = await _nfeService.ListarNotasPorEmpresaAsync(empresa.Value.Id, cancellationToken);
 
         var itens = notas.Select(n => new NuvemFiscalItemDto(
-            n.Id,
-            n.EmpresaId,
+            n.Id, n.EmpresaId,
             n.TipoOperacao == "0" ? "Entrada" : "Saída",
-            n.ChaveAcesso,
-            n.Numero,
-            n.Serie,
-            n.NaturezaOperacao,
-            n.Status,
-            n.ValorTotal,
-            n.EmitidaEm,
-            n.Protocolo,
-            n.CStat,
-            n.Manifestada
+            n.ChaveAcesso, n.Numero, n.Serie, n.NaturezaOperacao,
+            n.Status, n.ValorTotal, n.EmitidaEm, n.Protocolo, n.CStat, n.Manifestada
         )).ToList();
+
+        if (!string.IsNullOrWhiteSpace(dtIni) && DateTime.TryParse(dtIni, out var dtIniParsed))
+            itens = itens.Where(i => i.EmitidaEm.Date >= dtIniParsed.Date).ToList();
+        if (!string.IsNullOrWhiteSpace(dtFim) && DateTime.TryParse(dtFim, out var dtFimParsed))
+            itens = itens.Where(i => i.EmitidaEm.Date <= dtFimParsed.Date).ToList();
+        if (!string.IsNullOrWhiteSpace(tipo))
+            itens = itens.Where(i => i.Tipo.Equals(tipo, StringComparison.OrdinalIgnoreCase)).ToList();
 
         return Ok(new NuvemFiscalResultDto(
             Sucesso: true,
@@ -341,6 +342,47 @@ public class NFeController : ControllerBase
             RazaoSocial: empresa.Value.RazaoSocial,
             Total: itens.Count,
             Notas: itens
+        ));
+    }
+
+    /// <summary>
+    /// GET /api/nfe/listar?empresaId={id} — Lista notas do banco para Movimentações, com filtros.
+    /// </summary>
+    [HttpGet("listar")]
+    [ProducesResponseType(typeof(NuvemFiscalResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Listar(
+        [FromQuery] Guid empresaId,
+        [FromQuery] string? dtIni = null,
+        [FromQuery] string? dtFim = null,
+        [FromQuery] string? tipo = null,
+        [FromQuery] string? status = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (empresaId == Guid.Empty)
+            return BadRequest(new { erro = "empresaId é obrigatório." });
+
+        var notas = await _nfeService.ListarNotasPorEmpresaAsync(empresaId, cancellationToken);
+
+        var itens = notas.Select(n => new NuvemFiscalItemDto(
+            n.Id, n.EmpresaId,
+            n.TipoOperacao == "0" ? "Entrada" : "Saída",
+            n.ChaveAcesso, n.Numero, n.Serie, n.NaturezaOperacao,
+            n.Status, n.ValorTotal, n.EmitidaEm, n.Protocolo, n.CStat, n.Manifestada
+        )).ToList();
+
+        if (!string.IsNullOrWhiteSpace(dtIni) && DateTime.TryParse(dtIni, out var dtIniParsed))
+            itens = itens.Where(i => i.EmitidaEm.Date >= dtIniParsed.Date).ToList();
+        if (!string.IsNullOrWhiteSpace(dtFim) && DateTime.TryParse(dtFim, out var dtFimParsed))
+            itens = itens.Where(i => i.EmitidaEm.Date <= dtFimParsed.Date).ToList();
+        if (!string.IsNullOrWhiteSpace(tipo))
+            itens = itens.Where(i => i.Tipo.Equals(tipo, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (!string.IsNullOrWhiteSpace(status))
+            itens = itens.Where(i => i.Status.Equals(status, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        return Ok(new NuvemFiscalResultDto(
+            Sucesso: true, CNPJ: string.Empty, RazaoSocial: string.Empty,
+            Total: itens.Count, Notas: itens
         ));
     }
 

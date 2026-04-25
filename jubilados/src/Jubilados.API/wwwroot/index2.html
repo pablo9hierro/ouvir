@@ -390,24 +390,63 @@
     </div>
   </div>
 
-  <!-- ABA CONSULTAR -->
+  <!-- ABA MOVIMENTAÇÕES -->
   <div id="tab-consultar" class="tab-pane">
     <div class="card">
       <h2>Movimentação de Notas</h2>
-      <p class="subtitle">Consulta as notas fiscais emitidas. Selecione a empresa e a nota para verificar status ou consultar diretamente na SEFAZ.</p>
+      <p class="subtitle">Pesquise notas fiscais no sistema por empresa ou CNPJ, com filtros de período, tipo e status.</p>
       <div class="grid2">
-        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="cs_empresaId"><option value="">-- Selecione --</option></select></div>
-        <div class="field span2"><label>Nota emitida (preenche a chave automaticamente)</label><select id="cs_nota_sel" onchange="selecionarNotaConsultar()"><option value="">-- Selecione uma nota --</option></select></div>
-        <div class="field span2"><label>Chave de Acesso (44 digitos) <span class="req">*</span></label><input id="cs_chave" placeholder="Ou informe manualmente" maxlength="44"></div>
+        <div class="field"><label>Empresa</label><select id="mov_empresaId" onchange="if(this.value)document.getElementById('mov_cnpj').value=''"><option value="">-- Selecione --</option></select></div>
+        <div class="field"><label>ou CNPJ (14 dígitos)</label><input id="mov_cnpj" placeholder="00000000000000" maxlength="14" oninput="if(this.value)document.getElementById('mov_empresaId').value=''"></div>
+        <div class="field"><label>Tipo</label><select id="mov_tipo"><option value="">Todos</option><option value="Saída">Saída (emitidas)</option><option value="Entrada">Entrada (recebidas)</option></select></div>
+        <div class="field"><label>Status</label><select id="mov_status"><option value="">Todos</option><option value="Autorizada">Autorizada</option><option value="Cancelada">Cancelada</option><option value="Rejeitada">Rejeitada</option><option value="Inutilizada">Inutilizada</option></select></div>
+        <div class="field"><label>Data Início</label><input type="date" id="mov_dtini"></div>
+        <div class="field"><label>Data Fim</label><input type="date" id="mov_dtfim"></div>
+      </div>
+      <div id="alertaMovimentacoes"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="buscarMovimentacoes()"><span id="spinMov" class="spinner" style="display:none"></span> Buscar no Sistema</button>
+      </div>
+    </div>
+    <div id="resultMov" style="display:none" class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <h2 id="movTitulo" style="margin:0">Notas Encontradas</h2>
+        <span id="movBadge"></span>
+      </div>
+      <div id="movTabela" style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+          <thead>
+            <tr style="background:var(--bg);text-align:left">
+              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Tipo</th>
+              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Nº/Série</th>
+              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Natureza</th>
+              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Status</th>
+              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Valor</th>
+              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Data</th>
+              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Chave</th>
+              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Ções</th>
+            </tr>
+          </thead>
+          <tbody id="movLinhas"></tbody>
+        </table>
+      </div>
+      <div id="movEmpty" style="display:none;text-align:center;padding:32px;color:var(--muted)">Nenhuma nota encontrada com esses filtros.</div>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 6px">🔍 Consultar diretamente na SEFAZ</h3>
+      <p class="subtitle">Para notas não registradas no sistema ou para verificar o status em tempo real. <strong>Atenção:</strong> uma nota &ldquo;Rejeitada&rdquo; ou &ldquo;Cancelada&rdquo; no sistema pode retornar cStat 100 na SEFAZ &mdash; isso ocorre porque o NFeConsultaProtocolo retorna o status do lado da SEFAZ, que pode divergir do status local (ex: timeout na emissão sem resposta processada, cancelamento não confirmado na SEFAZ, ou retentativa bem-sucedida não registrada localmente).</p>
+      <div class="grid2">
+        <div class="field"><label>Empresa <span class="req">*</span></label><select id="cs_empresaId"><option value="">-- Selecione --</option></select></div>
+        <div class="field span2"><label>Chave de Acesso (44 dígitos) <span class="req">*</span></label><input id="cs_chave" placeholder="44 dígitos" maxlength="44"></div>
       </div>
       <div id="alertaConsultar"></div>
       <div class="actions">
-        <button class="btn btn-primary" onclick="consultarSefaz()"><span id="spinConsultar" class="spinner" style="display:none"></span> Consultar na SEFAZ</button>
-        <button class="btn btn-outline" onclick="preencherUltimaChave()">Usar ultima NF-e emitida</button>
+        <button class="btn btn-outline" onclick="consultarSefaz()"><span id="spinConsultar" class="spinner" style="display:none"></span> Consultar na SEFAZ</button>
+        <button class="btn btn-outline" onclick="preencherUltimaChave()">Usar última NF-e emitida</button>
       </div>
     </div>
     <div id="resultConsultar" style="display:none" class="card">
-      <h2 id="rcTitulo">Resultado</h2>
+      <h2 id="rcTitulo">Resultado SEFAZ</h2>
       <div id="rcBadge" style="margin-bottom:10px"></div>
       <pre class="result-box" id="rcJson"></pre>
     </div>
@@ -533,11 +572,8 @@
         <div class="field"><label>Tipo de Nota</label>
           <select id="nf_tipo">
             <option value="">Todos</option>
-            <option value="NF-e">NF-e (DANFE)</option>
-            <option value="NFC-e">NFC-e (Cupom)</option>
-            <option value="NFS-e">NFS-e (Serviço)</option>
-            <option value="CT-e">CT-e</option>
-            <option value="Entrada">Entrada</option>
+            <option value="Saída">Saída (emitidas)</option>
+            <option value="Entrada">Entrada (recebidas)</option>
           </select>
         </div>
       </div>
@@ -732,7 +768,7 @@ async function carregarEmpresasSelects(){
     var res=await fetch(API+'/api/empresa');
     if(!res.ok)return;
     empresasCadastradas=await res.json();
-    var ids=['cs_empresaId','st_empresaId','in_empresaId','mf_empresaId','en_empresaId','cce_empresaId','sp_empresaId','nfse_empresaId'];
+    var ids=['cs_empresaId','mov_empresaId','st_empresaId','in_empresaId','mf_empresaId','en_empresaId','cce_empresaId','sp_empresaId','nfse_empresaId'];
     ids.forEach(function(id){
       var sel=document.getElementById(id);if(!sel)return;
       sel.innerHTML='<option value="">-- Selecione a empresa --</option>';
@@ -780,7 +816,7 @@ function showTab(name,btn){
   document.getElementById('tab-'+name).classList.add('active');
   btn.classList.add('active');
   if(name==='nfce'){renderItensNfce();}
-  if(name==='consultar'){carregarNotasParaSelect('cs_nota_sel');}
+  if(name==='consultar'){if(estado.empresaId){var mEl=document.getElementById('mov_empresaId');if(mEl)mEl.value=estado.empresaId;}}
   if(name==='manifestar'){carregarNotasParaSelect('mf_notaId');}
   if(name==='cce'){carregarNotasParaSelect('cce_notaId');}
   if(name==='nuvemfiscal' && estado.cnpj){var nfCnpjEl=document.getElementById('nf_cnpj');if(nfCnpjEl&&!nfCnpjEl.value)nfCnpjEl.value=estado.cnpj.replace(/\D/g,'');}
@@ -1295,14 +1331,92 @@ async function consultarEntrada(){
   finally{spin('spinEntrada',false);}
 }
 
+async function buscarMovimentacoes(){
+  limparAlerta('alertaMovimentacoes');
+  document.getElementById('resultMov').style.display='none';
+  var empId=v('mov_empresaId'),cnpj=v('mov_cnpj').replace(/\D/g,'');
+  if(!empId&&!cnpj){mostrarAlerta('alertaMovimentacoes','error','Selecione uma empresa ou informe um CNPJ.');return;}
+  if(!empId&&cnpj.length!==14){mostrarAlerta('alertaMovimentacoes','error','CNPJ deve ter 14 d\u00edgitos.');return;}
+  var tipo=v('mov_tipo'),status=v('mov_status'),dtIni=v('mov_dtini'),dtFim=v('mov_dtfim');
+  spin('spinMov',true);
+  try{
+    var params=new URLSearchParams();
+    if(empId){params.set('empresaId',empId);}else{params.set('cnpj',cnpj);}
+    if(tipo)params.set('tipo',tipo);if(status)params.set('status',status);
+    if(dtIni)params.set('dtIni',dtIni);if(dtFim)params.set('dtFim',dtFim);
+    var endpoint=empId?'/api/nfe/listar':'/api/nfe/nuvem-fiscal';
+    var res=await fetchAuth(API+endpoint+'?'+params.toString());
+    var data=await safeJson(res);
+    document.getElementById('resultMov').style.display='block';
+    if(!res.ok||!data.sucesso){
+      document.getElementById('movTitulo').textContent='Nenhum resultado';
+      document.getElementById('movBadge').innerHTML='<span class="badge badge-red">Erro</span>';
+      document.getElementById('movTabela').style.display='none';
+      document.getElementById('movEmpty').style.display='block';
+      document.getElementById('movEmpty').textContent=data.erro||'Erro desconhecido.';
+      return;
+    }
+    renderMovimentacoes(data);
+  }catch(e){mostrarAlerta('alertaMovimentacoes','error','Erro: '+e.message);}
+  finally{spin('spinMov',false);}
+}
+
+function renderMovimentacoes(data){
+  document.getElementById('movTitulo').textContent='Notas Encontradas'+(data.razaoSocial?' \u2013 '+data.razaoSocial:'');
+  document.getElementById('movBadge').innerHTML='<span class="badge badge-blue">'+data.total+' nota(s)</span>';
+  var tbody=document.getElementById('movLinhas');
+  tbody.innerHTML='';
+  if(!data.notas||data.notas.length===0){
+    document.getElementById('movTabela').style.display='none';
+    document.getElementById('movEmpty').style.display='block';
+    document.getElementById('movEmpty').textContent='Nenhuma nota encontrada com esses filtros.';
+    return;
+  }
+  document.getElementById('movTabela').style.display='block';
+  document.getElementById('movEmpty').style.display='none';
+  var statusColor={'Autorizada':'badge-green','Rejeitada':'badge-red','Rascunho':'badge-gray','Cancelada':'badge-orange','Inutilizada':'badge-gray'};
+  data.notas.forEach(function(n){
+    var tipoColor=n.tipo==='Entrada'?'badge-blue':'badge-green';
+    var stColor=statusColor[n.status]||'badge-gray';
+    var dt=new Date(n.emitidaEm).toLocaleDateString('pt-BR');
+    var valor='R$ '+n.valorTotal.toFixed(2).replace('.',',');
+    var chave=n.chaveAcesso.substring(0,20)+'...';
+    var tr=document.createElement('tr');
+    tr.style.borderBottom='1px solid var(--border)';
+    tr.innerHTML='<td style="padding:7px 10px"><span class="badge '+tipoColor+'">'+n.tipo+'</span></td>'
+      +'<td style="padding:7px 10px">'+n.numero+'/'+n.serie+'</td>'
+      +'<td style="padding:7px 10px">'+n.naturezaOperacao+'</td>'
+      +'<td style="padding:7px 10px"><span class="badge '+stColor+'">'+n.status+'</span></td>'
+      +'<td style="padding:7px 10px;white-space:nowrap">'+valor+'</td>'
+      +'<td style="padding:7px 10px;white-space:nowrap">'+dt+'</td>'
+      +'<td style="padding:7px 10px;font-size:.74rem;color:var(--muted)" title="'+n.chaveAcesso+'">'+chave+'</td>'
+      +'<td style="padding:7px 10px;white-space:nowrap">'
+        +'<button class="btn btn-outline" style="font-size:.72rem;padding:4px 8px" onclick="downloadXml(\''+n.id+'\')">⬇ XML</button> '
+        +'<button class="btn btn-outline" style="font-size:.72rem;padding:4px 8px" onclick="downloadDanfe(\''+n.id+'\')">📊 DANFE</button> '
+        +'<button class="btn btn-outline" style="font-size:.72rem;padding:4px 8px" onclick="usarChaveSefaz(\''+n.empresaId+"','"+n.chaveAcesso+'\')">\ud83d\udd0d SEFAZ</button>'
+        +(n.status==='Autorizada'?' <button class="btn btn-danger" style="font-size:.72rem;padding:4px 8px" onclick="cancelarNota(\''+n.id+"','"+n.empresaId+'\')">✖ Cancelar</button>':'')
+      +'</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+function usarChaveSefaz(empresaId,chave){
+  document.getElementById('cs_empresaId').value=empresaId;
+  document.getElementById('cs_chave').value=chave;
+  document.getElementById('cs_chave').scrollIntoView({behavior:'smooth'});
+}
+
 async function consultarNuvemFiscal(){
   limparAlerta('alertaNuvem');
   document.getElementById('resultNuvem').style.display='none';
   var cnpj=v('nf_cnpj').replace(/\D/g,'');
   if(cnpj.length!==14){mostrarAlerta('alertaNuvem','error','CNPJ deve ter 14 digitos.');return;}
+  var params=new URLSearchParams({cnpj:cnpj});
+  var ini=v('nf_dtini'),fim=v('nf_dtfim'),tipo=v('nf_tipo');
+  if(ini)params.set('dtIni',ini);if(fim)params.set('dtFim',fim);if(tipo)params.set('tipo',tipo);
   spin('spinNuvem',true);
   try{
-    var res=await fetch(API+'/api/nfe/nuvem-fiscal?cnpj='+cnpj);
+    var res=await fetch(API+'/api/nfe/nuvem-fiscal?'+params.toString());
     var data=await safeJson(res);
     document.getElementById('resultNuvem').style.display='block';
     if(!res.ok||!data.sucesso){
