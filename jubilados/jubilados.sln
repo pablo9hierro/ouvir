@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34322.80
@@ -12,6 +12,14 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jubilados.Infrastructure", "src\Jubilados.Infrastructure\Jubilados.Infrastructure.csproj", "{A0000000-0000-0000-0000-000000000003}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jubilados.API", "src\Jubilados.API\Jubilados.API.csproj", "{A0000000-0000-0000-0000-000000000004}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{AD0A0132-45F1-4E61-BD90-0FD19DAA47B4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jubilados.UnitTests", "tests\Jubilados.UnitTests\Jubilados.UnitTests.csproj", "{4947B428-80F9-4B26-9315-D83E7D9D1768}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jubilados.IntegrationTests", "tests\Jubilados.IntegrationTests\Jubilados.IntegrationTests.csproj", "{B25758C4-5429-4C0A-81C8-BA388249F80C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jubilados.EndToEndTests", "tests\Jubilados.EndToEndTests\Jubilados.EndToEndTests.csproj", "{1DBE37E2-EBC0-4E77-8F3D-8BEBC413B74F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -35,11 +43,26 @@ Global
 		{A0000000-0000-0000-0000-000000000004}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A0000000-0000-0000-0000-000000000004}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A0000000-0000-0000-0000-000000000004}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4947B428-80F9-4B26-9315-D83E7D9D1768}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4947B428-80F9-4B26-9315-D83E7D9D1768}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4947B428-80F9-4B26-9315-D83E7D9D1768}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4947B428-80F9-4B26-9315-D83E7D9D1768}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B25758C4-5429-4C0A-81C8-BA388249F80C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B25758C4-5429-4C0A-81C8-BA388249F80C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B25758C4-5429-4C0A-81C8-BA388249F80C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B25758C4-5429-4C0A-81C8-BA388249F80C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1DBE37E2-EBC0-4E77-8F3D-8BEBC413B74F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1DBE37E2-EBC0-4E77-8F3D-8BEBC413B74F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1DBE37E2-EBC0-4E77-8F3D-8BEBC413B74F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1DBE37E2-EBC0-4E77-8F3D-8BEBC413B74F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{A0000000-0000-0000-0000-000000000001} = {A0000000-0000-0000-0000-000000000000}
 		{A0000000-0000-0000-0000-000000000002} = {A0000000-0000-0000-0000-000000000000}
 		{A0000000-0000-0000-0000-000000000003} = {A0000000-0000-0000-0000-000000000000}
 		{A0000000-0000-0000-0000-000000000004} = {A0000000-0000-0000-0000-000000000000}
+		{4947B428-80F9-4B26-9315-D83E7D9D1768} = {AD0A0132-45F1-4E61-BD90-0FD19DAA47B4}
+		{B25758C4-5429-4C0A-81C8-BA388249F80C} = {AD0A0132-45F1-4E61-BD90-0FD19DAA47B4}
+		{1DBE37E2-EBC0-4E77-8F3D-8BEBC413B74F} = {AD0A0132-45F1-4E61-BD90-0FD19DAA47B4}
 	EndGlobalSection
 EndGlobal

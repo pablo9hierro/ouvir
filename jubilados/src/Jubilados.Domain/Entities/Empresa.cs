@@ -69,5 +69,6 @@ public class Empresa
     // Relacionamentos
     public ICollection<Produto> Produtos { get; set; } = new List<Produto>();
     public ICollection<Cliente> Clientes { get; set; } = new List<Cliente>();
+    public ICollection<Fornecedor> Fornecedores { get; set; } = new List<Fornecedor>();
     public ICollection<NotaFiscal> NotasFiscais { get; set; } = new List<NotaFiscal>();
 }

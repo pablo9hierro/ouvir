@@ -121,15 +121,8 @@ public class NfseService : INfseService
             return new NfseResultDto(false, Erro: $"Erro ao assinar XML: {ex.Message}");
         }
 
-        const string soapAction = "http://www.abrasf.org.br/nfse.xsd/GerarNfse";
-        var soapEnvelope = $@"<soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/"">
-  <soap:Body>
-    <GerarNfse xmlns=""http://www.abrasf.org.br/nfse.xsd"">
-      <nfseCabecMsg><cabecalho xmlns=""http://www.abrasf.org.br/nfse.xsd"" versao=""2.04""><versaoDados>2.04</versaoDados></cabecalho></nfseCabecMsg>
-      <nfseDadosMsg>{xmlAssinado}</nfseDadosMsg>
-    </GerarNfse>
-  </soap:Body>
-</soap:Envelope>";
+                const string soapAction = "http://www.abrasf.org.br/nfse.xsd/GerarNfse";
+                var soapEnvelope = MontarEnvelopeSoapGerarNfse(xmlAssinado);
 
         try
         {
@@ -169,6 +162,18 @@ public class NfseService : INfseService
         <RazaoSocial>{XmlEnc(dto.NomeTomador ?? "Tomador")}</RazaoSocial>
       </Tomador>";
     }
+
+        private static string MontarEnvelopeSoapGerarNfse(string xmlAssinado)
+        {
+                return $@"<soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/"">
+    <soap:Body>
+        <GerarNfse xmlns=""http://www.abrasf.org.br/nfse.xsd"">
+            <nfseCabecMsg><cabecalho xmlns=""http://www.abrasf.org.br/nfse.xsd"" versao=""2.04""><versaoDados>2.04</versaoDados></cabecalho></nfseCabecMsg>
+            <nfseDadosMsg>{xmlAssinado}</nfseDadosMsg>
+        </GerarNfse>
+    </soap:Body>
+</soap:Envelope>";
+        }
 
     private static NfseResultDto InterpretarRetorno(string xml)
     {

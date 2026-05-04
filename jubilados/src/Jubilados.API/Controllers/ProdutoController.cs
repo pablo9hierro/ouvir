@@ -23,7 +23,21 @@ public class ProdutoController : ControllerBase
         var produtos = await _db.Produtos
             .AsNoTracking()
             .Where(p => p.EmpresaId == empresaId && p.Ativo)
-            .Select(p => new { p.Id, p.Nome, p.NCM, p.CFOP, p.Preco, p.Unidade })
+            .OrderBy(p => p.Nome)
+            .Select(p => new
+            {
+                p.Id,
+                p.Nome,
+                p.Descricao,
+                p.NCM,
+                p.CFOP,
+                p.CST,
+                p.CSOSN,
+                p.EAN,
+                p.Preco,
+                p.Unidade,
+                p.QuantidadeEstoque
+            })
             .ToListAsync(ct);
 
         return Ok(produtos);

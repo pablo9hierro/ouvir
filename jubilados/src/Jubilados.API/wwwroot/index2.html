@@ -110,17 +110,20 @@
   </div>
   <div class="tabs">
     <button class="tab-btn active" onclick="showTab('emitir',this)">Emitir NF-e</button>
-    <button class="tab-btn" onclick="showTab('consultar',this)">Movimentação</button>
+    <button class="tab-btn" onclick="showTab('cad-produtos',this)">Cad. Produtos</button>
+    <button class="tab-btn" onclick="showTab('cad-destinatarios',this)">Cad. Destinatarios</button>
+    <button class="tab-btn" onclick="showTab('cad-fornecedores',this)">Cad. Fornecedores</button>
+    <button class="tab-btn" onclick="showTab('consultar',this)">Consultar SEFAZ</button>
     <button class="tab-btn" onclick="showTab('status',this)">Status Servico</button>
     <button class="tab-btn" onclick="showTab('inutilizar',this)">Inutilizar</button>
     <button class="tab-btn" onclick="showTab('manifestar',this)">Manifestacao</button>
     <button class="tab-btn" onclick="showTab('entrada',this)">Notas Entrada</button>
     <button class="tab-btn" onclick="showTab('nuvemfiscal',this)">☁️ Nuvem Fiscal</button>
     <button class="tab-btn" onclick="showTab('cce',this)">CCe</button>
-    <button class="tab-btn" onclick="showTab('sped',this)">SPED Fiscal</button>
+    <button class="tab-btn" onclick="showTab('sped',this)">SPED EFD</button>
+    <button class="tab-btn" onclick="showTab('estoque',this)">Estoque</button>
     <button class="tab-btn" onclick="showTab('nfse',this)">NFS-e</button>
     <button class="tab-btn" onclick="showTab('nfce',this)">Emitir NFC-e</button>
-    <button class="tab-btn" onclick="showTab('estoque',this)">&#128230; Estoque</button>
   </div>
 
   <!-- ABA EMITIR -->
@@ -209,8 +212,12 @@
         <p class="subtitle">Selecione o tipo de destinatario para a nota.</p>
 
         <!-- Tipo selector -->
-        <div class="alert alert-warn" style="margin-bottom:14px">&#9888; <strong>NF-e modelo 55 (DANFE) exige CPF ou CNPJ do destinatário.</strong> Para venda ao consumidor sem identificação utilize a NFC-e (cupom fiscal).</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px">
+          <button id="tipodest_anonimo" class="tipo-btn" onclick="selecionarTipoDest('anonimo')">
+            <div style="font-size:1.4rem;margin-bottom:4px">🙈</div>
+            <strong>Consumidor Anonimo</strong><br>
+            <small style="color:var(--muted);font-weight:400">Venda balcao sem identificacao</small>
+          </button>
           <button id="tipodest_cpf" class="tipo-btn selected" onclick="selecionarTipoDest('cpf')">
             <div style="font-size:1.4rem;margin-bottom:4px">👤</div>
             <strong>Pessoa Fisica (CPF)</strong><br>
@@ -221,6 +228,11 @@
             <strong>Empresa (CNPJ)</strong><br>
             <small style="color:var(--muted);font-weight:400">B2B — exige endereco completo</small>
           </button>
+        </div>
+
+        <!-- Anonimo -->
+        <div id="area_anonimo" style="display:none">
+          <div class="alert alert-info">&#9432; Nenhum dado do destinatario e necessario. A nota sera emitida com <strong>CONSUMIDOR NAO IDENTIFICADO</strong>. Permitido por lei para vendas de varejo ate R$ 10.000 (ICMS).</div>
         </div>
 
         <!-- CPF -->
@@ -391,63 +403,24 @@
     </div>
   </div>
 
-  <!-- ABA MOVIMENTAÇÕES -->
+  <!-- ABA CONSULTAR -->
   <div id="tab-consultar" class="tab-pane">
     <div class="card">
-      <h2>Movimentação de Notas</h2>
-      <p class="subtitle">Pesquise notas fiscais no sistema por empresa ou CNPJ, com filtros de período, tipo e status.</p>
+      <h2>Consultar NF-e na SEFAZ</h2>
+      <p class="subtitle">Consulta direta ao WebService NFeConsultaProtocolo4 da SEFAZ homologacao usando a chave de acesso.</p>
       <div class="grid2">
-        <div class="field"><label>Empresa</label><select id="mov_empresaId" onchange="if(this.value)document.getElementById('mov_cnpj').value=''"><option value="">-- Selecione --</option></select></div>
-        <div class="field"><label>ou CNPJ (14 dígitos)</label><input id="mov_cnpj" placeholder="00000000000000" maxlength="14" oninput="if(this.value)document.getElementById('mov_empresaId').value=''"></div>
-        <div class="field"><label>Tipo</label><select id="mov_tipo"><option value="">Todos</option><option value="Saída">Saída (emitidas)</option><option value="Entrada">Entrada (recebidas)</option></select></div>
-        <div class="field"><label>Status</label><select id="mov_status"><option value="">Todos</option><option value="Autorizada">Autorizada</option><option value="Cancelada">Cancelada</option><option value="Rejeitada">Rejeitada</option><option value="Inutilizada">Inutilizada</option></select></div>
-        <div class="field"><label>Data Início</label><input type="date" id="mov_dtini"></div>
-        <div class="field"><label>Data Fim</label><input type="date" id="mov_dtfim"></div>
-      </div>
-      <div id="alertaMovimentacoes"></div>
-      <div class="actions">
-        <button class="btn btn-primary" onclick="buscarMovimentacoes()"><span id="spinMov" class="spinner" style="display:none"></span> Buscar no Sistema</button>
-      </div>
-    </div>
-    <div id="resultMov" style="display:none" class="card">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <h2 id="movTitulo" style="margin:0">Notas Encontradas</h2>
-        <span id="movBadge"></span>
-      </div>
-      <div id="movTabela" style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:.82rem">
-          <thead>
-            <tr style="background:var(--bg);text-align:left">
-              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Tipo</th>
-              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Nº/Série</th>
-              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Natureza</th>
-              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Status</th>
-              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Valor</th>
-              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Data</th>
-              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Chave</th>
-              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Ções</th>
-            </tr>
-          </thead>
-          <tbody id="movLinhas"></tbody>
-        </table>
-      </div>
-      <div id="movEmpty" style="display:none;text-align:center;padding:32px;color:var(--muted)">Nenhuma nota encontrada com esses filtros.</div>
-    </div>
-    <div class="card">
-      <h3 style="margin:0 0 6px">🔍 Consultar diretamente na SEFAZ</h3>
-      <p class="subtitle">Para notas não registradas no sistema ou para verificar o status em tempo real. <strong>Atenção:</strong> uma nota &ldquo;Rejeitada&rdquo; ou &ldquo;Cancelada&rdquo; no sistema pode retornar cStat 100 na SEFAZ &mdash; isso ocorre porque o NFeConsultaProtocolo retorna o status do lado da SEFAZ, que pode divergir do status local (ex: timeout na emissão sem resposta processada, cancelamento não confirmado na SEFAZ, ou retentativa bem-sucedida não registrada localmente).</p>
-      <div class="grid2">
-        <div class="field"><label>Empresa <span class="req">*</span></label><select id="cs_empresaId"><option value="">-- Selecione --</option></select></div>
-        <div class="field span2"><label>Chave de Acesso (44 dígitos) <span class="req">*</span></label><input id="cs_chave" placeholder="44 dígitos" maxlength="44"></div>
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="cs_empresaId"><option value="">-- Selecione --</option></select></div>
+        <div class="field span2"><label>Nota emitida (preenche a chave automaticamente)</label><select id="cs_nota_sel" onchange="selecionarNotaConsultar()"><option value="">-- Selecione uma nota --</option></select></div>
+        <div class="field span2"><label>Chave de Acesso (44 digitos) <span class="req">*</span></label><input id="cs_chave" placeholder="Ou informe manualmente" maxlength="44"></div>
       </div>
       <div id="alertaConsultar"></div>
       <div class="actions">
-        <button class="btn btn-outline" onclick="consultarSefaz()"><span id="spinConsultar" class="spinner" style="display:none"></span> Consultar na SEFAZ</button>
-        <button class="btn btn-outline" onclick="preencherUltimaChave()">Usar última NF-e emitida</button>
+        <button class="btn btn-primary" onclick="consultarSefaz()"><span id="spinConsultar" class="spinner" style="display:none"></span> Consultar na SEFAZ</button>
+        <button class="btn btn-outline" onclick="preencherUltimaChave()">Usar ultima NF-e emitida</button>
       </div>
     </div>
     <div id="resultConsultar" style="display:none" class="card">
-      <h2 id="rcTitulo">Resultado SEFAZ</h2>
+      <h2 id="rcTitulo">Resultado</h2>
       <div id="rcBadge" style="margin-bottom:10px"></div>
       <pre class="result-box" id="rcJson"></pre>
     </div>
@@ -564,25 +537,16 @@
   <div id="tab-nuvemfiscal" class="tab-pane">
     <div class="card">
       <h2>☁️ Nuvem Fiscal</h2>
-      <p class="subtitle">Lista todas as NF-e (entrada e saída) registradas para o CNPJ da empresa. Filtre por período e tipo de nota.</p>
-      <div class="grid3">
-        <div class="field span3"><label>CNPJ do Lojista <span class="req">*</span></label>
-          <input id="nf_cnpj" placeholder="14 dígitos" maxlength="18"></div>
-        <div class="field"><label>Data Início</label><input type="date" id="nf_dtini"></div>
-        <div class="field"><label>Data Fim</label><input type="date" id="nf_dtfim"></div>
-        <div class="field"><label>Tipo de Nota</label>
-          <select id="nf_tipo">
-            <option value="">Todos</option>
-            <option value="Saída">Saída (emitidas)</option>
-            <option value="Entrada">Entrada (recebidas)</option>
-          </select>
-        </div>
+      <p class="subtitle">Informe o CNPJ do lojista para listar todas as NF-e (entrada e saída) registradas.</p>
+      <div class="grid2">
+        <div class="field span2"><label>CNPJ do Lojista <span class="req">*</span></label>
+          <input id="nf_cnpj" placeholder="00.000.000/0000-00 ou 14 dígitos" maxlength="18"></div>
       </div>
       <div id="alertaNuvem"></div>
       <div class="actions">
-        <button class="btn btn-primary" onclick="consultarNuvemFiscal()"><span id="spinNuvem" class="spinner" style="display:none"></span> Buscar Notas</button>
+        <button class="btn btn-primary" onclick="consultarNuvemFiscal()"><span id="spinNuvem" class="spinner" style="display:none"></span> Buscar NF-es</button>
+        <button class="btn btn-outline" onclick="document.getElementById('nf_cnpj').value='21362844000152'">Usar empresa cadastrada</button>
         <button class="btn btn-outline" onclick="exportarXmlLote()">&#11015; Exportar XML Lote (ZIP)</button>
-        <button class="btn btn-outline" onclick="exportarRelatorioExcel()">&#128202; Exportar Excel</button>
       </div>
     </div>
     <div id="resultNuvem" style="display:none">
@@ -645,8 +609,8 @@
   <!-- ABA SPED -->
   <div id="tab-sped" class="tab-pane">
     <div class="card">
-      <h2>SPED Fiscal</h2>
-      <p class="subtitle">Gera o arquivo SPED Fiscal (Registros 0, C e 9) com as NF-e autorizadas no periodo. Prazo mensal: ate o dia 15 do mes seguinte.</p>
+      <h2>SPED EFD ICMS/IPI</h2>
+      <p class="subtitle">Gera o arquivo SPED EFD (Registros 0, C e 9) com as NF-e autorizadas no periodo. Prazo mensal: ate o dia 15 do mes seguinte.</p>
       <div class="alert alert-info">O arquivo gerado cobre as NF-e com cStat=100 (Autorizado) no periodo informado. Formato: texto delimitado por pipe (|).</div>
       <div class="grid2" style="margin-bottom:12px">
         <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="sp_empresaId"><option value="">-- Selecione --</option></select></div>
@@ -670,32 +634,13 @@
       <p class="subtitle">Emite NFS-e via webservice municipal ABRASF 2.04. Apenas para empresas com Inscricao Municipal cadastrada.</p>
       <div class="grid2" style="margin-bottom:12px">
         <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="nfse_empresaId"><option value="">-- Selecione --</option></select></div>
-        <div class="field span2"><label>Código do Serviço (LC 116/03) <span class="req">*</span></label>
-          <select id="nfse_codSrv">
-            <option value="">-- Selecione o serviço --</option>
-            <option value="01.01">01.01 – Análise e desenvolvimento de sistemas</option>
-            <option value="01.02">01.02 – Programação</option>
-            <option value="01.03">01.03 – Processamento de dados</option>
-            <option value="01.04">01.04 – Elaboração de programas de computadores</option>
-            <option value="01.05">01.05 – Licenciamento de software</option>
-            <option value="01.07">01.07 – Suporte técnico em informática</option>
-            <option value="04.02">04.02 – Medicina, enfermagem e demais da área de saúde</option>
-            <option value="06.02">06.02 – Assessoria e consultoria</option>
-            <option value="07.01">07.01 – Engenharia, agronomia, topografia</option>
-            <option value="07.02">07.02 – Execução de projetos e obras</option>
-            <option value="10.09">10.09 – Recrutamento, agenciamento, seleção de pessoal</option>
-            <option value="14.01">14.01 – Lubrificação, limpeza, manutenção e conservação</option>
-            <option value="17.01">17.01 – Assessoria ou consultoria financeira</option>
-            <option value="17.06">17.06 – Propaganda e publicidade</option>
-            <option value="17.19">17.19 – Outros serviços</option>
-          </select>
-        </div>
-        <div class="field span2"><label>Discriminação do Serviço <span class="req">*</span></label><textarea id="nfse_disc" rows="3" placeholder="Descreva detalhadamente o serviço prestado"></textarea></div>
-        <div class="field"><label>Valor do Serviço <span class="req">*</span></label><input type="number" id="nfse_valor" step="0.01" min="0.01" placeholder="0.00"></div>
-        <div class="field"><label>Alíquota ISS (%)</label><input type="number" id="nfse_aliq" step="0.01" min="0" placeholder="5.00"></div>
+        <div class="field span2"><label>Nome do Servico <span class="req">*</span></label><input id="nfse_nome" placeholder="Ex: Desenvolvimento de software"></div>
+        <div class="field"><label>Valor do Servico <span class="req">*</span></label><input type="number" id="nfse_valor" step="0.01" min="0.01" placeholder="0.00"></div>
+        <div class="field"><label>Aliquota ISS (%) </label><input type="number" id="nfse_aliq" step="0.01" min="0" placeholder="5.00"></div>
+        <div class="field span2"><label>Discriminacao</label><textarea id="nfse_disc" rows="3" placeholder="Descricao detalhada do servico prestado"></textarea></div>
         <div class="field"><label>CPF/CNPJ Tomador</label><input id="nfse_tomCpfCnpj" placeholder="Opcional"></div>
         <div class="field"><label>Nome Tomador</label><input id="nfse_tomNome" placeholder="Opcional"></div>
-        <div class="field" style="display:none"><input id="nfse_nome" value="Serviço"></div>
+        <div class="field"><label>Codigo Servico LC 116/03</label><input id="nfse_codSrv" placeholder="Ex: 14.01"></div>
       </div>
       <div id="alertaNfse"></div>
       <div class="actions">
@@ -754,55 +699,130 @@
       <pre class="result-box" id="nfceJson"></pre>
     </div>
   </div>
-  <!-- ABA ESTOQUE -->
+
   <div id="tab-estoque" class="tab-pane">
     <div class="card">
-      <h2>&#128230; Controle de Estoque</h2>
-      <p class="subtitle">Balanço de entradas e saídas por produto, calculado a partir das NF-e autorizadas. O saldo atual reflete o campo <strong>Quantidade em Estoque</strong> cadastrado em cada produto.</p>
-      <div class="grid2">
-        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="est_empresaId" onchange="limparEstoque()"><option value="">-- Selecione --</option></select></div>
-        <div class="field"><label>Período: Data Início</label><input type="date" id="est_dtini"></div>
-        <div class="field"><label>Período: Data Fim</label><input type="date" id="est_dtfim"></div>
+      <h2>Balanço de Estoque</h2>
+      <p class="subtitle">Consulta saldo atual, entradas e saídas por produto com base nas notas autorizadas.</p>
+      <div class="grid3" style="margin-bottom:12px">
+        <div class="field"><label>Empresa <span class="req">*</span></label><select id="est_empresaId"><option value="">-- Selecione --</option></select></div>
+        <div class="field"><label>Data inicial</label><input id="est_dtIni" type="date"></div>
+        <div class="field"><label>Data final</label><input id="est_dtFim" type="date"></div>
       </div>
       <div id="alertaEstoque"></div>
       <div class="actions">
-        <button class="btn btn-primary" onclick="carregarEstoque()"><span id="spinEst" class="spinner" style="display:none"></span> Ver Estoque</button>
-        <button id="btnEstoqueCsv" class="btn btn-outline" style="display:none" onclick="exportarEstoqueCsv()">&#128202; Exportar CSV / Excel</button>
+        <button class="btn btn-primary" onclick="carregarEstoque()"><span id="spinEstoque" class="spinner" style="display:none"></span> Atualizar estoque</button>
+        <button class="btn btn-outline" onclick="baixarEstoqueCsv()">Exportar CSV</button>
       </div>
     </div>
-    <div id="resultEstoque" style="display:none" class="card">
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
-        <h2 style="margin:0">Balanço de Estoque</h2>
-        <span id="estBadgeProd"></span>
-        <span id="estBadgeValor"></span>
-      </div>
-      <div style="overflow-x:auto">
-        <table id="tabelaEstoque" style="width:100%;border-collapse:collapse;font-size:.82rem">
-          <thead>
-            <tr style="background:var(--bg);text-align:left">
-              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Produto</th>
-              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">NCM</th>
-              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Un.</th>
-              <th style="padding:8px 10px;border-bottom:2px solid var(--border)">Preço Unit.</th>
-              <th style="padding:8px 10px;border-bottom:2px solid var(--border);text-align:right">Entradas (NF)</th>
-              <th style="padding:8px 10px;border-bottom:2px solid var(--border);text-align:right">Saídas (NF)</th>
-              <th style="padding:8px 10px;border-bottom:2px solid var(--border);text-align:right">Saldo Atual</th>
-              <th style="padding:8px 10px;border-bottom:2px solid var(--border);text-align:right">Valor em Estoque</th>
-            </tr>
-          </thead>
-          <tbody id="estLinhas"></tbody>
-          <tfoot id="estTotais"></tfoot>
-        </table>
-      </div>
-      <p id="estEmpty" style="display:none;text-align:center;padding:32px;color:var(--muted)">Nenhum produto encontrado para esta empresa.</p>
+    <div id="resultEstoque" class="card" style="display:none">
+      <h2>Resumo do Estoque</h2>
+      <p class="subtitle" id="estResumoSub">Sem dados.</p>
+      <div id="estoqueTabelaWrap" style="overflow:auto"></div>
     </div>
   </div>
 
+  <div id="tab-cad-produtos" class="tab-pane">
+    <div class="card">
+      <h2>Cadastro de Produtos</h2>
+      <p class="subtitle">Gerencie produtos com nome, estoque, preco e classificacao fiscal.</p>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="cad_prod_empresaId" onchange="selecionarEmpresaCadastro('cad_prod_empresaId', carregarProdutosCadastro)"><option value="">-- Selecione a empresa --</option></select></div>
+        <div class="field span2"><label>Buscar produto</label><input id="busca_produto_cadastro" placeholder="Digite nome, EAN ou NCM" oninput="filtrarProdutosCadastro()"></div>
+      </div>
+      <div id="lista_produtos_cadastro" style="margin-bottom:14px;max-height:220px;overflow-y:auto;display:none"></div>
+      <div class="section-title">Novo produto</div>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field"><label>Nome <span class="req">*</span></label><input id="cad_p_nome" placeholder="Ex.: Cimento CP-II"></div>
+        <div class="field"><label>Descricao</label><input id="cad_p_descricao" placeholder="Descricao resumida"></div>
+        <div class="field"><label>EAN</label><input id="cad_p_ean" placeholder="7890000000000" maxlength="14"></div>
+        <div class="field"><label>NCM <span class="req">*</span></label><input id="cad_p_ncm" placeholder="84713012" maxlength="8"></div>
+        <div class="field"><label>CFOP <span class="req">*</span></label><input id="cad_p_cfop" value="5102" maxlength="4"></div>
+        <div class="field"><label>CST</label><input id="cad_p_cst" value="00" maxlength="3"></div>
+        <div class="field"><label>CSOSN</label><input id="cad_p_csosn" value="102" maxlength="3"></div>
+        <div class="field"><label>Unidade</label><select id="cad_p_unidade"><option selected>UN</option><option>PC</option><option>KG</option><option>LT</option><option>MT</option><option>CX</option></select></div>
+        <div class="field"><label>Preco Unitario (R$) <span class="req">*</span></label><input id="cad_p_preco" type="number" step="0.01" min="0.01" placeholder="0.00"></div>
+        <div class="field"><label>Quantidade em Estoque</label><input id="cad_p_estoque" type="number" step="0.001" min="0" value="0"></div>
+      </div>
+      <div id="alertaProdutoCadastro"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="cadastrarProdutoCadastro()"><span id="spinProdutoCadastro" class="spinner" style="display:none"></span> Salvar Produto</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-cad-destinatarios" class="tab-pane">
+    <div class="card">
+      <h2>Cadastro de Destinatario</h2>
+      <p class="subtitle">Cadastre clientes PF ou PJ para reutilizar na emissao.</p>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="cad_dest_empresaId" onchange="selecionarEmpresaCadastro('cad_dest_empresaId', carregarDestinatariosCadastro)"><option value="">-- Selecione a empresa --</option></select></div>
+        <div class="field"><label>Tipo</label><select id="cad_dest_tipo" onchange="atualizarFormularioDestinatarioCadastro()"><option value="cpf">Pessoa Fisica (CPF)</option><option value="cnpj">Pessoa Juridica (CNPJ)</option></select></div>
+        <div class="field"><label>Buscar destinatario</label><input id="busca_destinatario_cadastro" placeholder="Digite nome ou documento" oninput="filtrarDestinatariosCadastro()"></div>
+      </div>
+      <div id="cadDestHint" class="alert alert-info" style="margin-bottom:12px">Endereco e opcional para CPF em venda presencial.</div>
+      <div id="lista_destinatarios_cadastro" style="margin-bottom:14px;max-height:220px;overflow-y:auto;display:none"></div>
+      <div class="section-title">Novo destinatario</div>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field"><label>Nome / Razao Social <span class="req">*</span></label><input id="cad_dest_nome" placeholder="Nome do destinatario"></div>
+        <div class="field"><label>CPF/CNPJ <span class="req">*</span></label><input id="cad_dest_doc" placeholder="12345678901"></div>
+        <div class="field"><label>Inscricao Estadual</label><input id="cad_dest_ie" placeholder="ISENTO"></div>
+        <div class="field"><label>E-mail</label><input id="cad_dest_email" type="email" placeholder="cliente@empresa.com"></div>
+        <div class="field"><label>Telefone</label><input id="cad_dest_fone" placeholder="83999999999"></div>
+        <div class="field"><label>Logradouro</label><input id="cad_dest_logradouro" placeholder="Rua das Flores"></div>
+        <div class="field"><label>Numero</label><input id="cad_dest_numero" placeholder="100"></div>
+        <div class="field"><label>Complemento</label><input id="cad_dest_comp"></div>
+        <div class="field"><label>Bairro</label><input id="cad_dest_bairro" placeholder="Centro"></div>
+        <div class="field"><label>Municipio</label><input id="cad_dest_municipio" placeholder="Joao Pessoa"></div>
+        <div class="field"><label>Cod. IBGE</label><input id="cad_dest_codmun" placeholder="2507507" maxlength="7"></div>
+        <div class="field"><label>UF</label><select id="cad_dest_uf"><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option selected>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option></select></div>
+        <div class="field"><label>CEP</label><input id="cad_dest_cep" placeholder="58000000" maxlength="9"></div>
+      </div>
+      <div id="alertaDestinatarioCadastro"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="cadastrarDestinatarioCadastro()"><span id="spinDestinatarioCadastro" class="spinner" style="display:none"></span> Salvar Destinatario</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-cad-fornecedores" class="tab-pane">
+    <div class="card">
+      <h2>Cadastro de Fornecedor</h2>
+      <p class="subtitle">Cadastre fornecedores com documento e endereco para compras e controle interno.</p>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field span2"><label>Empresa <span class="req">*</span></label><select id="cad_forn_empresaId" onchange="selecionarEmpresaCadastro('cad_forn_empresaId', carregarFornecedoresCadastro)"><option value="">-- Selecione a empresa --</option></select></div>
+        <div class="field span2"><label>Buscar fornecedor</label><input id="busca_fornecedor_cadastro" placeholder="Digite nome ou documento" oninput="filtrarFornecedoresCadastro()"></div>
+      </div>
+      <div id="lista_fornecedores_cadastro" style="margin-bottom:14px;max-height:220px;overflow-y:auto;display:none"></div>
+      <div class="section-title">Novo fornecedor</div>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field"><label>Nome / Razao Social <span class="req">*</span></label><input id="cad_forn_nome" placeholder="Fornecedor Ltda"></div>
+        <div class="field"><label>CPF/CNPJ <span class="req">*</span></label><input id="cad_forn_doc" placeholder="00000000000000"></div>
+        <div class="field"><label>Inscricao Estadual</label><input id="cad_forn_ie" placeholder="ISENTO"></div>
+        <div class="field"><label>E-mail</label><input id="cad_forn_email" type="email" placeholder="contato@fornecedor.com"></div>
+        <div class="field"><label>Telefone</label><input id="cad_forn_fone" placeholder="83999999999"></div>
+        <div class="field"><label>Logradouro</label><input id="cad_forn_logradouro" placeholder="Rua das Flores"></div>
+        <div class="field"><label>Numero</label><input id="cad_forn_numero" placeholder="100"></div>
+        <div class="field"><label>Complemento</label><input id="cad_forn_comp"></div>
+        <div class="field"><label>Bairro</label><input id="cad_forn_bairro" placeholder="Centro"></div>
+        <div class="field"><label>Municipio</label><input id="cad_forn_municipio" placeholder="Joao Pessoa"></div>
+        <div class="field"><label>Cod. IBGE</label><input id="cad_forn_codmun" placeholder="2507507" maxlength="7"></div>
+        <div class="field"><label>UF</label><select id="cad_forn_uf"><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option selected>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option></select></div>
+        <div class="field"><label>CEP</label><input id="cad_forn_cep" placeholder="58000000" maxlength="9"></div>
+      </div>
+      <div id="alertaFornecedorCadastro"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="cadastrarFornecedorCadastro()"><span id="spinFornecedorCadastro" class="spinner" style="display:none"></span> Salvar Fornecedor</button>
+      </div>
+    </div>
+  </div>
+
+</div>
 <script>
-var estado = {
- empresaId:null, cnpj:null, clienteId:null, clienteNome:null, tipoDest:'cpf', produtoId:null, produtoNome:null, certEnviado:false, cscSalvo:false, pfxBase64:null, pfxNome:null, ultimaChave:null, ultimaNotaId:null };
+const estado = { empresaId:null, cnpj:null, clienteId:null, clienteNome:null, tipoDest:'cpf', produtoId:null, produtoNome:null, certEnviado:false, cscSalvo:false, pfxBase64:null, pfxNome:null, ultimaChave:null, ultimaNotaId:null };
 var clientesCadastrados = [];
 var produtosCadastrados = [];
+var fornecedoresCadastrados = [];
 var empresasCadastradas = [];
 var notasCarregadas = [];
 const API = window.location.origin;
@@ -812,7 +832,7 @@ async function carregarEmpresasSelects(){
     var res=await fetch(API+'/api/empresa');
     if(!res.ok)return;
     empresasCadastradas=await res.json();
-    var ids=['cs_empresaId','mov_empresaId','st_empresaId','in_empresaId','mf_empresaId','en_empresaId','cce_empresaId','sp_empresaId','nfse_empresaId','est_empresaId'];
+    var ids=['cs_empresaId','st_empresaId','in_empresaId','mf_empresaId','en_empresaId','cce_empresaId','sp_empresaId','est_empresaId','nfse_empresaId','cad_prod_empresaId','cad_dest_empresaId','cad_forn_empresaId'];
     ids.forEach(function(id){
       var sel=document.getElementById(id);if(!sel)return;
       sel.innerHTML='<option value="">-- Selecione a empresa --</option>';
@@ -822,6 +842,31 @@ async function carregarEmpresasSelects(){
       if(estado.empresaId)sel.value=estado.empresaId;
     });
   }catch(e){}
+}
+
+function selecionarEmpresaGlobal(empresaId){
+  estado.empresaId=empresaId||null;
+  var empresa=empresasCadastradas.find(function(e){return e.id===empresaId;});
+  if(empresa&&empresa.cnpj)estado.cnpj=empresa.cnpj;
+  ['cs_empresaId','st_empresaId','in_empresaId','mf_empresaId','en_empresaId','cce_empresaId','sp_empresaId','est_empresaId','nfse_empresaId','cad_prod_empresaId','cad_dest_empresaId','cad_forn_empresaId'].forEach(function(id){
+    var sel=document.getElementById(id);
+    if(sel&&empresaId)sel.value=empresaId;
+  });
+  atualizarEstadoBar();
+}
+
+function selecionarEmpresaCadastro(selectId, callback){
+  var empresaId=(document.getElementById(selectId)||{}).value||'';
+  if(!empresaId)return;
+  selecionarEmpresaGlobal(empresaId);
+  if(typeof callback==='function')callback();
+}
+
+function obterEmpresaSelecionada(selectId, alertaId){
+  var empresaId=(document.getElementById(selectId)||{}).value||estado.empresaId||'';
+  if(!empresaId&&alertaId)mostrarAlerta(alertaId,'warn','Selecione a empresa primeiro.');
+  if(empresaId)selecionarEmpresaGlobal(empresaId);
+  return empresaId;
 }
 
 async function carregarNotasParaSelect(selectId){
@@ -860,10 +905,13 @@ function showTab(name,btn){
   document.getElementById('tab-'+name).classList.add('active');
   btn.classList.add('active');
   if(name==='nfce'){renderItensNfce();}
-  if(name==='consultar'){if(estado.empresaId){var mEl=document.getElementById('mov_empresaId');if(mEl)mEl.value=estado.empresaId;}}
+  if(name==='cad-produtos'){carregarProdutosCadastro();}
+  if(name==='cad-destinatarios'){atualizarFormularioDestinatarioCadastro();carregarDestinatariosCadastro();}
+  if(name==='cad-fornecedores'){carregarFornecedoresCadastro();}
+  if(name==='estoque'){carregarEstoque();}
+  if(name==='consultar'){carregarNotasParaSelect('cs_nota_sel');}
   if(name==='manifestar'){carregarNotasParaSelect('mf_notaId');}
   if(name==='cce'){carregarNotasParaSelect('cce_notaId');}
-  if(name==='nuvemfiscal' && estado.cnpj){var nfCnpjEl=document.getElementById('nf_cnpj');if(nfCnpjEl&&!nfCnpjEl.value)nfCnpjEl.value=estado.cnpj.replace(/\D/g,'');}
 }
 
 let passoAtual=0;
@@ -924,7 +972,8 @@ function atualizarEstadoBar(){
   cert.textContent=estado.certEnviado?'enviado ok':'nao enviado';
   // Destinatario: varia por tipo
   var stCl=document.getElementById('stCliente');
-  if(estado.tipoDest==='cpf'&&estado.clienteNome){stCl.className='badge badge-green';stCl.textContent=estado.clienteNome;}
+  if(estado.tipoDest==='anonimo'){stCl.className='badge badge-blue';stCl.textContent='Anonimo';}
+  else if(estado.tipoDest==='cpf'&&estado.clienteNome){stCl.className='badge badge-green';stCl.textContent=estado.clienteNome;}
   else if(estado.tipoDest==='cnpj'&&estado.clienteNome){stCl.className='badge badge-green';stCl.textContent=estado.clienteNome;}
   else{stCl.className='badge badge-red';stCl.textContent='nao definido';}
   s('stProduto',!!estado.produtoId,estado.produtoNome||'Produto ok');
@@ -945,6 +994,8 @@ async function cadastrarEmpresa(){
     estado.cnpj=v('e_cnpj');
     document.getElementById('empresaIdLabel').textContent='ID: '+data.id;
     mostrarAlerta('alertaEmpresa','success','Empresa cadastrada! ID: '+data.id);
+    await carregarEmpresasSelects();
+    selecionarEmpresaGlobal(data.id);
     atualizarEstadoBar();
   }catch(e){mostrarAlerta('alertaEmpresa','error',e.message);}
   finally{spin('spinEmpresa',false);}
@@ -998,11 +1049,15 @@ async function enviarCertificado(){
 var tipoDest = 'cpf';
 function selecionarTipoDest(tipo){
   tipoDest=tipo; estado.tipoDest=tipo;
-  ['cpf','cnpj'].forEach(function(t){
+  ['anonimo','cpf','cnpj'].forEach(function(t){
     document.getElementById('tipodest_'+t).className='tipo-btn'+(t===tipo?' selected':'');
     document.getElementById('area_'+t).style.display=t===tipo?'block':'none';
   });
-  if(tipo==='cpf') {
+  if(tipo==='anonimo'){
+    estado.clienteId=null; estado.clienteNome='Consumidor Anonimo';
+    document.getElementById('stCliente').className='badge badge-blue';
+    document.getElementById('stCliente').textContent='Anonimo';
+  } else if(tipo==='cpf') {
     estado.clienteId=null; estado.clienteNome=null; atualizarEstadoBar();
   } else {
     estado.clienteId=null; estado.clienteNome=null; atualizarEstadoBar();
@@ -1013,7 +1068,9 @@ function selecionarTipoDest(tipo){
 function atualizarResumoDestinatario(){
   var el=document.getElementById('resumoDestinatario');
   if(!el)return;
-  if(tipoDest==='cpf'&&estado.clienteNome){
+  if(tipoDest==='anonimo'){
+    el.innerHTML='<strong>Destinatario:</strong> <span class="badge badge-blue">Consumidor Anonimo</span> — nenhum dado necessario.';
+  } else if(tipoDest==='cpf'&&estado.clienteNome){
     el.innerHTML='<strong>Destinatario:</strong> <span class="badge badge-green">'+estado.clienteNome+'</span> (CPF) — ID: '+estado.clienteId;
   } else if(tipoDest==='cnpj'&&estado.clienteNome){
     el.innerHTML='<strong>Destinatario:</strong> <span class="badge badge-green">'+estado.clienteNome+'</span> (CNPJ) — ID: '+estado.clienteId;
@@ -1174,6 +1231,267 @@ async function cadastrarProduto(){
   finally{spin('spinProduto',false);}
 }
 
+function renderListaCadastro(lista, containerId, htmlFactory, onSelect){
+  var container=document.getElementById(containerId);
+  if(!container)return;
+  if(!lista||!lista.length){container.style.display='none';container.innerHTML='';return;}
+  container.style.display='block';
+  container.innerHTML='';
+  lista.forEach(function(item){
+    var el=document.createElement('div');
+    el.style.cssText='padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--border);border-radius:4px;display:flex;justify-content:space-between;align-items:center;gap:10px';
+    el.innerHTML='<span>'+htmlFactory(item)+'</span><span class="badge badge-blue" style="font-size:.7rem">Selecionar</span>';
+    el.onmouseenter=function(){this.style.background='var(--step-active)';};
+    el.onmouseleave=function(){this.style.background='';};
+    el.onclick=function(){onSelect(item);};
+    container.appendChild(el);
+  });
+}
+
+async function carregarProdutosCadastro(){
+  limparAlerta('alertaProdutoCadastro');
+  var empresaId=obterEmpresaSelecionada('cad_prod_empresaId','alertaProdutoCadastro');
+  if(!empresaId)return;
+  spin('spinBuscaProduto',true);
+  try{
+    var res=await fetch(API+'/api/produto?empresaId='+encodeURIComponent(empresaId));
+    if(res.ok){produtosCadastrados=await res.json();filtrarProdutosCadastro();}
+  }catch(e){mostrarAlerta('alertaProdutoCadastro','error',e.message||'Erro ao carregar produtos.');}
+  finally{spin('spinBuscaProduto',false);}
+}
+
+function filtrarProdutosCadastro(){
+  var q=(document.getElementById('busca_produto_cadastro').value||'').toLowerCase();
+  var lista=produtosCadastrados.filter(function(p){
+    return !q||p.nome.toLowerCase().includes(q)||((p.ean||'').toLowerCase().includes(q))||((p.ncm||'').toLowerCase().includes(q));
+  });
+  renderListaCadastro(lista.slice(0,12),'lista_produtos_cadastro',function(p){
+    var preco='R$ '+(p.preco||0).toFixed(2).replace('.',',');
+    var estoque=(p.quantidadeEstoque||0).toString().replace('.',',');
+    return '<strong>'+p.nome+'</strong> <small style="color:var(--muted)">'+(p.unidade||'UN')+' - '+preco+' - estoque: '+estoque+'</small>';
+  },function(p){
+    document.getElementById('cad_p_nome').value=p.nome||'';
+    document.getElementById('cad_p_descricao').value=p.descricao||'';
+    document.getElementById('cad_p_ean').value=p.ean||'';
+    document.getElementById('cad_p_ncm').value=p.ncm||'';
+    document.getElementById('cad_p_cfop').value=p.cfop||'';
+    document.getElementById('cad_p_cst').value=p.cst||'';
+    document.getElementById('cad_p_csosn').value=p.csosn||'';
+    document.getElementById('cad_p_unidade').value=p.unidade||'UN';
+    document.getElementById('cad_p_preco').value=(p.preco||0).toFixed(2);
+    document.getElementById('cad_p_estoque').value=p.quantidadeEstoque||0;
+    estado.produtoId=p.id;estado.produtoNome=p.nome;
+    atualizarEstadoBar();
+    mostrarAlerta('alertaProdutoCadastro','success','Produto carregado para consulta: '+p.nome);
+  });
+}
+
+async function cadastrarProdutoCadastro(){
+  limparAlerta('alertaProdutoCadastro');
+  var empresaId=obterEmpresaSelecionada('cad_prod_empresaId','alertaProdutoCadastro');
+  if(!empresaId)return;
+  if(!v('cad_p_nome')||!v('cad_p_ncm')||!v('cad_p_cfop')){mostrarAlerta('alertaProdutoCadastro','error','Nome, NCM e CFOP sao obrigatorios.');return;}
+  spin('spinProdutoCadastro',true);
+  try{
+    var res=await fetch(API+'/api/produto',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({empresaId:empresaId,nome:v('cad_p_nome'),descricao:v('cad_p_descricao'),ean:v('cad_p_ean')||null,ncm:v('cad_p_ncm'),cfop:v('cad_p_cfop'),cst:v('cad_p_cst')||'00',csosn:v('cad_p_csosn')||'102',unidade:v('cad_p_unidade')||'UN',preco:parseFloat(v('cad_p_preco'))||0,quantidadeEstoque:parseFloat(v('cad_p_estoque'))||0,aliquotaICMS:0,aliquotaIPI:0,aliquotaPIS:0.65,aliquotaCOFINS:3})});
+    var data=await safeJson(res);
+    if(!res.ok)throw new Error(data.erro||'HTTP '+res.status);
+    estado.produtoId=data.id;estado.produtoNome=data.nome||v('cad_p_nome');
+    produtosCadastrados.unshift({id:data.id,nome:estado.produtoNome,descricao:v('cad_p_descricao'),ean:v('cad_p_ean'),ncm:v('cad_p_ncm'),cfop:v('cad_p_cfop'),cst:v('cad_p_cst')||'00',csosn:v('cad_p_csosn')||'102',preco:parseFloat(v('cad_p_preco'))||0,unidade:v('cad_p_unidade')||'UN',quantidadeEstoque:parseFloat(v('cad_p_estoque'))||0});
+    filtrarProdutosCadastro();
+    atualizarEstadoBar();
+    mostrarAlerta('alertaProdutoCadastro','success','Produto cadastrado! ID: '+data.id);
+  }catch(e){mostrarAlerta('alertaProdutoCadastro','error',e.message);}
+  finally{spin('spinProdutoCadastro',false);}
+}
+
+function atualizarFormularioDestinatarioCadastro(){
+  var tipo=(document.getElementById('cad_dest_tipo')||{}).value||'cpf';
+  var hint=document.getElementById('cadDestHint');
+  if(!hint)return;
+  if(tipo==='cnpj'){
+    hint.className='alert alert-warn';
+    hint.innerHTML='Endereco completo e recomendado para destinatario PJ; a emissao B2B depende desses dados.';
+    document.getElementById('cad_dest_doc').placeholder='00000000000000';
+  }else{
+    hint.className='alert alert-info';
+    hint.innerHTML='Endereco e opcional para CPF em venda presencial.';
+    document.getElementById('cad_dest_doc').placeholder='12345678901';
+  }
+}
+
+async function carregarDestinatariosCadastro(){
+  limparAlerta('alertaDestinatarioCadastro');
+  var empresaId=obterEmpresaSelecionada('cad_dest_empresaId','alertaDestinatarioCadastro');
+  if(!empresaId)return;
+  try{
+    var res=await fetch(API+'/api/cliente?empresaId='+encodeURIComponent(empresaId));
+    if(res.ok){clientesCadastrados=await res.json();filtrarDestinatariosCadastro();}
+  }catch(e){mostrarAlerta('alertaDestinatarioCadastro','error',e.message||'Erro ao carregar destinatarios.');}
+}
+
+function filtrarDestinatariosCadastro(){
+  var q=(document.getElementById('busca_destinatario_cadastro').value||'').toLowerCase();
+  var lista=clientesCadastrados.filter(function(c){return !q||c.nome.toLowerCase().includes(q)||((c.cpf_CNPJ||'').toLowerCase().includes(q));});
+  renderListaCadastro(lista.slice(0,12),'lista_destinatarios_cadastro',function(c){
+    return '<strong>'+c.nome+'</strong> <small style="color:var(--muted)">'+(c.cpf_CNPJ||'sem documento')+'</small>';
+  },function(c){
+    document.getElementById('cad_dest_nome').value=c.nome||'';
+    document.getElementById('cad_dest_doc').value=c.cpf_CNPJ||'';
+    document.getElementById('cad_dest_email').value=c.email||'';
+    document.getElementById('cad_dest_ie').value=c.inscricaoEstadual||'';
+    document.getElementById('cad_dest_fone').value=c.telefone||'';
+    document.getElementById('cad_dest_logradouro').value=c.logradouro||'';
+    document.getElementById('cad_dest_numero').value=c.numero||'';
+    document.getElementById('cad_dest_comp').value=c.complemento||'';
+    document.getElementById('cad_dest_bairro').value=c.bairro||'';
+    document.getElementById('cad_dest_municipio').value=c.municipio||'';
+    document.getElementById('cad_dest_codmun').value=c.codigoMunicipio||'';
+    document.getElementById('cad_dest_uf').value=c.uf||'PB';
+    document.getElementById('cad_dest_cep').value=c.cep||'';
+    estado.clienteId=c.id;estado.clienteNome=c.nome;
+    atualizarEstadoBar();
+    mostrarAlerta('alertaDestinatarioCadastro','success','Destinatario carregado: '+c.nome);
+  });
+}
+
+async function cadastrarDestinatarioCadastro(){
+  limparAlerta('alertaDestinatarioCadastro');
+  var empresaId=obterEmpresaSelecionada('cad_dest_empresaId','alertaDestinatarioCadastro');
+  if(!empresaId)return;
+  var tipo=(document.getElementById('cad_dest_tipo')||{}).value||'cpf';
+  if(!v('cad_dest_nome')||!v('cad_dest_doc')){mostrarAlerta('alertaDestinatarioCadastro','error','Nome e CPF/CNPJ sao obrigatorios.');return;}
+  if(tipo==='cnpj'&&(!v('cad_dest_logradouro')||!v('cad_dest_numero')||!v('cad_dest_bairro')||!v('cad_dest_municipio')||!v('cad_dest_cep'))){
+    mostrarAlerta('alertaDestinatarioCadastro','error','Endereco completo e obrigatorio para destinatario PJ.');return;
+  }
+  spin('spinDestinatarioCadastro',true);
+  try{
+    var res=await fetch(API+'/api/cliente',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({empresaId:empresaId,nome:v('cad_dest_nome'),cpf_CNPJ:v('cad_dest_doc'),inscricaoEstadual:v('cad_dest_ie'),email:v('cad_dest_email'),telefone:v('cad_dest_fone'),logradouro:v('cad_dest_logradouro'),numero:v('cad_dest_numero'),complemento:v('cad_dest_comp'),bairro:v('cad_dest_bairro'),municipio:v('cad_dest_municipio'),codigoMunicipio:v('cad_dest_codmun'),uf:v('cad_dest_uf'),cep:v('cad_dest_cep'),pais:'Brasil',codigoPais:'1058'})});
+    var data=await safeJson(res);
+    if(!res.ok)throw new Error(data.erro||'HTTP '+res.status);
+    estado.clienteId=data.id;estado.clienteNome=data.nome||v('cad_dest_nome');
+    clientesCadastrados.unshift({id:data.id,nome:estado.clienteNome,cpf_CNPJ:v('cad_dest_doc'),inscricaoEstadual:v('cad_dest_ie'),email:v('cad_dest_email'),telefone:v('cad_dest_fone'),logradouro:v('cad_dest_logradouro'),numero:v('cad_dest_numero'),complemento:v('cad_dest_comp'),bairro:v('cad_dest_bairro'),municipio:v('cad_dest_municipio'),codigoMunicipio:v('cad_dest_codmun'),uf:v('cad_dest_uf'),cep:v('cad_dest_cep')});
+    filtrarDestinatariosCadastro();
+    atualizarEstadoBar();
+    mostrarAlerta('alertaDestinatarioCadastro','success','Destinatario cadastrado! ID: '+data.id);
+  }catch(e){mostrarAlerta('alertaDestinatarioCadastro','error',e.message);}
+  finally{spin('spinDestinatarioCadastro',false);}
+}
+
+async function carregarFornecedoresCadastro(){
+  limparAlerta('alertaFornecedorCadastro');
+  var empresaId=obterEmpresaSelecionada('cad_forn_empresaId','alertaFornecedorCadastro');
+  if(!empresaId)return;
+  try{
+    var res=await fetch(API+'/api/fornecedor?empresaId='+encodeURIComponent(empresaId));
+    if(res.ok){fornecedoresCadastrados=await res.json();filtrarFornecedoresCadastro();}
+  }catch(e){mostrarAlerta('alertaFornecedorCadastro','error',e.message||'Erro ao carregar fornecedores.');}
+}
+
+function filtrarFornecedoresCadastro(){
+  var q=(document.getElementById('busca_fornecedor_cadastro').value||'').toLowerCase();
+  var lista=fornecedoresCadastrados.filter(function(f){return !q||f.nome.toLowerCase().includes(q)||((f.cpf_CNPJ||'').toLowerCase().includes(q));});
+  renderListaCadastro(lista.slice(0,12),'lista_fornecedores_cadastro',function(f){
+    return '<strong>'+f.nome+'</strong> <small style="color:var(--muted)">'+(f.cpf_CNPJ||'sem documento')+'</small>';
+  },function(f){
+    document.getElementById('cad_forn_nome').value=f.nome||'';
+    document.getElementById('cad_forn_doc').value=f.cpf_CNPJ||'';
+    document.getElementById('cad_forn_ie').value=f.inscricaoEstadual||'';
+    document.getElementById('cad_forn_email').value=f.email||'';
+    document.getElementById('cad_forn_fone').value=f.telefone||'';
+    document.getElementById('cad_forn_logradouro').value=f.logradouro||'';
+    document.getElementById('cad_forn_numero').value=f.numero||'';
+    document.getElementById('cad_forn_comp').value=f.complemento||'';
+    document.getElementById('cad_forn_bairro').value=f.bairro||'';
+    document.getElementById('cad_forn_municipio').value=f.municipio||'';
+    document.getElementById('cad_forn_codmun').value=f.codigoMunicipio||'';
+    document.getElementById('cad_forn_uf').value=f.uf||'PB';
+    document.getElementById('cad_forn_cep').value=f.cep||'';
+    mostrarAlerta('alertaFornecedorCadastro','success','Fornecedor carregado: '+f.nome);
+  });
+}
+
+async function cadastrarFornecedorCadastro(){
+  limparAlerta('alertaFornecedorCadastro');
+  var empresaId=obterEmpresaSelecionada('cad_forn_empresaId','alertaFornecedorCadastro');
+  if(!empresaId)return;
+  if(!v('cad_forn_nome')||!v('cad_forn_doc')){mostrarAlerta('alertaFornecedorCadastro','error','Nome e CPF/CNPJ sao obrigatorios.');return;}
+  spin('spinFornecedorCadastro',true);
+  try{
+    var res=await fetch(API+'/api/fornecedor',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({empresaId:empresaId,nome:v('cad_forn_nome'),cpf_CNPJ:v('cad_forn_doc'),inscricaoEstadual:v('cad_forn_ie'),email:v('cad_forn_email'),telefone:v('cad_forn_fone'),logradouro:v('cad_forn_logradouro'),numero:v('cad_forn_numero'),complemento:v('cad_forn_comp'),bairro:v('cad_forn_bairro'),municipio:v('cad_forn_municipio'),codigoMunicipio:v('cad_forn_codmun'),uf:v('cad_forn_uf'),cep:v('cad_forn_cep'),pais:'Brasil',codigoPais:'1058'})});
+    var data=await safeJson(res);
+    if(!res.ok)throw new Error(data.erro||'HTTP '+res.status);
+    fornecedoresCadastrados.unshift({id:data.id,nome:data.nome||v('cad_forn_nome'),cpf_CNPJ:v('cad_forn_doc'),inscricaoEstadual:v('cad_forn_ie'),email:v('cad_forn_email'),telefone:v('cad_forn_fone'),logradouro:v('cad_forn_logradouro'),numero:v('cad_forn_numero'),complemento:v('cad_forn_comp'),bairro:v('cad_forn_bairro'),municipio:v('cad_forn_municipio'),codigoMunicipio:v('cad_forn_codmun'),uf:v('cad_forn_uf'),cep:v('cad_forn_cep')});
+    filtrarFornecedoresCadastro();
+    mostrarAlerta('alertaFornecedorCadastro','success','Fornecedor cadastrado! ID: '+data.id);
+  }catch(e){mostrarAlerta('alertaFornecedorCadastro','error',e.message);}
+  finally{spin('spinFornecedorCadastro',false);}
+}
+
+async function carregarEstoque(){
+  limparAlerta('alertaEstoque');
+  var empresaId=(document.getElementById('est_empresaId')||{}).value||estado.empresaId||'';
+  if(!empresaId){mostrarAlerta('alertaEstoque','warn','Selecione a empresa para consultar o estoque.');return;}
+  selecionarEmpresaGlobal(empresaId);
+  spin('spinEstoque',true);
+  try{
+    var qs='?empresaId='+encodeURIComponent(empresaId);
+    if(v('est_dtIni'))qs+='&dtIni='+encodeURIComponent(v('est_dtIni'));
+    if(v('est_dtFim'))qs+='&dtFim='+encodeURIComponent(v('est_dtFim'));
+    var res=await fetch(API+'/api/produto/estoque'+qs);
+    var data=await safeJson(res);
+    if(!res.ok||!data.sucesso)throw new Error(data.erro||data.xMotivo||('HTTP '+res.status));
+
+    var wrap=document.getElementById('estoqueTabelaWrap');
+    var itens=data.itens||[];
+    var rows=itens.map(function(i){
+      return '<tr>'
+        +'<td style="padding:8px 10px;border-bottom:1px solid var(--border)">'+(i.nome||'')+'</td>'
+        +'<td style="padding:8px 10px;border-bottom:1px solid var(--border)">'+(i.ncm||'')+'</td>'
+        +'<td style="padding:8px 10px;border-bottom:1px solid var(--border)">'+(i.unidade||'UN')+'</td>'
+        +'<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">'+Number(i.precoUnitario||0).toFixed(2)+'</td>'
+        +'<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">'+Number(i.saldoAtual||0).toFixed(3)+'</td>'
+        +'<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">'+Number(i.totalEntradas||0).toFixed(3)+'</td>'
+        +'<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">'+Number(i.totalSaidas||0).toFixed(3)+'</td>'
+        +'<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">'+Number(i.valorEstoque||0).toFixed(2)+'</td>'
+      +'</tr>';
+    }).join('');
+
+    wrap.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:.84rem">'
+      +'<thead><tr style="background:var(--step-active)">'
+      +'<th style="padding:8px 10px;text-align:left">Produto</th>'
+      +'<th style="padding:8px 10px;text-align:left">NCM</th>'
+      +'<th style="padding:8px 10px;text-align:left">Un</th>'
+      +'<th style="padding:8px 10px;text-align:right">Preco</th>'
+      +'<th style="padding:8px 10px;text-align:right">Saldo</th>'
+      +'<th style="padding:8px 10px;text-align:right">Entradas</th>'
+      +'<th style="padding:8px 10px;text-align:right">Saidas</th>'
+      +'<th style="padding:8px 10px;text-align:right">Valor Estoque</th>'
+      +'</tr></thead><tbody>'
+      +(rows||'<tr><td colspan="8" style="padding:10px;color:var(--muted)">Nenhum produto encontrado.</td></tr>')
+      +'</tbody></table>';
+
+    document.getElementById('estResumoSub').textContent='Produtos: '+Number(data.totalProdutos||0)+' | Valor total: R$ '+Number(data.valorTotalEstoque||0).toFixed(2);
+    document.getElementById('resultEstoque').style.display='block';
+  }catch(e){
+    mostrarAlerta('alertaEstoque','error','Falha ao consultar estoque: '+e.message);
+    document.getElementById('resultEstoque').style.display='none';
+  }finally{spin('spinEstoque',false);}
+}
+
+function baixarEstoqueCsv(){
+  limparAlerta('alertaEstoque');
+  var empresaId=(document.getElementById('est_empresaId')||{}).value||estado.empresaId||'';
+  if(!empresaId){mostrarAlerta('alertaEstoque','warn','Selecione a empresa para exportar o CSV.');return;}
+  var qs='?empresaId='+encodeURIComponent(empresaId);
+  if(v('est_dtIni'))qs+='&dtIni='+encodeURIComponent(v('est_dtIni'));
+  if(v('est_dtFim'))qs+='&dtFim='+encodeURIComponent(v('est_dtFim'));
+  window.open(API+'/api/produto/estoque/csv'+qs,'_blank');
+}
+
 var itens=[];
 function renderItens(){
   if(!itens.length)itens=[{produtoId:estado.produtoId||'',qtd:1,valor:100,desc:0}];
@@ -1224,12 +1542,13 @@ async function emitirNFe(){
   document.getElementById('resultadoCard').style.display='none';
   if(!estado.empresaId){mostrarAlerta('alertaEmitir','error','Cadastre a empresa primeiro.');return;}
   var td=tipoDest;
-  if(!estado.clienteId){mostrarAlerta('alertaEmitir','error','Defina o destinatario (CPF ou CNPJ) no Passo 2.');return;}
+  if(td!=='anonimo'&&!estado.clienteId){mostrarAlerta('alertaEmitir','error','Defina o destinatario no Passo 2.');return;}
   var itensList=coletarItens();
   if(itensList.some(function(it){return!it.produtoId;})){mostrarAlerta('alertaEmitir','error','Selecione o produto em todos os itens.');return;}
   spin('spinEmitir',true);
   try{
-    var body={empresaId:estado.empresaId,clienteId:estado.clienteId,naturezaOperacao:v('n_natureza')||'Venda de Mercadoria',serie:v('n_serie')||'1',itens:itensList,valorFrete:parseFloat(v('n_frete'))||0,valorSeguro:0,valorDesconto:parseFloat(v('n_desconto'))||0,informacaoComplementar:v('n_info')||null};
+    var body={empresaId:estado.empresaId,clienteId:td==='anonimo'?null:estado.clienteId,naturezaOperacao:v('n_natureza')||'Venda de Mercadoria',serie:v('n_serie')||'1',itens:itensList,valorFrete:parseFloat(v('n_frete'))||0,valorSeguro:0,valorDesconto:parseFloat(v('n_desconto'))||0,informacaoComplementar:v('n_info')||null};
+    if(td==='anonimo'){body.destinatarioCpfCnpj=null;body.destinatarioNome=null;}
     var res=await fetch(API+'/api/nfe/emitir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     var data=await safeJson(res);
     var card=document.getElementById('resultadoCard');card.style.display='block';
@@ -1375,92 +1694,14 @@ async function consultarEntrada(){
   finally{spin('spinEntrada',false);}
 }
 
-async function buscarMovimentacoes(){
-  limparAlerta('alertaMovimentacoes');
-  document.getElementById('resultMov').style.display='none';
-  var empId=v('mov_empresaId'),cnpj=v('mov_cnpj').replace(/\D/g,'');
-  if(!empId&&!cnpj){mostrarAlerta('alertaMovimentacoes','error','Selecione uma empresa ou informe um CNPJ.');return;}
-  if(!empId&&cnpj.length!==14){mostrarAlerta('alertaMovimentacoes','error','CNPJ deve ter 14 d\u00edgitos.');return;}
-  var tipo=v('mov_tipo'),status=v('mov_status'),dtIni=v('mov_dtini'),dtFim=v('mov_dtfim');
-  spin('spinMov',true);
-  try{
-    var params=new URLSearchParams();
-    if(empId){params.set('empresaId',empId);}else{params.set('cnpj',cnpj);}
-    if(tipo)params.set('tipo',tipo);if(status)params.set('status',status);
-    if(dtIni)params.set('dtIni',dtIni);if(dtFim)params.set('dtFim',dtFim);
-    var endpoint=empId?'/api/nfe/listar':'/api/nfe/nuvem-fiscal';
-    var res=await fetchAuth(API+endpoint+'?'+params.toString());
-    var data=await safeJson(res);
-    document.getElementById('resultMov').style.display='block';
-    if(!res.ok||!data.sucesso){
-      document.getElementById('movTitulo').textContent='Nenhum resultado';
-      document.getElementById('movBadge').innerHTML='<span class="badge badge-red">Erro</span>';
-      document.getElementById('movTabela').style.display='none';
-      document.getElementById('movEmpty').style.display='block';
-      document.getElementById('movEmpty').textContent=data.erro||'Erro desconhecido.';
-      return;
-    }
-    renderMovimentacoes(data);
-  }catch(e){mostrarAlerta('alertaMovimentacoes','error','Erro: '+e.message);}
-  finally{spin('spinMov',false);}
-}
-
-function renderMovimentacoes(data){
-  document.getElementById('movTitulo').textContent='Notas Encontradas'+(data.razaoSocial?' \u2013 '+data.razaoSocial:'');
-  document.getElementById('movBadge').innerHTML='<span class="badge badge-blue">'+data.total+' nota(s)</span>';
-  var tbody=document.getElementById('movLinhas');
-  tbody.innerHTML='';
-  if(!data.notas||data.notas.length===0){
-    document.getElementById('movTabela').style.display='none';
-    document.getElementById('movEmpty').style.display='block';
-    document.getElementById('movEmpty').textContent='Nenhuma nota encontrada com esses filtros.';
-    return;
-  }
-  document.getElementById('movTabela').style.display='block';
-  document.getElementById('movEmpty').style.display='none';
-  var statusColor={'Autorizada':'badge-green','Rejeitada':'badge-red','Rascunho':'badge-gray','Cancelada':'badge-orange','Inutilizada':'badge-gray'};
-  data.notas.forEach(function(n){
-    var tipoColor=n.tipo==='Entrada'?'badge-blue':'badge-green';
-    var stColor=statusColor[n.status]||'badge-gray';
-    var dt=new Date(n.emitidaEm).toLocaleDateString('pt-BR');
-    var valor='R$ '+n.valorTotal.toFixed(2).replace('.',',');
-    var chave=n.chaveAcesso.substring(0,20)+'...';
-    var tr=document.createElement('tr');
-    tr.style.borderBottom='1px solid var(--border)';
-    tr.innerHTML='<td style="padding:7px 10px"><span class="badge '+tipoColor+'">'+n.tipo+'</span></td>'
-      +'<td style="padding:7px 10px">'+n.numero+'/'+n.serie+'</td>'
-      +'<td style="padding:7px 10px">'+n.naturezaOperacao+'</td>'
-      +'<td style="padding:7px 10px"><span class="badge '+stColor+'">'+n.status+'</span></td>'
-      +'<td style="padding:7px 10px;white-space:nowrap">'+valor+'</td>'
-      +'<td style="padding:7px 10px;white-space:nowrap">'+dt+'</td>'
-      +'<td style="padding:7px 10px;font-size:.74rem;color:var(--muted)" title="'+n.chaveAcesso+'">'+chave+'</td>'
-      +'<td style="padding:7px 10px;white-space:nowrap">'
-        +'<button class="btn btn-outline" style="font-size:.72rem;padding:4px 8px" onclick="downloadXml(\''+n.id+'\')">⬇ XML</button> '
-        +'<button class="btn btn-outline" style="font-size:.72rem;padding:4px 8px" onclick="downloadDanfe(\''+n.id+'\')">📊 DANFE</button> '
-        +'<button class="btn btn-outline" style="font-size:.72rem;padding:4px 8px" onclick="usarChaveSefaz(\''+n.empresaId+"','"+n.chaveAcesso+'\')">\ud83d\udd0d SEFAZ</button>'
-        +(n.status==='Autorizada'?' <button class="btn btn-danger" style="font-size:.72rem;padding:4px 8px" onclick="cancelarNota(\''+n.id+"','"+n.empresaId+'\')">✖ Cancelar</button>':'')
-      +'</td>';
-    tbody.appendChild(tr);
-  });
-}
-
-function usarChaveSefaz(empresaId,chave){
-  document.getElementById('cs_empresaId').value=empresaId;
-  document.getElementById('cs_chave').value=chave;
-  document.getElementById('cs_chave').scrollIntoView({behavior:'smooth'});
-}
-
 async function consultarNuvemFiscal(){
   limparAlerta('alertaNuvem');
   document.getElementById('resultNuvem').style.display='none';
   var cnpj=v('nf_cnpj').replace(/\D/g,'');
   if(cnpj.length!==14){mostrarAlerta('alertaNuvem','error','CNPJ deve ter 14 digitos.');return;}
-  var params=new URLSearchParams({cnpj:cnpj});
-  var ini=v('nf_dtini'),fim=v('nf_dtfim'),tipo=v('nf_tipo');
-  if(ini)params.set('dtIni',ini);if(fim)params.set('dtFim',fim);if(tipo)params.set('tipo',tipo);
   spin('spinNuvem',true);
   try{
-    var res=await fetch(API+'/api/nfe/nuvem-fiscal?'+params.toString());
+    var res=await fetch(API+'/api/nfe/nuvem-fiscal?cnpj='+cnpj);
     var data=await safeJson(res);
     document.getElementById('resultNuvem').style.display='block';
     if(!res.ok||!data.sucesso){
@@ -1661,22 +1902,18 @@ function downloadSpedBlocoH(){
 async function emitirNfse(){
   limparAlerta('alertaNfse');
   document.getElementById('resultNfse').style.display='none';
-  var empId=v('nfse_empresaId'),valor=parseFloat(v('nfse_valor')||0);
-  var codSrv=v('nfse_codSrv');
+  var empId=v('nfse_empresaId'),nome=v('nfse_nome'),valor=parseFloat(v('nfse_valor')||0);
   if(!empId){mostrarAlerta('alertaNfse','error','Selecione a empresa.');return;}
-  if(!codSrv){mostrarAlerta('alertaNfse','error','Selecione o codigo do servico (LC 116/03).');return;}
+  if(!nome){mostrarAlerta('alertaNfse','error','Nome do servico e obrigatorio.');return;}
   if(!valor||valor<=0){mostrarAlerta('alertaNfse','error','Valor do servico deve ser maior que zero.');return;}
-  // Deriva o nome do serviço a partir da opção selecionada
-  var selSrv=document.getElementById('nfse_codSrv');
-  var nomeServico='Servico';
-  if(selSrv&&selSrv.selectedIndex>0)nomeServico=selSrv.options[selSrv.selectedIndex].text.replace(/^\S+ \u2013 /,'');
   spin('spinNfse',true);
   try{
-    var body={empresaId:empId,nomeServico:nomeServico,valorServico:valor,codigoServico:codSrv};
+    var body={empresaId:empId,nomeServico:nome,valorServico:valor};
     var disc=v('nfse_disc');if(disc)body.discriminacao=disc;
     var aliq=parseFloat(v('nfse_aliq')||0);if(aliq>0)body.aliquotaISS=aliq;
     var cpfCnpj=v('nfse_tomCpfCnpj');if(cpfCnpj)body.cpfCnpjTomador=cpfCnpj;
     var tomNome=v('nfse_tomNome');if(tomNome)body.nomeTomador=tomNome;
+    var codSrv=v('nfse_codSrv');if(codSrv)body.codigoServico=codSrv;
     var res=await fetchAuth(API+'/api/nfse/emitir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     var data=await safeJson(res);
     document.getElementById('resultNfse').style.display='block';
@@ -1694,16 +1931,6 @@ function preencherMesAtual(){
   var ultimo=new Date(y,now.getMonth()+1,0).getDate();
   document.getElementById('sp_ini').value=y+'-'+m+'-01';
   document.getElementById('sp_fim').value=y+'-'+m+'-'+String(ultimo).padStart(2,'0');
-}
-
-function exportarRelatorioExcel(){
-  var cnpj=v('nf_cnpj').replace(/\D/g,'');
-  if(cnpj.length!==14){alert('Informe o CNPJ antes de exportar.');return;}
-  var ini=v('nf_dtini'),fim=v('nf_dtfim');
-  var emp=empresasCadastradas&&empresasCadastradas.find(function(e){return e.cnpj&&e.cnpj.replace(/\D/g,'')===cnpj;});
-  if(!emp){alert('Empresa nao encontrada no cadastro. Busque as notas primeiro.');return;}
-  var url=API+'/api/nfe/relatorio-excel?empresaId='+encodeURIComponent(emp.id)+(ini?'&dataInicio='+ini:'')+(fim?'&dataFim='+fim:'');
-  window.open(url,'_blank');
 }
 
 function downloadSped(){
@@ -1834,16 +2061,6 @@ async function salvarSenha() {
     return;
   }
   _authToken = token;
-
-  // Intercepta todos os fetch para chamadas same-origin e adiciona JWT automaticamente
-  var _origFetch = window.fetch.bind(window);
-  window.fetch = function(url, opts) {
-    if (_authToken && typeof url === 'string' && (url.startsWith('/') || url.startsWith(window.location.origin))) {
-      opts = opts || {};
-      opts.headers = Object.assign({'Authorization': 'Bearer ' + _authToken}, opts.headers || {});
-    }
-    return _origFetch(url, opts);
-  };
   var emailEl = document.getElementById('userEmail');
   // Decodifica email do JWT (payload é base64)
   try {
@@ -1908,77 +2125,6 @@ async function carregarDadosEmpresa() {
 
 carregarDadosEmpresa();
 preencherMesAtual();
-
-// ======================== ESTOQUE ========================
-async function carregarEstoque(){
-  limparAlerta('alertaEstoque');
-  document.getElementById('resultEstoque').style.display='none';
-  document.getElementById('btnEstoqueCsv').style.display='none';
-  var empId=v('est_empresaId');
-  if(!empId){mostrarAlerta('alertaEstoque','error','Selecione a empresa.');return;}
-  var params=new URLSearchParams({empresaId:empId});
-  var ini=v('est_dtini'),fim=v('est_dtfim');
-  if(ini)params.set('dtIni',ini);if(fim)params.set('dtFim',fim);
-  spin('spinEst',true);
-  try{
-    var res=await fetchAuth(API+'/api/produto/estoque?'+params.toString());
-    var data=await safeJson(res);
-    if(!res.ok||!data.sucesso){mostrarAlerta('alertaEstoque','error','Erro '+res.status+': '+(data.erro||'Erro ao carregar estoque.'));return;}
-    renderEstoque(data);
-    document.getElementById('btnEstoqueCsv').style.display='inline-flex';
-  }catch(e){mostrarAlerta('alertaEstoque','error','Erro: '+e.message);}
-  finally{spin('spinEst',false);}
-}
-
-function renderEstoque(data){
-  document.getElementById('resultEstoque').style.display='block';
-  document.getElementById('estBadgeProd').innerHTML='<span class="badge badge-blue">'+data.totalProdutos+' produto(s)</span>';
-  document.getElementById('estBadgeValor').innerHTML='<span class="badge badge-green">Total: R$ '+data.valorTotalEstoque.toFixed(2).replace('.',',')+' </span>';
-  var tbody=document.getElementById('estLinhas');
-  tbody.innerHTML='';
-  if(!data.itens||data.itens.length===0){
-    document.getElementById('estEmpty').style.display='block';
-    document.getElementById('tabelaEstoque').style.display='none';
-    return;
-  }
-  document.getElementById('estEmpty').style.display='none';
-  document.getElementById('tabelaEstoque').style.display='table';
-  data.itens.forEach(function(p){
-    var saldoStyle=p.saldoAtual<=0?'color:#ef4444;font-weight:700':p.saldoAtual<5?'color:#f97316;font-weight:600':'';
-    var tr=document.createElement('tr');
-    tr.style.borderBottom='1px solid var(--border)';
-    tr.innerHTML=
-      '<td style="padding:7px 10px">'+p.nome+'</td>'
-      +'<td style="padding:7px 10px;color:var(--muted);font-size:.78rem">'+p.ncm+'</td>'
-      +'<td style="padding:7px 10px">'+p.unidade+'</td>'
-      +'<td style="padding:7px 10px;text-align:right">R$ '+p.precoUnitario.toFixed(2).replace('.',',')+'</td>'
-      +'<td style="padding:7px 10px;text-align:right;color:#22c55e">+'+p.totalEntradas.toFixed(3)+'</td>'
-      +'<td style="padding:7px 10px;text-align:right;color:#ef4444">−'+p.totalSaidas.toFixed(3)+'</td>'
-      +'<td style="padding:7px 10px;text-align:right;'+saldoStyle+'">'+p.saldoAtual.toFixed(3)+'</td>'
-      +'<td style="padding:7px 10px;text-align:right;font-weight:600">R$ '+p.valorEstoque.toFixed(2).replace('.',',')+'</td>';
-    tbody.appendChild(tr);
-  });
-  var tfoot=document.getElementById('estTotais');
-  tfoot.innerHTML='<tr style="background:var(--bg);font-weight:700">'
-    +'<td colspan="7" style="padding:8px 10px;border-top:2px solid var(--border)">TOTAL</td>'
-    +'<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right">R$ '+data.valorTotalEstoque.toFixed(2).replace('.',',')+'</td>'
-    +'</tr>';
-}
-
-function limparEstoque(){
-  document.getElementById('resultEstoque').style.display='none';
-  document.getElementById('btnEstoqueCsv').style.display='none';
-  limparAlerta('alertaEstoque');
-}
-
-function exportarEstoqueCsv(){
-  var empId=v('est_empresaId');
-  if(!empId){alert('Selecione a empresa primeiro.');return;}
-  var params=new URLSearchParams({empresaId:empId});
-  var ini=v('est_dtini'),fim=v('est_dtfim');
-  if(ini)params.set('dtIni',ini);if(fim)params.set('dtFim',fim);
-  window.open(API+'/api/produto/estoque/csv?'+params.toString(),'_blank');
-}
 </script>
 </body>
 </html>

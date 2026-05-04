@@ -29,6 +29,6 @@ public class Produto
     public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;
 
     // Relacionamentos
-    public Empresa Empresa { get; set; } = null!;
+    public Empresa? Empresa { get; set; }
     public ICollection<NotaItem> NotaItens { get; set; } = new List<NotaItem>();
 }

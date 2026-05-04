@@ -11,6 +11,7 @@ public class JubiladosDbContext : DbContext
     public DbSet<Empresa> Empresas => Set<Empresa>();
     public DbSet<Produto> Produtos => Set<Produto>();
     public DbSet<Cliente> Clientes => Set<Cliente>();
+    public DbSet<Fornecedor> Fornecedores => Set<Fornecedor>();
     public DbSet<NotaFiscal> NotasFiscais => Set<NotaFiscal>();
     public DbSet<NotaItem> NotaItens => Set<NotaItem>();
     public DbSet<UsuarioEmpresa> UsuarioEmpresas => Set<UsuarioEmpresa>();
@@ -23,6 +24,7 @@ public class JubiladosDbContext : DbContext
         modelBuilder.ApplyConfiguration(new EmpresaConfiguration());
         modelBuilder.ApplyConfiguration(new ProdutoConfiguration());
         modelBuilder.ApplyConfiguration(new ClienteConfiguration());
+        modelBuilder.ApplyConfiguration(new FornecedorConfiguration());
         modelBuilder.ApplyConfiguration(new NotaFiscalConfiguration());
         modelBuilder.ApplyConfiguration(new NotaItemConfiguration());
         modelBuilder.ApplyConfiguration(new UsuarioEmpresaConfiguration());

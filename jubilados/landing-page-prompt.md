@@ -12,7 +12,7 @@ O sistema é uma **plataforma SaaS de gestão fiscal e emissão de documentos el
 ## Identidade da Marca
 
 - **Nome do produto:** Resolutoo
-- **Tagline sugerida:** "Sua loja emite nota, controla estoque e entrega obrigações fiscais — tudo num só lugar."
+- **Tagline sugerida:** "Sua loja emite nota, recebe nota de entrada e gerencia documentos fiscais — tudo num só lugar."
 - **Tom de voz:** Direto, confiante, sem juridiquês. Fala com o dono de loja, não com o contador.
 - **Público-alvo primário:** Proprietários e gerentes de pequenos comércios (conveniência, construção, mercearia, distribuidora, prestadores de serviço autônomo/MEI).
 - **Diferenciais:** Simples de usar (sem contador para as operações do dia a dia), integrado à SEFAZ, sem precisar de ERP caro.
@@ -72,18 +72,13 @@ O sistema é uma **plataforma SaaS de gestão fiscal e emissão de documentos el
 - Consulta em tempo real se o serviço da SEFAZ está operacional
 - Evita tentar emitir nota quando o sistema fiscal está fora do ar
 
-### 11. SPED EFD ICMS/IPI
-- Gera o arquivo SPED EFD (obrigação acessória mensal) com as NF-e do período
-- Inclui os Blocos 0 (abertura), C (documentos fiscais), E (apuração ICMS) e H (inventário)
-- Prazo: até o dia 15 do mês seguinte
-
-### 12. NFS-e (Nota Fiscal de Serviço Eletrônica)
+### 11. NFS-e (Nota Fiscal de Serviço Eletrônica)
 - Emite NFS-e via webservice municipal (padrão ABRASF 2.04)
 - Para prestadores de serviço com inscrição municipal
 - Cálculo automático de ISS
 - Informação de tomador (CPF/CNPJ opcional)
 
-### 13. Cadastro de Empresa, Produtos e Clientes
+### 12. Cadastro de Empresa, Produtos e Clientes
 - Cadastro completo de dados fiscais da empresa (CNPJ, IE, endereço, regime tributário)
 - Upload e gestão do certificado digital A1 (.pfx)
 - Cadastro de produtos com NCM, CFOP, CST/CSOSN, unidade e preço
@@ -122,7 +117,7 @@ Gere copy para cada seção abaixo. Para cada seção, entregue:
 5. **Seção "Como funciona" (3 passos)**
    - Passo 1: Cadastre sua empresa e envie o certificado digital
    - Passo 2: Cadastre produtos e clientes
-   - Passo 3: Emita notas e baixe obrigações fiscais com 1 clique
+   - Passo 3: Emita notas, gerencie documentos de entrada e cancele ou corrija com 1 clique
 
 6. **Bloco de segmentos atendidos**
    - Conveniência / Minimercado
@@ -132,7 +127,7 @@ Gere copy para cada seção abaixo. Para cada seção, entregue:
 
 7. **Seção de preços / planos** (3 planos sugeridos)
    - Plano Básico: emissão de NF-e e NFC-e
-   - Plano Profissional: + SPED EFD, NFS-e, CC-e, manifestação
+   - Plano Profissional: + NFS-e, CC-e, manifestação do destinatário, notas de entrada
    - Plano Empresarial: múltiplas empresas, suporte prioritário
    - (use valores fictícios ou coloque "sob consulta")
 
@@ -160,7 +155,7 @@ Gere copy para cada seção abaixo. Para cada seção, entregue:
 - **Linguagem inclusiva e direta**: fale "você" não "o empresário"
 - **Foco no benefício, não na feature técnica**: ao invés de "emite XML assinado SHA-1", diga "sua nota chega na SEFAZ em segundos"
 - **Urgência real**: emitir nota fiscal errada tem multa; nosso sistema valida antes de enviar
-- **Não prometa o que o sistema não faz**: sem integração com maquininha de cartão, sem módulo de estoque avançado (ainda)
+- **Não prometa o que o sistema não faz**: sem integração com maquininha de cartão, sem módulo de estoque avançado (ainda), sem geração de SPED ou obrigações acessórias tributárias
 - **Mentions de compliance**: SEFAZ, Receita Federal, Simples Nacional — mostra credibilidade
 
 ---
