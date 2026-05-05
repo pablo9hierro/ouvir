@@ -666,15 +666,7 @@ public class NFeService : INFeService
         // idDest: 1=interna, 2=interestadual, 3=exterior
         var ufOrigem = (empresa.UF ?? string.Empty).Trim().ToUpperInvariant();
         var ufDest = (cliente?.UF ?? empresa.UF ?? string.Empty).Trim().ToUpperInvariant();
-        var idDestCalculado = (!string.IsNullOrEmpty(ufDest) && ufDest != ufOrigem) ? "2" : "1";
-        var idDest = dto.DestinoOperacao is "1" or "2" or "3"
-            ? dto.DestinoOperacao
-            : idDestCalculado;
-
-        // Evita inconsistência rejeitada pela SEFAZ (ex.: idDest=2 com mesma UF de origem/destino).
-        if (idDest != "3")
-            idDest = idDestCalculado;
-
+        var idDest = dto.DestinoOperacao ?? ((!string.IsNullOrEmpty(ufDest) && ufDest != ufOrigem) ? "2" : "1");
         sb.AppendLine($"      <idDest>{idDest}</idDest>");
         sb.AppendLine($"      <cMunFG>{_options.CodigoMunicipio}</cMunFG>");
         sb.AppendLine("      <tpImp>1</tpImp>");
