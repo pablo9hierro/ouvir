@@ -231,6 +231,19 @@
     .sidebar {
       background: linear-gradient(180deg, rgba(29, 20, 72, 0.94), rgba(10, 12, 30, 0.95));
       border-right: 1px solid rgba(255, 255, 255, 0.1);
+      height: 100vh;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+    }
+
+    .sidebar::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.35);
+      border-radius: 999px;
     }
 
     .sidebar-group {
@@ -290,11 +303,14 @@
       border-radius: 8px;
       margin-bottom: 4px;
       width: 100%;
+      color: rgba(226, 232, 240, 0.78);
+      border: 1px solid transparent;
     }
 
     .sidebar-group .tab-btn:hover {
-      background: rgba(139, 92, 246, 0.2) !important;
-      color: rgba(241, 245, 249, 0.95) !important;
+      background: rgba(139, 92, 246, 0.22) !important;
+      color: rgba(248, 250, 252, 0.98) !important;
+      border-color: rgba(139, 92, 246, 0.38);
     }
 
     .sidebar-group .tab-btn.active {
@@ -302,6 +318,43 @@
       color: #e2e8f0 !important;
       border: 1px solid rgba(139, 92, 246, 0.45);
       box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.22) inset;
+    }
+
+    #tab-manifestar .tipo-btn {
+      color: rgba(226, 232, 240, 0.9);
+      border-color: rgba(148, 163, 184, 0.3);
+    }
+
+    #tab-manifestar .tipo-btn small {
+      color: rgba(203, 213, 225, 0.78) !important;
+    }
+
+    #tab-manifestar .tipo-btn:hover {
+      border-color: rgba(34, 211, 238, 0.6);
+      color: rgba(248, 250, 252, 0.98);
+      background: linear-gradient(135deg, rgba(14, 165, 233, 0.26), rgba(56, 189, 248, 0.18));
+    }
+
+    #tab-manifestar .tipo-btn:hover small,
+    #tab-manifestar .tipo-btn.selected small {
+      color: rgba(224, 242, 254, 0.95) !important;
+    }
+
+    #tab-consultar select {
+      background: rgba(15, 23, 42, 0.88);
+      color: #e2e8f0;
+      border-color: rgba(56, 189, 248, 0.36);
+    }
+
+    #tab-consultar select:hover,
+    #tab-consultar select:focus {
+      border-color: rgba(34, 211, 238, 0.72);
+      box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.16);
+    }
+
+    #tab-consultar select option {
+      background: #0f172a;
+      color: #e2e8f0;
     }
 
     .sefaz-pill {
@@ -386,21 +439,13 @@
         <div class="sidebar-group-content">
           <button class="tab-btn active" data-tab="emitir" onclick="showTab('emitir',this)">📄 Emitir NF-e</button>
           <button class="tab-btn" data-tab="nfce" onclick="showTab('nfce',this)">🧾 Emitir NFC-e</button>
+          <button class="tab-btn" data-tab="nfse" onclick="showTab('nfse',this)">🏛️ NFS-e</button>
           <button class="tab-btn" data-tab="cce" onclick="showTab('cce',this)">📝 CC-e</button>
           <button class="tab-btn" data-tab="consultar" onclick="showTab('consultar',this)">🔍 Consultar SEFAZ</button>
           <button class="tab-btn" data-tab="status" onclick="showTab('status',this)">📡 Status Servi&ccedil;o</button>
           <button class="tab-btn" data-tab="inutilizar" onclick="showTab('inutilizar',this)">🚫 Inutilizar</button>
           <button class="tab-btn" data-tab="manifestar" onclick="showTab('manifestar',this)">💬 Manifesta&ccedil;&atilde;o</button>
           <button class="tab-btn" data-tab="entrada" onclick="showTab('entrada',this)">📥 Notas Entrada</button>
-        </div>
-      </div>
-
-      <div class="sidebar-group" id="grupo-servicos">
-        <button class="sidebar-group-toggle" type="button" onclick="toggleSidebarGroup('grupo-servicos')">
-          Servi&ccedil;os <span class="arrow">&#9654;</span>
-        </button>
-        <div class="sidebar-group-content">
-          <button class="tab-btn" data-tab="nfse" onclick="showTab('nfse',this)">🏛️ NFS-e</button>
         </div>
       </div>
 
