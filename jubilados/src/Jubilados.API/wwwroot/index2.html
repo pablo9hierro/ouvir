@@ -357,6 +357,57 @@
       color: #e2e8f0;
     }
 
+    /* Evita "efeito sanfona" ao alternar anonimo/CPF/CNPJ no passo de destinatario */
+    #passo1 .card {
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    #passo1 #area_anonimo,
+    #passo1 #area_cpf,
+    #passo1 #area_cnpj {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+    }
+
+    #passo1 div[style*="display:flex;gap:8px;align-items:flex-end"] {
+      display: flex !important;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: flex-end;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    #passo1 div[style*="display:flex;gap:8px;align-items:flex-end"] .field {
+      flex: 1 1 280px;
+      min-width: 0;
+      width: auto;
+    }
+
+    #passo1 div[style*="display:flex;gap:8px;align-items:flex-end"] .btn {
+      flex: 0 0 auto;
+      max-width: 100%;
+    }
+
+    #passo1 .alert {
+      max-width: 100%;
+      word-break: break-word;
+    }
+
+    @media (max-width: 900px) {
+      #passo1 div[style*="grid-template-columns:1fr 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+      }
+    }
+
+    @media (max-width: 700px) {
+      #passo1 div[style*="display:flex;gap:8px;align-items:flex-end"] .btn {
+        width: 100%;
+      }
+    }
+
     .sefaz-pill {
       background: rgba(15, 23, 42, 0.82);
       border-color: rgba(52, 211, 153, 0.38);
