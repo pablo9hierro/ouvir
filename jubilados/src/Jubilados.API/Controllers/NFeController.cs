@@ -55,10 +55,20 @@ public class NFeController : ControllerBase
             var resultado = await _nfeService.EmitirNFeAsync(dto, cancellationToken);
             return Ok(resultado);
         }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "[API] Erro de argumento ao emitir NFe.");
+            return BadRequest(new { erro = ex.Message });
+        }
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "[API] Erro de negócio ao emitir NFe.");
             return BadRequest(new { erro = ex.Message });
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "[API] Erro de persistência ao emitir NFe.");
+            return StatusCode(500, new { erro = "Falha ao salvar a NF-e. Verifique configuração de banco/migrações e tente novamente." });
         }
         catch (Exception ex)
         {

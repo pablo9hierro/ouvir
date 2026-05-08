@@ -51,6 +51,7 @@ public class NFeService : INFeService
 
         var certificado = _certificadoService.CarregarCertificado(
             empresa.CertificadoBase64, empresa.CertificadoSenha!);
+        ValidarPrecondicoesEmissao(empresa, certificado);
 
         // Destinatário: cliente do banco ou destino avulso
         Cliente? cliente = null;
@@ -583,12 +584,18 @@ public class NFeService : INFeService
     private NotaFiscal MontarNotaFiscal(EmitirNFeDto dto, Empresa empresa,
         Cliente? cliente, List<Produto> produtos, int numero)
     {
+        var serieNormalizada = Limpar(dto.Serie);
+        if (string.IsNullOrWhiteSpace(serieNormalizada))
+            serieNormalizada = "1";
+        if (serieNormalizada.Length > 3)
+            throw new InvalidOperationException("Série inválida. Informe até 3 dígitos.");
+
         var nota = new NotaFiscal
         {
             EmpresaId = empresa.Id,
             ClienteId = cliente?.Id,
             Numero = numero,
-            Serie = dto.Serie,
+            Serie = serieNormalizada,
             NaturezaOperacao = dto.NaturezaOperacao,
             ValorFrete = dto.ValorFrete,
             ValorSeguro = dto.ValorSeguro,
@@ -882,7 +889,7 @@ public class NFeService : INFeService
                 {
                     var vBCDifal = item.BaseICMS > 0 ? item.BaseICMS : item.ValorTotal;
                     var pUFDest  = AliquotaInternaUF(ufDest);
-                    var pInter   = AliquotaInterestadual(empresa.UF, ufDest);
+                    var pInter   = AliquotaInterestadual(empresa.UF ?? string.Empty, ufDest);
                     var pDif     = pUFDest - pInter;
                     if (pDif > 0)
                     {
@@ -958,8 +965,11 @@ public class NFeService : INFeService
     private sealed class NFeSignedXml : SignedXml
     {
         public NFeSignedXml(XmlDocument doc) : base(doc) { }
-        public override XmlElement? GetIdElement(XmlDocument document, string idValue)
+        public override XmlElement? GetIdElement(XmlDocument? document, string idValue)
         {
+            if (document is null)
+                return null;
+
             var elem = base.GetIdElement(document, idValue);
             if (elem == null)
                 elem = document.SelectSingleNode($"//*[@Id='{idValue}']") as XmlElement;
@@ -989,6 +999,9 @@ public class NFeService : INFeService
         var keyInfo = new KeyInfo();
         keyInfo.AddClause(new KeyInfoX509Data(certificado));
         signedXml.KeyInfo = keyInfo;
+        if (signedXml.SignedInfo is null)
+            throw new InvalidOperationException("Falha ao preparar informações de assinatura XML da NF-e.");
+
         signedXml.SignedInfo.SignatureMethod = SignedXml.XmlDsigRSASHA1Url;
         signedXml.SignedInfo.CanonicalizationMethod = SignedXml.XmlDsigC14NTransformUrl;
         signedXml.ComputeSignature();
@@ -1224,10 +1237,45 @@ public class NFeService : INFeService
 
     private static string GerarChaveAcesso(string cUF, string cnpj, string serie, string nNF, string cNF, string mod = "55")
     {
+        var cUFDigitos = Limpar(cUF);
+        if (cUFDigitos.Length != 2)
+            throw new InvalidOperationException("Configuração NFe inválida: CodigoUF deve conter 2 dígitos numéricos.");
+
+        var serieDigitos = Limpar(serie);
+        if (string.IsNullOrWhiteSpace(serieDigitos))
+            serieDigitos = "1";
+        if (serieDigitos.Length > 3)
+            throw new InvalidOperationException("Série inválida. Informe até 3 dígitos.");
+
+        var numeroDigitos = Limpar(nNF);
+        if (string.IsNullOrWhiteSpace(numeroDigitos))
+            throw new InvalidOperationException("Número da NF-e inválido.");
+
+        var codigoNumerico = Limpar(cNF);
+        if (string.IsNullOrWhiteSpace(codigoNumerico))
+            throw new InvalidOperationException("Código numérico da NF-e inválido.");
+
         var aamm = DateTime.Now.ToString("yyMM");
-        var chave = $"{cUF}{aamm}{Limpar(cnpj).PadLeft(14, '0')}{mod}{serie.PadLeft(3, '0')}{nNF.PadLeft(9, '0')}1{cNF.PadLeft(8, '0')}";
+        var chave = $"{cUFDigitos}{aamm}{Limpar(cnpj).PadLeft(14, '0')}{mod}{serieDigitos.PadLeft(3, '0')}{numeroDigitos.PadLeft(9, '0')}1{codigoNumerico.PadLeft(8, '0')}";
         var dv = CalcularDV(chave);
         return chave + dv;
+    }
+
+    private void ValidarPrecondicoesEmissao(Empresa empresa, X509Certificate2 certificado)
+    {
+        if (!certificado.HasPrivateKey)
+            throw new InvalidOperationException("Certificado digital sem chave privada. Reenvie o arquivo .pfx da empresa.");
+
+        var codigoUf = Limpar(_options.CodigoUF);
+        if (codigoUf.Length != 2)
+            throw new InvalidOperationException("Configuração NFe inválida: CodigoUF deve conter 2 dígitos numéricos.");
+
+        var codigoMunicipio = Limpar(_options.CodigoMunicipio);
+        if (codigoMunicipio.Length != 7)
+            throw new InvalidOperationException("Configuração NFe inválida: CodigoMunicipio deve conter 7 dígitos numéricos.");
+
+        if (string.IsNullOrWhiteSpace(empresa.CNPJ) || Limpar(empresa.CNPJ).Length != 14)
+            throw new InvalidOperationException("CNPJ da empresa inválido para emissão de NF-e.");
     }
 
     private static int CalcularDV(string chave)
