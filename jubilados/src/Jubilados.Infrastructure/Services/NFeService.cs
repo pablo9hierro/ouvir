@@ -985,7 +985,11 @@ public class NFeService : INFeService
         var doc = new XmlDocument { PreserveWhitespace = false };
         doc.LoadXml(xmlContent);
 
-        var signedXml = new NFeSignedXml(doc) { SigningKey = certificado.GetRSAPrivateKey() };
+        var privateKey = certificado.GetRSAPrivateKey();
+        if (privateKey is null)
+            throw new InvalidOperationException("Certificado digital incompatível: chave privada RSA não encontrada para assinatura da NF-e.");
+
+        var signedXml = new NFeSignedXml(doc) { SigningKey = privateKey };
         var idNode = doc.DocumentElement!.SelectSingleNode("//*[@Id]");
         if (idNode?.Attributes?["Id"] is null)
             throw new InvalidOperationException($"XML não contém atributo Id para assinar (tag esperada: {signedTag}).");

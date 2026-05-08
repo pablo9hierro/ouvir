@@ -2,6 +2,7 @@ using Jubilados.Application.DTOs;
 using Jubilados.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 
 namespace Jubilados.API.Controllers;
 
@@ -70,10 +71,15 @@ public class NFeController : ControllerBase
             _logger.LogError(ex, "[API] Erro de persistência ao emitir NFe.");
             return StatusCode(500, new { erro = "Falha ao salvar a NF-e. Verifique configuração de banco/migrações e tente novamente." });
         }
+        catch (CryptographicException ex)
+        {
+            _logger.LogError(ex, "[API] Erro criptográfico ao emitir NFe.");
+            return BadRequest(new { erro = "Falha ao assinar a NF-e com o certificado digital.", detalhe = ex.Message });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[API] Erro inesperado ao emitir NFe.");
-            return StatusCode(500, new { erro = "Erro interno. Consulte os logs." });
+            return StatusCode(500, new { erro = "Erro interno. Consulte os logs.", detalhe = ex.Message });
         }
     }
 
