@@ -80,7 +80,7 @@ for ($i = 1; $i -le $MaxTentativas; $i++) {
     Write-Host "[preprod] tentativa $i/$MaxTentativas"
 
     try {
-        $resp = Invoke-WebRequest -Uri $uri -Method POST -ContentType "application/json" -Body $json -TimeoutSec 90
+        $resp = Invoke-WebRequest -Uri $uri -Method POST -ContentType "application/json" -Body $json -TimeoutSec 90 -UseBasicParsing
         $content = if ([string]::IsNullOrWhiteSpace($resp.Content)) { "{}" } else { $resp.Content }
         $obj = $content | ConvertFrom-Json
 
