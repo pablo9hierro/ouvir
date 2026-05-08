@@ -187,7 +187,11 @@ using (var startupScope = app.Services.CreateScope())
             ALTER TABLE produtos ADD COLUMN IF NOT EXISTS cclass_trib                       VARCHAR(6);
             ALTER TABLE produtos ADD COLUMN IF NOT EXISTS reducao_ibs                       DECIMAL(5,2);
             ALTER TABLE produtos ADD COLUMN IF NOT EXISTS reducao_cbs                       DECIMAL(5,2);
-            ALTER TABLE produtos ADD COLUMN IF NOT EXISTS tipo_aliquota_ibs_cbs            VARCHAR(30);");
+            ALTER TABLE produtos ADD COLUMN IF NOT EXISTS tipo_aliquota_ibs_cbs            VARCHAR(30);
+            ALTER TABLE produtos ADD COLUMN IF NOT EXISTS codigo_interno                    VARCHAR(50);
+            ALTER TABLE produtos ADD COLUMN IF NOT EXISTS categoria                         VARCHAR(80);
+            ALTER TABLE produtos ADD COLUMN IF NOT EXISTS organizacao                       VARCHAR(80);
+            ALTER TABLE produtos ADD COLUMN IF NOT EXISTS padronizacao                      VARCHAR(80);");
 
         // Migration 006: tabela de usuarios locais (auth sem Supabase)
         await db.Database.ExecuteSqlRawAsync(@"
