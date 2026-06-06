@@ -375,6 +375,10 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");
 
+// SPA fallback: serve index2.html for all client-side routes (/operacoes/*, /cadastros/*, /relatorios/*, /configuracoes)
+// Static files (login.html, onboarding.html, etc.) are still served by UseStaticFiles above.
+app.MapFallbackToFile("index2.html");
+
 // Endpoint de diagnóstico temporário
 app.MapGet("/diag", () => {
     var dbPwd = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? "";
