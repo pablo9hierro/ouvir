@@ -540,15 +540,15 @@
           Opera&ccedil;&atilde;o <span class="arrow">&#9654;</span>
         </button>
         <div class="sidebar-group-content">
-          <button class="tab-btn active" data-tab="emitir" onclick="navigateTo('emitir')">📄 Emitir NF-e</button>
-          <button class="tab-btn" data-tab="nfce" onclick="navigateTo('nfce')">🧾 Emitir NFC-e</button>
-          <button class="tab-btn" data-tab="nfse" onclick="navigateTo('nfse')">🏛️ NFS-e</button>
-          <button class="tab-btn" data-tab="cce" onclick="navigateTo('cce')">📝 CC-e</button>
-          <button class="tab-btn" data-tab="consultar" onclick="navigateTo('consultar')">🔍 Consultar SEFAZ</button>
-          <button class="tab-btn" data-tab="status" onclick="navigateTo('status')">📡 Status Servi&ccedil;o</button>
-          <button class="tab-btn" data-tab="inutilizar" onclick="navigateTo('inutilizar')">🚫 Inutilizar</button>
-          <button class="tab-btn" data-tab="manifestar" onclick="navigateTo('manifestar')">💬 Manifesta&ccedil;&atilde;o</button>
-          <button class="tab-btn" data-tab="entrada" onclick="navigateTo('entrada')">📥 Notas Entrada</button>
+          <button class="tab-btn active" data-tab="emitir" onclick="showTab('emitir',this)">📄 Emitir NF-e</button>
+          <button class="tab-btn" data-tab="nfce" onclick="showTab('nfce',this)">🧾 Emitir NFC-e</button>
+          <button class="tab-btn" data-tab="nfse" onclick="showTab('nfse',this)">🏛️ NFS-e</button>
+          <button class="tab-btn" data-tab="cce" onclick="showTab('cce',this)">📝 CC-e</button>
+          <button class="tab-btn" data-tab="consultar" onclick="showTab('consultar',this)">🔍 Consultar SEFAZ</button>
+          <button class="tab-btn" data-tab="status" onclick="showTab('status',this)">📡 Status Servi&ccedil;o</button>
+          <button class="tab-btn" data-tab="inutilizar" onclick="showTab('inutilizar',this)">🚫 Inutilizar</button>
+          <button class="tab-btn" data-tab="manifestar" onclick="showTab('manifestar',this)">💬 Manifesta&ccedil;&atilde;o</button>
+          <button class="tab-btn" data-tab="entrada" onclick="showTab('entrada',this)">📥 Notas Entrada</button>
         </div>
       </div>
 
@@ -557,10 +557,10 @@
           Cadastros <span class="arrow">&#9654;</span>
         </button>
         <div class="sidebar-group-content">
-          <button class="tab-btn" data-tab="cad-produtos" onclick="navigateTo('cad-produtos')">📦 Produtos</button>
-          <button class="tab-btn" data-tab="cad-destinatarios" onclick="navigateTo('cad-destinatarios')">👤 Destinat&aacute;rios</button>
-          <button class="tab-btn" data-tab="cad-fornecedores" onclick="navigateTo('cad-fornecedores')">🏭 Fornecedores</button>
-          <button class="tab-btn" data-tab="estoque" onclick="navigateTo('estoque')">📊 Estoque</button>
+          <button class="tab-btn" data-tab="cad-produtos" onclick="showTab('cad-produtos',this)">📦 Produtos</button>
+          <button class="tab-btn" data-tab="cad-destinatarios" onclick="showTab('cad-destinatarios',this)">👤 Destinat&aacute;rios</button>
+          <button class="tab-btn" data-tab="cad-fornecedores" onclick="showTab('cad-fornecedores',this)">🏭 Fornecedores</button>
+          <button class="tab-btn" data-tab="estoque" onclick="showTab('estoque',this)">📊 Estoque</button>
         </div>
       </div>
 
@@ -569,8 +569,8 @@
           Relat&oacute;rios <span class="arrow">&#9654;</span>
         </button>
         <div class="sidebar-group-content">
-          <button class="tab-btn" data-tab="nuvemfiscal" onclick="navigateTo('nuvemfiscal')">☁️ Nuvem Fiscal</button>
-          <button class="tab-btn" data-tab="sped" onclick="navigateTo('sped')">📋 SPED EFD</button>
+          <button class="tab-btn" data-tab="nuvemfiscal" onclick="showTab('nuvemfiscal',this)">☁️ Nuvem Fiscal</button>
+          <button class="tab-btn" data-tab="sped" onclick="showTab('sped',this)">📋 SPED EFD</button>
         </div>
       </div>
 
@@ -579,7 +579,7 @@
           Sistema <span class="arrow">&#9654;</span>
         </button>
         <div class="sidebar-group-content">
-          <button class="tab-btn" data-tab="configuracoes" onclick="navigateTo('configuracoes')">⚙️ Configurações</button>
+          <button class="tab-btn" data-tab="configuracoes" onclick="showTab('configuracoes',this)">⚙️ Configurações</button>
         </div>
       </div>
     </div>
@@ -616,23 +616,23 @@
     <div class="estado-item">Produto: <span id="stProduto" class="badge badge-red">nao definido</span></div>
     <div class="estado-item">CSC NFC-e: <span id="stCsc" class="badge badge-gray">nao verificado</span></div>
   </div>
-  <div class="tabs" style="display:none">
-    <button class="tab-btn active" onclick="navigateTo('emitir')">Emitir NF-e</button>
-    <button class="tab-btn" onclick="navigateTo('cad-produtos')">Cad. Produtos</button>
-    <button class="tab-btn" onclick="navigateTo('cad-destinatarios')">Cad. Destinatarios</button>
-    <button class="tab-btn" onclick="navigateTo('cad-fornecedores')">Cad. Fornecedores</button>
-    <button class="tab-btn" onclick="navigateTo('consultar')">Consultar SEFAZ</button>
-    <button class="tab-btn" onclick="navigateTo('status')">Status Servico</button>
-    <button class="tab-btn" onclick="navigateTo('inutilizar')">Inutilizar</button>
-    <button class="tab-btn" onclick="navigateTo('manifestar')">Manifestacao</button>
-    <button class="tab-btn" onclick="navigateTo('entrada')">Importar XML Entrada</button>
-    <button class="tab-btn" onclick="navigateTo('nuvemfiscal')">☁️ Nuvem Fiscal</button>
-    <button class="tab-btn" onclick="navigateTo('cce')">CCe</button>
-    <button class="tab-btn" onclick="navigateTo('sped')">SPED EFD</button>
-    <button class="tab-btn" onclick="navigateTo('estoque')">Estoque</button>
-    <button class="tab-btn" onclick="navigateTo('nfse')">NFS-e</button>
-    <button class="tab-btn" onclick="navigateTo('nfce')">Emitir NFC-e</button>
-    <button class="tab-btn" onclick="navigateTo('configuracoes')">Configurações</button>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('emitir',this)">Emitir NF-e</button>
+    <button class="tab-btn" onclick="showTab('cad-produtos',this)">Cad. Produtos</button>
+    <button class="tab-btn" onclick="showTab('cad-destinatarios',this)">Cad. Destinatarios</button>
+    <button class="tab-btn" onclick="showTab('cad-fornecedores',this)">Cad. Fornecedores</button>
+    <button class="tab-btn" onclick="showTab('consultar',this)">Consultar SEFAZ</button>
+    <button class="tab-btn" onclick="showTab('status',this)">Status Servico</button>
+    <button class="tab-btn" onclick="showTab('inutilizar',this)">Inutilizar</button>
+    <button class="tab-btn" onclick="showTab('manifestar',this)">Manifestacao</button>
+    <button class="tab-btn" onclick="showTab('entrada',this)">Importar XML Entrada</button>
+    <button class="tab-btn" onclick="showTab('nuvemfiscal',this)">☁️ Nuvem Fiscal</button>
+    <button class="tab-btn" onclick="showTab('cce',this)">CCe</button>
+    <button class="tab-btn" onclick="showTab('sped',this)">SPED EFD</button>
+    <button class="tab-btn" onclick="showTab('estoque',this)">Estoque</button>
+    <button class="tab-btn" onclick="showTab('nfse',this)">NFS-e</button>
+    <button class="tab-btn" onclick="showTab('nfce',this)">Emitir NFC-e</button>
+    <button class="tab-btn" onclick="showTab('configuracoes',this)">Configurações</button>
   </div>
 
   <!-- ABA EMITIR -->
@@ -650,22 +650,35 @@
     <!-- Passo 0 -->
     <div id="passo0">
       <div class="card">
-        <h2>1. Empresa Emitente</h2>
-        <p class="subtitle">Empresa carregada automaticamente do seu cadastro.</p>
-        <div id="alertaEmpresa"></div>
-        <div id="empresaInfoCard" style="display:none;margin-top:12px">
-          <div class="section-title">Identificação</div>
-          <div class="grid2" style="margin-bottom:8px">
-            <div class="field"><label>CNPJ</label><input id="e_cnpj_ro" readonly style="opacity:.75;cursor:default"></div>
-            <div class="field"><label>Razão Social</label><input id="e_razao_ro" readonly style="opacity:.75;cursor:default"></div>
-            <div class="field"><label>Nome Fantasia</label><input id="e_fantasia_ro" readonly style="opacity:.75;cursor:default"></div>
-            <div class="field"><label>Inscrição Estadual</label><input id="e_ie_ro" readonly style="opacity:.75;cursor:default"></div>
-          </div>
+        <h2>1. Dados da Empresa Emitente</h2>
+        <p class="subtitle">Preencha os dados do CNPJ emissor.</p>
+        <div class="section-title">Identificacao</div>
+        <div class="grid2" style="margin-bottom:12px">
+          <div class="field"><label>CNPJ <span class="req">*</span></label><input id="e_cnpj" placeholder="00000000000000" maxlength="18"></div>
+          <div class="field"><label>Razao Social <span class="req">*</span></label><input id="e_razao" placeholder="Empresa Ltda"></div>
+          <div class="field"><label>Nome Fantasia</label><input id="e_fantasia" placeholder="Fantasia"></div>
+          <div class="field"><label>Inscricao Estadual <span class="req">*</span></label><input id="e_ie" placeholder="000000000000"></div>
+          <div class="field"><label>E-mail</label><input id="e_email" type="email" placeholder="contato@empresa.com"></div>
+          <div class="field"><label>Telefone</label><input id="e_fone" placeholder="83999999999"></div>
         </div>
-        <small id="empresaIdLabel" style="color:var(--muted);display:block;margin-top:6px"></small>
+        <div class="section-title">Endereco</div>
+        <div class="grid3" style="margin-bottom:12px">
+          <div class="field span2"><label>Logradouro <span class="req">*</span></label><input id="e_logradouro" placeholder="Rua das Flores"></div>
+          <div class="field"><label>Numero <span class="req">*</span></label><input id="e_numero" placeholder="100"></div>
+          <div class="field"><label>Complemento</label><input id="e_complemento" placeholder="Sala 1"></div>
+          <div class="field"><label>Bairro <span class="req">*</span></label><input id="e_bairro" placeholder="Centro"></div>
+          <div class="field span2"><label>Municipio <span class="req">*</span></label><input id="e_municipio" placeholder="Joao Pessoa"></div>
+          <div class="field"><label>UF <span class="req">*</span></label><select id="e_uf"><option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option selected>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option></select></div>
+          <div class="field"><label>CEP <span class="req">*</span></label><input id="e_cep" placeholder="58000000" maxlength="9"></div>
+        </div>
+        <div id="alertaEmpresa"></div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="cadastrarEmpresa()"><span id="spinEmpresa" class="spinner" style="display:none"></span> Cadastrar Empresa</button>
+          <small id="empresaIdLabel" style="color:var(--muted)"></small>
+        </div>
       </div>
       <div class="actions" style="justify-content:flex-end">
-        <button class="btn btn-success" onclick="irParaPasso(1)">Próximo: Destinatário</button>
+        <button class="btn btn-success" onclick="irParaPasso(1)">Proximo: Destinatario</button>
       </div>
     </div>
     <!-- Passo 1 -->
@@ -1400,50 +1413,6 @@ var importacaoXmlPendente = null;
 var classificacoesTributarias = [];
 var classificacaoPorCodigo = {};
 const API = window.location.origin;
-
-// ── Client-side routing ────────────────────────────────────────────────────────
-const ROUTE_MAP = {
-  '/operacoes/emitir-nfe':    'emitir',
-  '/operacoes/emitir-nfce':   'nfce',
-  '/operacoes/nfse':          'nfse',
-  '/operacoes/cce':           'cce',
-  '/operacoes/consultar-sefaz': 'consultar',
-  '/operacoes/status-servico':  'status',
-  '/operacoes/inutilizar':    'inutilizar',
-  '/operacoes/manifestacao':  'manifestar',
-  '/operacoes/notas-entrada': 'entrada',
-  '/cadastros/produtos':      'cad-produtos',
-  '/cadastros/destinatarios': 'cad-destinatarios',
-  '/cadastros/fornecedores':  'cad-fornecedores',
-  '/cadastros/estoque':       'estoque',
-  '/relatorios/nuvem-fiscal': 'nuvemfiscal',
-  '/relatorios/sped':         'sped',
-  '/configuracoes':           'configuracoes',
-};
-const TAB_TO_ROUTE = Object.fromEntries(
-  Object.entries(ROUTE_MAP).map(([route, tab]) => [tab, route])
-);
-
-function navigateTo(tabName) {
-  showTab(tabName, null);
-  const route = TAB_TO_ROUTE[tabName] || '/operacoes/emitir-nfe';
-  if (window.location.pathname !== route) {
-    history.pushState({ tab: tabName }, '', route);
-  }
-  // Auto-open the sidebar group that contains this tab
-  const tabEl = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
-  if (tabEl) {
-    const group = tabEl.closest('.sidebar-group');
-    if (group && !group.classList.contains('open')) {
-      group.classList.add('open');
-    }
-  }
-}
-
-window.addEventListener('popstate', function(e) {
-  const tab = (e.state && e.state.tab) || ROUTE_MAP[window.location.pathname] || 'emitir';
-  showTab(tab, null);
-});
 
 async function carregarEmpresasSelects(){
   try{
@@ -3261,14 +3230,21 @@ async function carregarDadosEmpresa() {
     estado.empresaId = e.id || e.Id;
     estado.cnpj      = e.cnpj || e.CNPJ || '';
 
-    // Preenche card read-only da empresa emitente no passo 0
+    // Preenche formulário de emissão
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-    set('e_cnpj_ro',     e.cnpj        || e.CNPJ);
-    set('e_razao_ro',    e.razaoSocial || e.RazaoSocial);
-    set('e_fantasia_ro', e.nomeFantasia || e.NomeFantasia);
-    set('e_ie_ro',       e.inscricaoEstadual || e.InscricaoEstadual);
-    const infoCard = document.getElementById('empresaInfoCard');
-    if (infoCard) infoCard.style.display = 'block';
+    set('e_cnpj',        e.cnpj        || e.CNPJ);
+    set('e_razao',       e.razaoSocial || e.RazaoSocial);
+    set('e_fantasia',    e.nomeFantasia || e.NomeFantasia);
+    set('e_ie',          e.inscricaoEstadual || e.InscricaoEstadual);
+    set('e_fone',        e.telefone    || e.Telefone);
+    set('e_email',       e.email       || e.Email);
+    set('e_logradouro',  e.logradouro  || e.Logradouro);
+    set('e_numero',      e.numero      || e.Numero);
+    set('e_complemento', e.complemento || e.Complemento);
+    set('e_bairro',      e.bairro      || e.Bairro);
+    set('e_municipio',   e.municipio   || e.Municipio);
+    set('e_uf',          e.uf          || e.UF || 'PB');
+    set('e_cep',         e.cep         || e.CEP);
     set('cfg_empresaId', estado.empresaId);
     set('cfg_cnpj',      e.cnpj        || e.CNPJ);
     set('cfg_razao',     e.razaoSocial || e.RazaoSocial);
@@ -3307,17 +3283,6 @@ async function carregarDadosEmpresa() {
 carregarDadosEmpresa();
 carregarClassificacoesTributarias();
 preencherMesAtual();
-
-// Initialize tab from current URL path on page load
-(function initRouteFromUrl() {
-  const tab = ROUTE_MAP[window.location.pathname];
-  if (tab && tab !== 'emitir') {
-    showTab(tab, null);
-    history.replaceState({ tab: tab }, '', window.location.pathname);
-  } else {
-    history.replaceState({ tab: 'emitir' }, '', '/operacoes/emitir-nfe');
-  }
-})();
 </script>
 </body>
 </html>
