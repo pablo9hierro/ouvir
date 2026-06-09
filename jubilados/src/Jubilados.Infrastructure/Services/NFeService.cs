@@ -1,5 +1,4 @@
 ﻿using System.Security.Cryptography;
-using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Cryptography.Xml;
 using System.Text;
@@ -546,14 +545,7 @@ public class NFeService : INFeService
 
         try
         {
-            var handler = new HttpClientHandler();
-            handler.ClientCertificates.Add(certificado);
-            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
-            // SVRS exige TLS 1.2 explicitamente; em Linux/.NET 8 a negociação
-            // automática pode tentar TLS 1.3 e falhar o handshake com o
-            // endpoint de recepção de eventos.
-            handler.SslProtocols = SslProtocols.Tls12;
-            using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
+            using var http = SefazHttpClientFactory.Criar(certificado, TimeSpan.FromSeconds(30));
             var content = new StringContent(soap, Encoding.UTF8);
             content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(
                 $"application/soap+xml; charset=utf-8; action=\"{soapAction}\"");
