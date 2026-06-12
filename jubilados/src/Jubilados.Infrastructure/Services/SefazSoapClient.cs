@@ -45,7 +45,6 @@ internal static class SefazSoapClient
             psi.ArgumentList.Add("-sS");
             psi.ArgumentList.Add("-v");
             psi.ArgumentList.Add("--tlsv1.2");
-            psi.ArgumentList.Add("--tls-max"); psi.ArgumentList.Add("1.2");
             psi.ArgumentList.Add("-k");
             psi.ArgumentList.Add("--cert"); psi.ArgumentList.Add(certPath + ":");
             psi.ArgumentList.Add("--cert-type"); psi.ArgumentList.Add("P12");
