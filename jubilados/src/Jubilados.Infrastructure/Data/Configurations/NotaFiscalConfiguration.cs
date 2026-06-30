@@ -36,6 +36,9 @@ public class NotaFiscalConfiguration : IEntityTypeConfiguration<NotaFiscal>
         builder.Property(n => n.Protocolo).HasColumnName("protocolo").HasMaxLength(20);
         builder.Property(n => n.CStat).HasColumnName("cstat").HasMaxLength(3);
         builder.Property(n => n.XMotivo).HasColumnName("xmotivo").HasMaxLength(255);
+        builder.Property(n => n.ModalidadeFrete).HasColumnName("modal_frete").HasMaxLength(1).HasDefaultValue("9");
+        builder.Property(n => n.FormaPagamento).HasColumnName("forma_pagamento").HasMaxLength(2).HasDefaultValue("01");
+
         builder.Property(n => n.NSU).HasColumnName("nsu");
         builder.Property(n => n.Manifestada).HasColumnName("manifestada").HasDefaultValue(false);
         builder.Property(n => n.TipoManifestacao).HasColumnName("tipo_manifestacao").HasConversion<int?>();

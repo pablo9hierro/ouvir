@@ -28,6 +28,8 @@ public class NotaItemConfiguration : IEntityTypeConfiguration<NotaItem>
         builder.Property(i => i.ValorPIS).HasColumnName("valor_pis").HasPrecision(18, 2);
         builder.Property(i => i.AliquotaCOFINS).HasColumnName("aliquota_cofins").HasPrecision(5, 2);
         builder.Property(i => i.ValorCOFINS).HasColumnName("valor_cofins").HasPrecision(18, 2);
+        builder.Property(i => i.CST).HasColumnName("cst").HasMaxLength(3).IsRequired(false);
+        builder.Property(i => i.CSOSN).HasColumnName("csosn").HasMaxLength(3).IsRequired(false);
 
         builder.HasOne(i => i.NotaFiscal)
                .WithMany(n => n.Itens)

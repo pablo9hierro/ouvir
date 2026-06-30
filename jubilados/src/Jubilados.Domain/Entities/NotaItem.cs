@@ -9,6 +9,10 @@ public class NotaItem
     public int NumeroItem { get; set; }
     public decimal Quantidade { get; set; }
     public string Unidade { get; set; } = "UN";
+
+    // Código tributário efetivo usado na emissão
+    public string? CST { get; set; }
+    public string? CSOSN { get; set; }
     public decimal ValorUnitario { get; set; }
     public decimal ValorDesconto { get; set; }
     public decimal ValorTotal { get; set; }

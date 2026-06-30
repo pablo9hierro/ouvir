@@ -41,6 +41,12 @@ public class NotaFiscal
     public string? CStat { get; set; }
     public string? XMotivo { get; set; }
 
+    // Transporte: 0=Emitente, 1=Destinatário, 2=Terceiros, 3=Próprio/Remetente, 4=Próprio/Destinatário, 9=Sem Frete
+    public string ModalidadeFrete { get; set; } = "9";
+
+    // Pagamento: 01=Dinheiro, 02=Cheque, 03=Cartão Crédito, 04=Cartão Débito, 15=Boleto, 17=Pix, 99=Outros
+    public string FormaPagamento { get; set; } = "01";
+
     // NFe entrada (distribuição)
     public long NSU { get; set; }
     public bool Manifestada { get; set; } = false;
