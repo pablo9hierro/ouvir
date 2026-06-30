@@ -1432,8 +1432,167 @@ var fornecedoresCadastrados = [];
 var empresasCadastradas = [];
 var notasCarregadas = [];
 var importacaoXmlPendente = null;
-var classificacoesTributarias = [];
+const CLASSIFICACOES_TRIB_FALLBACK=[
+  {codigo:'000001',cst:'000',cstDescricao:'Tributação integral',descricao:'Situações tributadas integralmente pelo IBS e CBS.',tipoAliquota:'2 - Padrão'},
+  {codigo:'000002',cst:'000',cstDescricao:'Tributação integral',descricao:'Exploração de via',tipoAliquota:'2 - Padrão'},
+  {codigo:'000003',cst:'000',cstDescricao:'Tributação integral',descricao:'Regime automotivo - projetos incentivados (art. 311)',tipoAliquota:'2 - Padrão'},
+  {codigo:'000004',cst:'000',cstDescricao:'Tributação integral',descricao:'Regime automotivo - projetos incentivados (art. 312)',tipoAliquota:'2 - Padrão'},
+  {codigo:'000005',cst:'000',cstDescricao:'Tributação integral',descricao:'Operação com EAC destinado à mistura com gasolina A (biocombustível)',tipoAliquota:'2 - Padrão'},
+  {codigo:'010001',cst:'010',cstDescricao:'Serviços financeiros uniformes setoriais',descricao:'Operações do FGTS não realizadas pela Caixa Econômica Federal',tipoAliquota:'5 - Uniforme Setorial'},
+  {codigo:'010002',cst:'010',cstDescricao:'Serviços financeiros uniformes setoriais',descricao:'Operações do serviço financeiro',tipoAliquota:'5 - Uniforme Setorial'},
+  {codigo:'011001',cst:'011',cstDescricao:'Alíquota uniforme nacional',descricao:'Planos de assistência funerária.',tipoAliquota:'4 - Uniforme Nacional'},
+  {codigo:'011002',cst:'011',cstDescricao:'Alíquota uniforme nacional',descricao:'Planos de assistência à saúde',tipoAliquota:'4 - Uniforme Nacional'},
+  {codigo:'011003',cst:'011',cstDescricao:'Alíquota uniforme nacional',descricao:'Intermediação de planos de assistência à saúde',tipoAliquota:'4 - Uniforme Nacional'},
+  {codigo:'011004',cst:'011',cstDescricao:'Alíquota uniforme nacional',descricao:'Concursos e prognósticos',tipoAliquota:'4 - Uniforme Nacional'},
+  {codigo:'011005',cst:'011',cstDescricao:'Alíquota uniforme nacional',descricao:'Planos de assistência à saúde de animais domésticos',tipoAliquota:'4 - Uniforme Nacional'},
+  {codigo:'200001',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Serviços de transporte de bens até as zonas de processamento de exportação',tipoAliquota:'2 - Padrão'},
+  {codigo:'200002',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento ou importação para produtor rural não contribuinte ou TAC',tipoAliquota:'2 - Padrão'},
+  {codigo:'200003',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Vendas de produtos destinados à alimentação humana (Anexo I)',tipoAliquota:'2 - Padrão'},
+  {codigo:'200004',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento de dispositivos médicos (Anexo XII)',tipoAliquota:'2 - Padrão'},
+  {codigo:'200005',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento de dispositivos médicos para órgãos da administração pública',tipoAliquota:'2 - Padrão'},
+  {codigo:'200006',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Situação de emergência de saúde pública reconhecida pelo Poder público',tipoAliquota:'2 - Padrão'},
+  {codigo:'200007',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Dispositivos de acessibilidade para pessoas com deficiência (PCD)',tipoAliquota:'2 - Padrão'},
+  {codigo:'200008',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Dispositivos de acessibilidade para PCD adquiridos por órgãos públicos',tipoAliquota:'2 - Padrão'},
+  {codigo:'200009',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento dos medicamentos registrados na Anvisa',tipoAliquota:'2 - Padrão'},
+  {codigo:'200010',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento dos medicamentos registrados na Anvisa para órgãos públicos',tipoAliquota:'2 - Padrão'},
+  {codigo:'200011',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Composições para nutrição enteral e parenteral para administração pública',tipoAliquota:'2 - Padrão'},
+  {codigo:'200012',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Situação de emergência de saúde pública - medicamentos',tipoAliquota:'2 - Padrão'},
+  {codigo:'200013',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento de tampões e absorventes higiênicos',tipoAliquota:'2 - Padrão'},
+  {codigo:'200014',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento dos produtos hortícolas, frutas e ovos (Anexo XV)',tipoAliquota:'2 - Padrão'},
+  {codigo:'200015',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Venda de automóveis adquiridos por motoristas de aplicativo',tipoAliquota:'2 - Padrão'},
+  {codigo:'200016',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Prestação de serviços de pesquisa e desenvolvimento por ICT',tipoAliquota:'2 - Padrão'},
+  {codigo:'200017',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Operações relacionadas ao FGTS',tipoAliquota:'2 - Padrão'},
+  {codigo:'200018',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Operações de resseguro e retrocessão',tipoAliquota:'2 - Padrão'},
+  {codigo:'200019',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Importador dos serviços financeiros contribuinte',tipoAliquota:'2 - Padrão'},
+  {codigo:'200020',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Operação praticada por sociedades cooperativas (regime específico)',tipoAliquota:'2 - Padrão'},
+  {codigo:'200021',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Serviços de transporte público coletivo ferroviário e hidroviário',tipoAliquota:'2 - Padrão'},
+  {codigo:'200022',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Operação originada fora da ZFM para industrializado destinado à ZFM',tipoAliquota:'2 - Padrão'},
+  {codigo:'200023',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Operação de indústria incentivada com bem intermediário para ZFM',tipoAliquota:'2 - Padrão'},
+  {codigo:'200024',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Operação para Áreas de Livre Comércio destinada a contribuinte estabelecido',tipoAliquota:'2 - Padrão'},
+  {codigo:'200025',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Serviços de educação do Programa Universidade para Todos (ProUni)',tipoAliquota:'2 - Padrão'},
+  {codigo:'200026',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Locação de imóveis em zonas reabilitadas',tipoAliquota:'2 - Padrão'},
+  {codigo:'200027',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Operações de locação, cessão onerosa e arrendamento de bens imóveis',tipoAliquota:'2 - Padrão'},
+  {codigo:'200028',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento dos serviços de educação (Anexo II)',tipoAliquota:'2 - Padrão'},
+  {codigo:'200029',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento dos serviços de saúde humana (Anexo III)',tipoAliquota:'2 - Padrão'},
+  {codigo:'200030',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Venda dos dispositivos médicos (Anexo IV)',tipoAliquota:'2 - Padrão'},
+  {codigo:'200031',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento dos dispositivos de acessibilidade para PCD (Anexo V)',tipoAliquota:'2 - Padrão'},
+  {codigo:'200032',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento dos medicamentos registrados na Anvisa ou farmácias de manipulação',tipoAliquota:'2 - Padrão'},
+  {codigo:'200033',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento das composições para nutrição enteral e parenteral (Anexo VI)',tipoAliquota:'2 - Padrão'},
+  {codigo:'200034',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento dos alimentos destinados ao consumo humano (Anexo VII)',tipoAliquota:'2 - Padrão'},
+  {codigo:'200035',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento dos produtos de higiene pessoal e limpeza (Anexo VIII)',tipoAliquota:'2 - Padrão'},
+  {codigo:'200036',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento de produtos agropecuários, aquícolas, pesqueiros e florestais',tipoAliquota:'2 - Padrão'},
+  {codigo:'200037',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Serviços ambientais de conservação ou recuperação da vegetação nativa',tipoAliquota:'2 - Padrão'},
+  {codigo:'200038',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento dos insumos agropecuários e aquícolas (Anexo IX)',tipoAliquota:'2 - Padrão'},
+  {codigo:'200039',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Bens e serviços relacionados com produções nacionais artísticas, culturais e esportivas',tipoAliquota:'2 - Padrão'},
+  {codigo:'200040',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento de serviços de comunicação institucional à administração pública',tipoAliquota:'2 - Padrão'},
+  {codigo:'200041',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento de serviço de educação desportiva (art. 141. I)',tipoAliquota:'2 - Padrão'},
+  {codigo:'200042',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento de serviço de gestão e exploração do desporto (art. 141. II)',tipoAliquota:'2 - Padrão'},
+  {codigo:'200043',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento de serviços e bens relativos à soberania e segurança nacional',tipoAliquota:'2 - Padrão'},
+  {codigo:'200044',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Operações de segurança da informação e segurança cibernética',tipoAliquota:'2 - Padrão'},
+  {codigo:'200045',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Reabilitação urbana de zonas históricas e de baixa densidade populacional',tipoAliquota:'2 - Padrão'},
+  {codigo:'200046',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Operações com bens imóveis',tipoAliquota:'2 - Padrão'},
+  {codigo:'200047',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Bares e Restaurantes',tipoAliquota:'2 - Padrão'},
+  {codigo:'200048',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Hotelaria, Parques de Diversão e Parques Temáticos',tipoAliquota:'2 - Padrão'},
+  {codigo:'200049',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Transporte coletivo de passageiros rodoviário, ferroviário e hidroviário',tipoAliquota:'2 - Padrão'},
+  {codigo:'200050',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Serviços de transporte aéreo regional coletivo de passageiros ou de carga',tipoAliquota:'2 - Padrão'},
+  {codigo:'200051',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Agências de Turismo',tipoAliquota:'2 - Padrão'},
+  {codigo:'200052',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Prestação de serviços de profissões intelectuais',tipoAliquota:'2 - Padrão'},
+  {codigo:'200053',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento de medicamentos classificados como somatório de operações',tipoAliquota:'2 - Padrão'},
+  {codigo:'200054',cst:'200',cstDescricao:'Redução de alíquota',descricao:'Fornecimento de bem material por cooperativa de produção agropecuária',tipoAliquota:'2 - Padrão'},
+  {codigo:'220001',cst:'220',cstDescricao:'Regime especial - incorporação imobiliária',descricao:'Incorporação imobiliária submetida ao regime especial de tributação (tipo 1)',tipoAliquota:'1 - Fixa'},
+  {codigo:'220002',cst:'220',cstDescricao:'Regime especial - incorporação imobiliária',descricao:'Incorporação imobiliária submetida ao regime especial de tributação (tipo 2)',tipoAliquota:'1 - Fixa'},
+  {codigo:'220003',cst:'220',cstDescricao:'Regime especial - incorporação imobiliária',descricao:'Alienação de imóvel decorrente de parcelamento do solo',tipoAliquota:'1 - Fixa'},
+  {codigo:'221001',cst:'221',cstDescricao:'Locação de imóvel - alíquota fixa',descricao:'Locação, cessão onerosa ou arrendamento de bem imóvel com alíquota sobre a receita',tipoAliquota:'1 - Fixa'},
+  {codigo:'222001',cst:'222',cstDescricao:'Transporte internacional de passageiros',descricao:'Transporte internacional de passageiros (trechos de ida e volta)',tipoAliquota:'2 - Padrão'},
+  {codigo:'400001',cst:'400',cstDescricao:'Imunidade - transporte público coletivo',descricao:'Fornecimento de serviços de transporte público coletivo de passageiros rodoviário (tributado)',tipoAliquota:'2 - Padrão'},
+  {codigo:'400002',cst:'400',cstDescricao:'Imunidade - transporte público coletivo',descricao:'Fornecimento de serviços de transporte público coletivo de passageiros rodoviário (sem alíquota)',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410001',cst:'410',cstDescricao:'Não incidência',descricao:'Fornecimento de bonificações constantes no documento fiscal',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410002',cst:'410',cstDescricao:'Não incidência',descricao:'Transferências entre estabelecimentos pertencentes ao mesmo contribuinte',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410003',cst:'410',cstDescricao:'Não incidência',descricao:'Doações sem contraprestação em benefício do doador',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410004',cst:'410',cstDescricao:'Não incidência',descricao:'Exportações de bens e serviços',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410005',cst:'410',cstDescricao:'Não incidência',descricao:'Fornecimentos realizados pela União, Estados, DF e Municípios',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410006',cst:'410',cstDescricao:'Não incidência',descricao:'Fornecimentos realizados por entidades religiosas e templos de qualquer culto',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410007',cst:'410',cstDescricao:'Não incidência',descricao:'Fornecimentos realizados por partidos políticos, entidades sindicais e instituições',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410008',cst:'410',cstDescricao:'Não incidência',descricao:'Fornecimentos de livros, jornais, periódicos e papel destinado à sua impressão',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410009',cst:'410',cstDescricao:'Não incidência',descricao:'Fornecimentos de fonogramas e videofonogramas musicais produzidos no Brasil',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410010',cst:'410',cstDescricao:'Não incidência',descricao:'Fornecimentos de serviço de radiodifusão sonora e de sons e imagens de acesso gratuito',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410011',cst:'410',cstDescricao:'Não incidência',descricao:'Fornecimentos de ouro como ativo financeiro ou instrumento cambial',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410012',cst:'410',cstDescricao:'Não incidência',descricao:'Fornecimento de condomínio edilício não optante pelo regime regular',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410013',cst:'410',cstDescricao:'Não incidência',descricao:'Exportações de combustíveis',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410014',cst:'410',cstDescricao:'Não incidência',descricao:'Fornecimento de produtor rural não contribuinte',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410015',cst:'410',cstDescricao:'Não incidência',descricao:'Fornecimento por transportador autônomo não contribuinte',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410016',cst:'410',cstDescricao:'Não incidência',descricao:'Fornecimento ou aquisição de resíduos sólidos',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410017',cst:'410',cstDescricao:'Não incidência',descricao:'Aquisição de bem móvel com crédito presumido para revenda',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410018',cst:'410',cstDescricao:'Não incidência',descricao:'Operações relacionadas a fundos garantidores e executores de políticas públicas',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410019',cst:'410',cstDescricao:'Não incidência',descricao:'Exclusão da gorjeta na base de cálculo no fornecimento de alimentação',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410020',cst:'410',cstDescricao:'Não incidência',descricao:'Exclusão do valor de intermediação na BC no fornecimento de alimentação',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410021',cst:'410',cstDescricao:'Não incidência',descricao:'Contribuição de que trata o art. 149-A da Constituição Federal',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410022',cst:'410',cstDescricao:'Não incidência',descricao:'Consolidação da propriedade do bem pelo credor',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410023',cst:'410',cstDescricao:'Não incidência',descricao:'Alienação de bens que foram objeto de garantia pelo prestador da garantia',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410024',cst:'410',cstDescricao:'Não incidência',descricao:'Consolidação da propriedade do bem pelo grupo de consórcio',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410025',cst:'410',cstDescricao:'Não incidência',descricao:'Alienação de bem objeto de garantia pelo credor da garantia',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410026',cst:'410',cstDescricao:'Não incidência',descricao:'Doação com anulação de crédito',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410027',cst:'410',cstDescricao:'Não incidência',descricao:'Exportação de serviço ou de bem imaterial',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410028',cst:'410',cstDescricao:'Não incidência',descricao:'Operações com bens imóveis realizadas por pessoas físicas não contribuintes',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410029',cst:'410',cstDescricao:'Não incidência',descricao:'Operações acobertadas somente pelo ICMS',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410030',cst:'410',cstDescricao:'Não incidência',descricao:'Estorno de crédito por perecimento, deteriorização, roubo, furto ou extravio',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410031',cst:'410',cstDescricao:'Não incidência',descricao:'Fornecimento em período anterior ao início de vigência do IBS/CBS',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410032',cst:'410',cstDescricao:'Não incidência',descricao:'Tributos que não integram a base de cálculo do IBS e da CBS',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410033',cst:'410',cstDescricao:'Não incidência',descricao:'Operações de Fundos de Investimento Imobiliário (FII) e Fiagro',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410034',cst:'410',cstDescricao:'Não incidência',descricao:'Operações de fundos de investimento',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410035',cst:'410',cstDescricao:'Não incidência',descricao:'Fornecimento realizado por nanoempreendedor',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'410999',cst:'410',cstDescricao:'Não incidência',descricao:'Operações não onerosas sem previsão de tributação, não especificadas anteriormente',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'510001',cst:'510',cstDescricao:'Diferimento - energia elétrica',descricao:'Operações com energia elétrica sujeitas a diferimento (importação, transmissão, distribuição)',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'515001',cst:'515',cstDescricao:'Diferimento - insumos agropecuários',descricao:'Operações com insumos agropecuários e aquícolas (Anexo IX) sujeitas a diferimento',tipoAliquota:'2 - Padrão'},
+  {codigo:'550001',cst:'550',cstDescricao:'Suspensão - exportações',descricao:'Exportações de bens materiais',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550002',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Regime de Trânsito',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550003',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Regimes de Depósito (art. 85)',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550004',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Regimes de Depósito (art. 87)',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550005',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Regimes de Depósito (art. 87, Parágrafo único)',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550006',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Regimes de Permanência Temporária',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550007',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Regimes de Aperfeiçoamento',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550008',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Importação de bens para o Regime de Repetro-Temporário',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550009',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'GNL-Temporário',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550010',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Repetro-Permanente',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550011',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Repetro-Industrialização',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550012',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Repetro-Nacional',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550013',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Repetro-Entreposto',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550014',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Zona de Processamento de Exportação',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550015',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Regime Tributário para Incentivo à Modernização e Ampliação Portuária (REPORTO)',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550016',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Regime Especial de Incentivos para o Desenvolvimento da Infraestrutura (REIDI)',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550017',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Regime Tributário para Incentivo à Atividade Econômica Naval (REPETRO-NAVAL)',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550018',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Desoneração da aquisição de bens de capital',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550019',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Importação de bem material por indústria incentivada para utilização na ZFM',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550020',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Áreas de livre comércio',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550021',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Industrialização destinada a exportações',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550022',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Regime Especial de Incentivos para a Produção de Hidrogênio de Baixa Emissão de Carbono',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'550023',cst:'550',cstDescricao:'Suspensão - regimes aduaneiros',descricao:'Operações com hidrocarbonetos líquidos derivados de petróleo não combustíveis',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'620001',cst:'620',cstDescricao:'Monofásico - combustíveis',descricao:'Tributação monofásica sobre combustíveis',tipoAliquota:'2 - Padrão'},
+  {codigo:'620002',cst:'620',cstDescricao:'Monofásico - combustíveis',descricao:'Tributação monofásica com responsabilidade pela retenção sobre combustíveis',tipoAliquota:'2 - Padrão'},
+  {codigo:'620003',cst:'620',cstDescricao:'Monofásico - combustíveis',descricao:'Tributação monofásica com responsabilidade de retenção por terceiros',tipoAliquota:'2 - Padrão'},
+  {codigo:'620004',cst:'620',cstDescricao:'Monofásico - combustíveis',descricao:'Tributação monofásica sobre mistura EAC+gasolina A acima do percentual',tipoAliquota:'2 - Padrão'},
+  {codigo:'620005',cst:'620',cstDescricao:'Monofásico - combustíveis',descricao:'Tributação monofásica sobre mistura EAC+gasolina A abaixo do percentual',tipoAliquota:'2 - Padrão'},
+  {codigo:'620006',cst:'620',cstDescricao:'Monofásico - combustíveis',descricao:'Tributação monofásica sobre combustíveis cobrada anteriormente',tipoAliquota:'2 - Padrão'},
+  {codigo:'800001',cst:'800',cstDescricao:'Transferência de crédito',descricao:'Fusão, cisão ou incorporação',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'800002',cst:'800',cstDescricao:'Transferência de crédito',descricao:'Transferência de crédito do associado, inclusive cooperativas singulares',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'810001',cst:'810',cstDescricao:'Crédito presumido - ZFM',descricao:'Crédito presumido sobre o valor apurado nos fornecimentos a partir da ZFM',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'811001',cst:'811',cstDescricao:'Anulação de crédito',descricao:'Anulação de Crédito por Saídas Imunes/Isentas',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'811002',cst:'811',cstDescricao:'Anulação de crédito',descricao:'Débitos de notas fiscais não processadas na apuração',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'811003',cst:'811',cstDescricao:'Anulação de crédito',descricao:'Desenquadramento do Simples Nacional',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'820001',cst:'820',cstDescricao:'Documento informativo - planos de saúde',descricao:'Documento com informações de fornecimento de serviços de planos de assistência à saúde (tipo 1)',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'820002',cst:'820',cstDescricao:'Documento informativo - planos de saúde',descricao:'Documento com informações de fornecimento de serviços de planos de assistência à saúde (tipo 2)',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'820003',cst:'820',cstDescricao:'Documento informativo - planos de saúde',descricao:'Documento com informações de fornecimento de serviços de planos de assistência à saúde (tipo 3)',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'820004',cst:'820',cstDescricao:'Documento informativo - concursos',descricao:'Documento com informações de prestação de serviços de concursos de prognósticos',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'820005',cst:'820',cstDescricao:'Documento informativo - imóveis',descricao:'Documento com informações de alienação de bens imóveis',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'820006',cst:'820',cstDescricao:'Documento informativo - exploração de via',descricao:'Documento com informações de fornecimento de serviços de exploração de via',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'820007',cst:'820',cstDescricao:'Documento informativo - serviços financeiros',descricao:'Documento com informações de fornecimento de serviços financeiros',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'820008',cst:'820',cstDescricao:'Documento informativo - faturamento diferido',descricao:'Documento com informações de fornecimento com tributação em faturamento',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'820009',cst:'820',cstDescricao:'Documento informativo - cobrança',descricao:'Cobrança relativa a fornecimentos declarados em outro documento',tipoAliquota:'3 - Sem aliquota'},
+  {codigo:'830001',cst:'830',cstDescricao:'Exclusão de BC - energia elétrica',descricao:'Documento com exclusão da BC da CBS e do IBS de energia elétrica fornecida pela distribuidora',tipoAliquota:'2 - Padrão'}
+];
+var classificacoesTributarias = CLASSIFICACOES_TRIB_FALLBACK.slice();
 var classificacaoPorCodigo = {};
+CLASSIFICACOES_TRIB_FALLBACK.forEach(function(item){if(item.codigo)classificacaoPorCodigo[item.codigo]=item;});
 const API = window.location.origin;
 
 // ── CEST — Código Especificador da Substituição Tributária ───────────────────
@@ -1558,22 +1717,24 @@ async function carregarEmpresasSelects(){
 async function carregarClassificacoesTributarias(){
   try{
     var res=await fetchAuth(API+'/api/produto/classificacao-tributaria');
-    if(!res.ok)return;
-    var data=await res.json();
-    classificacoesTributarias=(data&&data.itens)||[];
-    classificacaoPorCodigo={};
-    classificacoesTributarias.forEach(function(item){
-      if(item&&item.codigo)classificacaoPorCodigo[item.codigo]=item;
-    });
-
-    preencherSelectClassTrib('p_cclasstrib');
-    preencherSelectClassTrib('cad_p_cclasstrib');
-
-    document.querySelectorAll('select.comp-cclasstrib').forEach(function(sel){
-      preencherSelectClassTrib(sel.id, sel.dataset.selected||'');
-      aplicarClassificacaoPorCodigo(sel.id, sel.dataset.cstTarget||'');
-    });
+    if(res.ok){
+      var data=await res.json();
+      var itens=(data&&data.itens)||[];
+      if(itens.length>0){
+        classificacoesTributarias=itens;
+        classificacaoPorCodigo={};
+        classificacoesTributarias.forEach(function(item){
+          if(item&&item.codigo)classificacaoPorCodigo[item.codigo]=item;
+        });
+      }
+    }
   }catch(e){}
+  preencherSelectClassTrib('p_cclasstrib');
+  preencherSelectClassTrib('cad_p_cclasstrib');
+  document.querySelectorAll('select.comp-cclasstrib').forEach(function(sel){
+    preencherSelectClassTrib(sel.id, sel.dataset.selected||'');
+    aplicarClassificacaoPorCodigo(sel.id, sel.dataset.cstTarget||'');
+  });
 }
 
 function preencherSelectClassTrib(selectId, selectedCode){
