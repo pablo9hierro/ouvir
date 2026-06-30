@@ -211,6 +211,13 @@ using (var startupScope = app.Services.CreateScope())
                 criado_em  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
             );");
 
+        // Migration 007: tipo de frete, forma de pagamento e CST/CSOSN por item
+        await db.Database.ExecuteSqlRawAsync(@"
+            ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS modal_frete     VARCHAR(1) NOT NULL DEFAULT '9';
+            ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS forma_pagamento VARCHAR(2) NOT NULL DEFAULT '01';
+            ALTER TABLE nota_itens    ADD COLUMN IF NOT EXISTS cst             VARCHAR(3);
+            ALTER TABLE nota_itens    ADD COLUMN IF NOT EXISTS csosn           VARCHAR(3);");
+
         Console.WriteLine("[STARTUP] Migrations manuais aplicadas.");
 
         // Seed: insere dados iniciais se a empresa de Orlando não existir
