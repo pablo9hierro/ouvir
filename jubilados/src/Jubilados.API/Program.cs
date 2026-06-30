@@ -395,7 +395,18 @@ app.MapGet("/diag", () => {
     };
 });
 
-app.MapFallbackToFile("index.html");
+// Rotas SPA — servem os HTML sem extensão .html na URL
+static async Task ServeHtml(HttpContext ctx, IWebHostEnvironment env, string file)
+{
+    ctx.Response.ContentType = "text/html; charset=utf-8";
+    await ctx.Response.SendFileAsync(Path.Combine(env.WebRootPath, file));
+}
+app.MapGet("/login",        (HttpContext ctx, IWebHostEnvironment env) => ServeHtml(ctx, env, "login.html"));
+app.MapGet("/onboarding",   (HttpContext ctx, IWebHostEnvironment env) => ServeHtml(ctx, env, "onboarding.html"));
+app.MapGet("/resetar-senha",(HttpContext ctx, IWebHostEnvironment env) => ServeHtml(ctx, env, "resetar-senha.html"));
+
+// SPA fallback: todas as rotas do app (operacoes/*, cadastros/*, etc.) servem index2.html
+app.MapFallbackToFile("index2.html");
 
 app.Run();
 
