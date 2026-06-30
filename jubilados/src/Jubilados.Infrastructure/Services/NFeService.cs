@@ -608,6 +608,8 @@ public class NFeService : INFeService
             ValorSeguro = dto.ValorSeguro,
             ValorDesconto = dto.ValorDesconto,
             ValorOutros = dto.ValorOutros,
+            ModalidadeFrete = dto.ModalidadeFrete ?? "9",
+            FormaPagamento = dto.FormaPagamento ?? "01",
             Status = StatusNota.Enviada
         };
 
@@ -942,7 +944,7 @@ public class NFeService : INFeService
         sb.AppendLine($"      <vOutro>{nota.ValorOutros:F2}</vOutro><vNF>{nota.ValorTotal:F2}</vNF>");
         sb.AppendLine("    </ICMSTot></total>");
 
-        sb.AppendLine("    <transp><modFrete>9</modFrete></transp>");
+        sb.AppendLine($"    <transp><modFrete>{nota.ModalidadeFrete}</modFrete></transp>");
         // Cobrança / Duplicatas
         if (dto.Duplicatas?.Count > 0)
         {
@@ -954,7 +956,7 @@ public class NFeService : INFeService
             sb.AppendLine("    </cobr>");
         }
         sb.AppendLine("    <pag><detPag>");
-        sb.AppendLine($"      <tPag>{dto.FormaPagamento ?? "01"}</tPag>");
+        sb.AppendLine($"      <tPag>{nota.FormaPagamento}</tPag>");
         sb.AppendLine($"      <vPag>{nota.ValorTotal:F2}</vPag>");
         sb.AppendLine("    </detPag></pag>");
         if (!string.IsNullOrWhiteSpace(dto.InformacaoComplementar))

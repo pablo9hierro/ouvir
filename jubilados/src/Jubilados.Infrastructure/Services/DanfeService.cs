@@ -196,18 +196,21 @@ public class DanfeService : IDanfeService
                         {
                             t.ColumnsDefinition(c =>
                             {
-                                c.ConstantColumn(20);  // #
-                                c.RelativeColumn(4);   // produto
+                                c.ConstantColumn(18);  // #
+                                c.RelativeColumn(4);   // DESCRIÇÃO
                                 c.ConstantColumn(30);  // NCM
-                                c.ConstantColumn(30);  // CFOP
-                                c.ConstantColumn(25);  // UN
-                                c.ConstantColumn(35);  // QTD
-                                c.ConstantColumn(50);  // VL UNIT
-                                c.ConstantColumn(20);  // DESC
-                                c.ConstantColumn(50);  // VL TOTAL
+                                c.ConstantColumn(26);  // CFOP
+                                c.ConstantColumn(32);  // CST/CSOSN
+                                c.ConstantColumn(18);  // UN
+                                c.ConstantColumn(30);  // QTD
+                                c.ConstantColumn(40);  // VL.UNIT
+                                c.ConstantColumn(40);  // VL.TOTAL
+                                c.ConstantColumn(24);  // %ICMS
+                                c.ConstantColumn(34);  // VL.ICMS
+                                c.ConstantColumn(22);  // %IPI
+                                c.ConstantColumn(34);  // VL.IPI
                             });
 
-                            // Header
                             static IContainer HeaderCell(IContainer c) =>
                                 c.Background(Colors.Grey.Lighten2).Padding(2);
 
@@ -217,11 +220,15 @@ public class DanfeService : IDanfeService
                                 h.Cell().Element(HeaderCell).Text("DESCRIÇÃO DO PRODUTO").FontSize(5).Bold();
                                 h.Cell().Element(HeaderCell).Text("NCM").FontSize(5).Bold();
                                 h.Cell().Element(HeaderCell).Text("CFOP").FontSize(5).Bold();
+                                h.Cell().Element(HeaderCell).Text("CST/CSOSN").FontSize(5).Bold();
                                 h.Cell().Element(HeaderCell).Text("UN").FontSize(5).Bold();
                                 h.Cell().Element(HeaderCell).Text("QTD").FontSize(5).Bold();
                                 h.Cell().Element(HeaderCell).Text("VL.UNIT").FontSize(5).Bold();
-                                h.Cell().Element(HeaderCell).Text("%DESC").FontSize(5).Bold();
                                 h.Cell().Element(HeaderCell).Text("VL.TOTAL").FontSize(5).Bold();
+                                h.Cell().Element(HeaderCell).Text("%ICMS").FontSize(5).Bold();
+                                h.Cell().Element(HeaderCell).Text("VL.ICMS").FontSize(5).Bold();
+                                h.Cell().Element(HeaderCell).Text("%IPI").FontSize(5).Bold();
+                                h.Cell().Element(HeaderCell).Text("VL.IPI").FontSize(5).Bold();
                             });
 
                             static IContainer DataCell(IContainer c) =>
@@ -230,15 +237,22 @@ public class DanfeService : IDanfeService
                             foreach (var item in nota.Itens.OrderBy(i => i.NumeroItem))
                             {
                                 var prod = produtos.TryGetValue(item.ProdutoId, out var p) ? p : null;
+                                var cstCsosn = !string.IsNullOrWhiteSpace(prod?.CSOSN) ? prod!.CSOSN.Trim()
+                                             : !string.IsNullOrWhiteSpace(prod?.CST)   ? prod!.CST.Trim()
+                                             : "";
                                 t.Cell().Element(DataCell).Text(item.NumeroItem.ToString()).FontSize(6);
                                 t.Cell().Element(DataCell).Text(prod?.Nome ?? "—").FontSize(6);
                                 t.Cell().Element(DataCell).Text(prod?.NCM ?? "").FontSize(6);
                                 t.Cell().Element(DataCell).Text(prod?.CFOP ?? "").FontSize(6);
+                                t.Cell().Element(DataCell).Text(cstCsosn).FontSize(6);
                                 t.Cell().Element(DataCell).Text(item.Unidade).FontSize(6);
                                 t.Cell().Element(DataCell).Text(item.Quantidade.ToString("F2")).FontSize(6);
                                 t.Cell().Element(DataCell).Text(item.ValorUnitario.ToString("N2")).FontSize(6);
-                                t.Cell().Element(DataCell).Text(item.ValorDesconto > 0 ? item.ValorDesconto.ToString("N2") : "").FontSize(6);
                                 t.Cell().Element(DataCell).Text(item.ValorTotal.ToString("N2")).FontSize(6);
+                                t.Cell().Element(DataCell).Text(item.AliquotaICMS > 0 ? item.AliquotaICMS.ToString("F2") : "").FontSize(6);
+                                t.Cell().Element(DataCell).Text(item.ValorICMS > 0 ? item.ValorICMS.ToString("N2") : "").FontSize(6);
+                                t.Cell().Element(DataCell).Text(item.AliquotaIPI > 0 ? item.AliquotaIPI.ToString("F2") : "").FontSize(6);
+                                t.Cell().Element(DataCell).Text(item.ValorIPI > 0 ? item.ValorIPI.ToString("N2") : "").FontSize(6);
                             }
                         });
                     });
@@ -291,6 +305,38 @@ public class DanfeService : IDanfeService
                         {
                             c.Item().Text("VALOR PAGO DOS IMPOSTOS").FontSize(5).FontColor(Colors.Grey.Darken2).Bold();
                             c.Item().Text($"R$ {valorTotalTributosPago:N2}").Bold().FontSize(9).FontColor(Colors.Blue.Darken2);
+                        });
+                    });
+
+                    // ── Transportador / Frete ────────────────────────────────
+                    col.Item().PaddingTop(2).Border(1).Padding(3).Row(r =>
+                    {
+                        r.RelativeItem().Column(c =>
+                        {
+                            c.Item().Text("TRANSPORTADOR / TIPO DE FRETE").FontSize(5).FontColor(Colors.Grey.Darken2).Bold();
+                            c.Item().Text(DescricaoFrete(nota.ModalidadeFrete)).FontSize(7);
+                        });
+                    });
+
+                    // ── Dados do Pagamento ────────────────────────────────────
+                    col.Item().PaddingTop(2).Border(1).Padding(3).Row(r =>
+                    {
+                        r.RelativeItem().Column(c =>
+                        {
+                            c.Item().Text("DADOS DO PAGAMENTO").FontSize(5).FontColor(Colors.Grey.Darken2).Bold();
+                            c.Item().PaddingTop(1).Row(pr =>
+                            {
+                                pr.RelativeItem().Column(ic =>
+                                {
+                                    ic.Item().Text("FORMA DE PAGAMENTO").FontSize(5).FontColor(Colors.Grey.Darken2);
+                                    ic.Item().Text(DescricaoPagamento(nota.FormaPagamento)).FontSize(7);
+                                });
+                                pr.RelativeItem().Column(ic =>
+                                {
+                                    ic.Item().Text("VALOR PAGO").FontSize(5).FontColor(Colors.Grey.Darken2);
+                                    ic.Item().Text($"R$ {nota.ValorTotal:N2}").FontSize(7).Bold();
+                                });
+                            });
                         });
                     });
 
@@ -597,6 +643,30 @@ public class DanfeService : IDanfeService
         }
         return soma;
     }
+
+    private static string DescricaoFrete(string? codigo) => codigo switch
+    {
+        "0" => "0 - Por Conta do Emitente",
+        "1" => "1 - Por Conta do Destinatário",
+        "2" => "2 - Por Conta de Terceiros",
+        "3" => "3 - Próprio por Conta do Remetente",
+        "4" => "4 - Próprio por Conta do Destinatário",
+        "9" => "9 - Sem Frete",
+        _   => $"{codigo} - Sem Frete"
+    };
+
+    private static string DescricaoPagamento(string? codigo) => codigo switch
+    {
+        "01" => "Dinheiro",
+        "02" => "Cheque",
+        "03" => "Cartão de Crédito",
+        "04" => "Cartão de Débito",
+        "15" => "Boleto Bancário",
+        "17" => "Pix",
+        "90" => "Sem Pagamento",
+        "99" => "Outros",
+        _    => $"Código {codigo}"
+    };
 
     private static string? LerPrimeiroTexto(XmlDocument doc, string localName)
     {

@@ -244,6 +244,11 @@ using (var startupScope = app.Services.CreateScope())
             );
             CREATE INDEX IF NOT EXISTS idx_prt_token ON password_reset_tokens (token);");
 
+        // Migration 009: frete e pagamento na nota fiscal
+        await db.Database.ExecuteSqlRawAsync(@"
+            ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS modal_frete     VARCHAR(1) NOT NULL DEFAULT '9';
+            ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS forma_pagamento VARCHAR(2) NOT NULL DEFAULT '01';");
+
         Console.WriteLine("[STARTUP] Migrations manuais aplicadas.");
 
         // Seed: insere dados iniciais se a empresa de Orlando não existir
@@ -390,9 +395,7 @@ app.MapGet("/diag", () => {
     };
 });
 
-// SPA fallback: serve index2.html para rotas client-side (/operacoes/*, /cadastros/*, etc.)
-// Arquivos estáticos (login.html, css/, etc.) já são servidos pelo UseStaticFiles acima.
-app.MapFallbackToFile("index2.html");
+app.MapFallbackToFile("index.html");
 
 app.Run();
 

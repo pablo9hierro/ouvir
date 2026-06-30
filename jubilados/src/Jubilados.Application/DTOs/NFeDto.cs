@@ -26,7 +26,8 @@ public record EmitirNFeDto(
     // Campos opcionais adicionais
     string? IndPres = null,          // "1"=presencial,"2"=internet,"4"=teleatendimento
     string? DestinoOperacao = null,  // "1"=interna,"2"=interestadual,"3"=exterior
-    string? FormaPagamento = null,   // "01"=dinheiro (padrão)
+    string? FormaPagamento = null,   // "01"=dinheiro,"03"=cartão crédito,"04"=cartão débito,"15"=boleto,"17"=pix,"99"=outros
+    string? ModalidadeFrete = null,  // "0"=emitente,"1"=destinatário,"2"=terceiros,"9"=sem frete (padrão)
     List<DuplicataDto>? Duplicatas = null
 );
 

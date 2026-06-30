@@ -31,6 +31,8 @@ public class NotaFiscalConfiguration : IEntityTypeConfiguration<NotaFiscal>
         builder.Property(n => n.ValorPIS).HasColumnName("valor_pis").HasPrecision(18, 2);
         builder.Property(n => n.ValorCOFINS).HasColumnName("valor_cofins").HasPrecision(18, 2);
         builder.Property(n => n.ValorTotal).HasColumnName("valor_total").HasPrecision(18, 2);
+        builder.Property(n => n.ModalidadeFrete).HasColumnName("modal_frete").HasMaxLength(1).HasDefaultValue("9");
+        builder.Property(n => n.FormaPagamento).HasColumnName("forma_pagamento").HasMaxLength(2).HasDefaultValue("01");
         builder.Property(n => n.XmlEnvio).HasColumnName("xml_envio").HasColumnType("text");
         builder.Property(n => n.XmlRetorno).HasColumnName("xml_retorno").HasColumnType("text");
         builder.Property(n => n.Protocolo).HasColumnName("protocolo").HasMaxLength(20);
