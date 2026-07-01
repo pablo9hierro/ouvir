@@ -1016,7 +1016,10 @@
       <div class="card" style="border-left:4px solid var(--primary)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <h2 style="margin:0">&#128203; Complemento Fiscal dos Produtos Importados</h2>
-          <button id="btnEnviarImportacaoXml" class="btn btn-primary" onclick="enviarImportacaoXml()" style="padding:8px 16px">&#128190; Enviar importação</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary" onclick="cancelarImportacaoXml()" style="padding:8px 16px">✕ Cancelar</button>
+            <button id="btnEnviarImportacaoXml" class="btn btn-primary" onclick="enviarImportacaoXml()" style="padding:8px 16px">&#128190; Enviar importação</button>
+          </div>
         </div>
         <p class="subtitle" style="margin-bottom:16px">Os campos em cinza foram extraídos automaticamente do XML. A nota só será importada após preencher os <strong>dados fiscais obrigatórios de todos os itens</strong> e clicar em Enviar importação.</p>
         <div id="complementoProdutosContainer"></div>
@@ -2968,6 +2971,12 @@ function buildClassTribOpts(selectedCode){
     html+='<option value="'+escHtml(item.codigo)+'"'+s+'>'+escHtml(item.codigo)+' — '+escHtml(item.descricao||'')+'</option>';
   });
   return html;
+}
+
+function cancelarImportacaoXml(){
+  document.getElementById('complementoFiscalSection').style.display='none';
+  document.getElementById('complementoProdutosContainer').innerHTML='';
+  importacaoXmlPendente=null;
 }
 
 function mostrarComplementoFiscal(produtos){
