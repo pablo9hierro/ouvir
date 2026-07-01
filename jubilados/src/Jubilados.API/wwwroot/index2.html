@@ -3038,8 +3038,13 @@ function mostrarComplementoFiscal(produtos){
       +'</div>';
     container.appendChild(card);
 
-    preencherSelectClassTrib('comp_cclasstrib_'+id, p.cClassTrib||'');
-    aplicarClassificacaoComplemento(id);
+  });
+  // Passe final: popula TODOS os selects comp-cclasstrib depois que todos os cards estão no DOM
+  document.querySelectorAll('select.comp-cclasstrib').forEach(function(sel){
+    preencherSelectClassTrib(sel.id, sel.dataset.selected||'');
+    aplicarClassificacaoPorCodigo(sel.id, sel.dataset.cstTarget||'');
+    var prodId=sel.id.replace('comp_cclasstrib_','');
+    aplicarClassificacaoComplemento(prodId);
   });
   var sec=document.getElementById('complementoFiscalSection');
   sec.style.display='block';
