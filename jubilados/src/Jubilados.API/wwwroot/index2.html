@@ -2960,6 +2960,16 @@ function importarXmlEntrada(){
   input.click();
 }
 
+function buildClassTribOpts(selectedCode){
+  var html='<option value="">Selecione...</option>';
+  (classificacoesTributarias||[]).forEach(function(item){
+    if(!item||!item.codigo)return;
+    var s=(item.codigo===selectedCode)?' selected':'';
+    html+='<option value="'+escHtml(item.codigo)+'"'+s+'>'+escHtml(item.codigo)+' — '+escHtml(item.descricao||'')+'</option>';
+  });
+  return html;
+}
+
 function mostrarComplementoFiscal(produtos){
   var container=document.getElementById('complementoProdutosContainer');
   container.innerHTML='';
@@ -3002,7 +3012,9 @@ function mostrarComplementoFiscal(produtos){
         +'</div>'
         +'<div class="grid3">'
           +'<div class="field"><label>cClassTrib IBS/CBS <span class="req">*</span></label>'
-            +'<select id="comp_cclasstrib_'+id+'" class="comp-cclasstrib" data-selected="'+escHtml(p.cClassTrib||'')+'" data-cst-target="comp_cstibscbs_'+id+'" onchange="aplicarClassificacaoComplemento(\''+id+'\')"><option value="">Selecione...</option></select></div>'
+            +'<select id="comp_cclasstrib_'+id+'" class="comp-cclasstrib" data-cst-target="comp_cstibscbs_'+id+'" onchange="aplicarClassificacaoComplemento(\''+id+'\')">'
+            +buildClassTribOpts(p.cClassTrib||'')
+            +'</select></div>'
           +'<div class="field"><label>CST IBS/CBS</label>'
             +'<input id="comp_cstibscbs_'+id+'" maxlength="3" readonly></div>'
           +'<div class="field"><label>Tipo Alíquota IBS/CBS</label>'
