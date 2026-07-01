@@ -1424,6 +1424,7 @@
     </div><!-- /main-area -->
   </div><!-- /app-layout -->
 <datalist id="lista_cclasstrib"></datalist>
+<datalist id="lista_categorias"></datalist>
 <script>
 const estado = { empresaId:null, cnpj:null, clienteId:null, clienteNome:null, tipoDest:'cpf', produtoId:null, produtoNome:null, certEnviado:false, cscSalvo:false, pfxBase64:null, pfxNome:null, ultimaChave:null, ultimaNotaId:null };
 var clientesCadastrados = [];
@@ -1432,6 +1433,7 @@ var fornecedoresCadastrados = [];
 var empresasCadastradas = [];
 var notasCarregadas = [];
 var importacaoXmlPendente = null;
+var categoriasRegistradas = [];
 const CLASSIFICACOES_TRIB_FALLBACK=[
   {codigo:'000001',cst:'000',cstDescricao:'Tributação integral',descricao:'Situações tributadas integralmente pelo IBS e CBS.',tipoAliquota:'2 - Padrão'},
   {codigo:'000002',cst:'000',cstDescricao:'Tributação integral',descricao:'Exploração de via',tipoAliquota:'2 - Padrão'},
@@ -2173,7 +2175,7 @@ async function carregarProdutos(){
   spin('spinBuscaProduto',true);
   try{
     var res=await fetch(API+'/api/produto?empresaId='+encodeURIComponent(estado.empresaId));
-    if(res.ok){produtosCadastrados=await res.json();filtrarProdutos();}
+    if(res.ok){produtosCadastrados=await res.json();filtrarProdutos();sincronizarCategorias();}
   }catch(e){}
   finally{spin('spinBuscaProduto',false);}
 }
@@ -2287,7 +2289,7 @@ async function carregarProdutosCadastro(){
   spin('spinBuscaProduto',true);
   try{
     var res=await fetch(API+'/api/produto?empresaId='+encodeURIComponent(empresaId));
-    if(res.ok){produtosCadastrados=await res.json();filtrarProdutosCadastro();}
+    if(res.ok){produtosCadastrados=await res.json();filtrarProdutosCadastro();sincronizarCategorias();}
   }catch(e){mostrarAlerta('alertaProdutoCadastro','error',e.message||'Erro ao carregar produtos.');}
   finally{spin('spinBuscaProduto',false);}
 }
@@ -3008,11 +3010,30 @@ function mostrarComplementoFiscal(produtos){
         +'</div>'
         +'<div class="grid3">'
           +'<div class="field"><label>Categoria</label>'
-            +'<input id="comp_categoria_'+id+'" maxlength="80" placeholder="ex: Bebidas, Alimentos..."></div>'
+            +'<input id="comp_categoria_'+id+'" list="lista_categorias" maxlength="80" placeholder="ex: Bebidas, Alimentos..." onchange="adicionarCategoria(this.value)" onblur="adicionarCategoria(this.value)"></div>'
           +'<div class="field"><label>Organização / Setor</label>'
             +'<input id="comp_organizacao_'+id+'" maxlength="80" placeholder="ex: Gôndola 3, Setor A"></div>'
           +'<div class="field"><label>Padronização</label>'
-            +'<input id="comp_padronizacao_'+id+'" maxlength="80" placeholder="ex: Unitário, Caixa com 12"></div>'
+            +'<select id="comp_padronizacao_'+id+'" onchange="atualizarQtdEmb(\''+id+'\')">'
+              +'<option value="">Selecione...</option>'
+              +'<option value="Unitário">Unitário</option>'
+              +'<option value="Caixa">Caixa</option>'
+              +'<option value="Fardo">Fardo</option>'
+              +'<option value="Pack">Pack</option>'
+              +'<option value="Bandeja">Bandeja</option>'
+              +'<option value="Pacote">Pacote</option>'
+              +'<option value="Kit">Kit</option>'
+              +'<option value="Par">Par</option>'
+              +'<option value="Dúzia">Dúzia</option>'
+              +'<option value="Rolo">Rolo</option>'
+              +'<option value="Saco">Saco</option>'
+              +'<option value="Pallet">Pallet</option>'
+            +'</select>'
+            +'<div id="comp_qtdemb_field_'+id+'" style="display:none;margin-top:6px">'
+              +'<label style="font-size:.78rem;color:var(--primary);font-weight:600">Unidades por embalagem</label>'
+              +'<input type="number" id="comp_qtdemb_'+id+'" min="1" step="1" placeholder="ex: 12" style="margin-top:3px">'
+            +'</div>'
+          +'</div>'
         +'</div>'
       +'</div>';
     container.appendChild(card);
@@ -3071,10 +3092,42 @@ function coletarComplementosImportacao(){
       codigoInterno:(document.getElementById('comp_codigo_'+id)?.value||'').trim()||null,
       categoria:(document.getElementById('comp_categoria_'+id)?.value||'').trim()||null,
       organizacao:(document.getElementById('comp_organizacao_'+id)?.value||'').trim()||null,
-      padronizacao:(document.getElementById('comp_padronizacao_'+id)?.value||'').trim()||null
+      padronizacao:(function(){
+        var tipo=(document.getElementById('comp_padronizacao_'+id)?.value||'').trim();
+        if(!tipo)return null;
+        var qtd=(document.getElementById('comp_qtdemb_'+id)?.value||'').trim();
+        var tiposComQtd=['Caixa','Fardo','Pack','Bandeja','Pacote','Kit'];
+        return (tiposComQtd.includes(tipo)&&qtd) ? tipo+' com '+qtd : tipo;
+      })()
     });
   }
   return {ok:pendencias.length===0,pendencias:pendencias,complementos:complementos};
+}
+
+function sincronizarCategorias(){
+  var dl=document.getElementById('lista_categorias');
+  if(!dl)return;
+  produtosCadastrados.forEach(function(p){
+    var cat=(p.categoria||'').trim();
+    if(cat&&!categoriasRegistradas.includes(cat)){
+      categoriasRegistradas.push(cat);
+      var opt=document.createElement('option');opt.value=cat;dl.appendChild(opt);
+    }
+  });
+}
+function adicionarCategoria(val){
+  val=(val||'').trim();
+  if(!val||categoriasRegistradas.includes(val))return;
+  categoriasRegistradas.push(val);
+  var dl=document.getElementById('lista_categorias');
+  if(!dl)return;
+  var opt=document.createElement('option');opt.value=val;dl.appendChild(opt);
+}
+function atualizarQtdEmb(id){
+  var tiposComQtd=['Caixa','Fardo','Pack','Bandeja','Pacote','Kit'];
+  var val=document.getElementById('comp_padronizacao_'+id)?.value||'';
+  var field=document.getElementById('comp_qtdemb_field_'+id);
+  if(field)field.style.display=tiposComQtd.includes(val)?'':'none';
 }
 
 async function enviarImportacaoXml(){
