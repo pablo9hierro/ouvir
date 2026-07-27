@@ -2348,35 +2348,72 @@ async function carregarProdutosCadastro(){
   finally{spin('spinBuscaProduto',false);}
 }
 
+function _carregarProdutoNoForm(p){
+  document.getElementById('cad_p_nome').value=p.nome||'';
+  document.getElementById('cad_p_descricao').value=p.descricao||'';
+  document.getElementById('cad_p_ean').value=p.ean||'';
+  document.getElementById('cad_p_ncm').value=p.ncm||'';
+  document.getElementById('cad_p_cfop').value=p.cfop||'';
+  document.getElementById('cad_p_cst').value=p.cst||'';
+  document.getElementById('cad_p_csosn').value=p.csosn||'';
+  document.getElementById('cad_p_cclasstrib').value=p.cClassTrib||'';
+  document.getElementById('cad_p_cst_ibscbs').value=p.cstIbsCbs||'';
+  var cestEl=document.getElementById('cad_p_cest');
+  if(cestEl){cestEl.value=p.cest||'';formatarCest(cestEl);}
+  document.getElementById('cad_p_cest_segmento').value='';
+  document.getElementById('cad_p_unidade').value=p.unidade||'UN';
+  document.getElementById('cad_p_preco').value=(p.preco||0).toFixed(2);
+  document.getElementById('cad_p_estoque').value=p.quantidadeEstoque||0;
+  estado.produtoId=p.id;estado.produtoNome=p.nome;
+  atualizarEstadoBar();
+  mostrarAlerta('alertaProdutoCadastro','success','Produto carregado para consulta: '+p.nome);
+}
+
 function filtrarProdutosCadastro(){
   var q=(document.getElementById('busca_produto_cadastro').value||'').toLowerCase();
   var lista=produtosCadastrados.filter(function(p){
     return !q||p.nome.toLowerCase().includes(q)||((p.ean||'').toLowerCase().includes(q))||((p.ncm||'').toLowerCase().includes(q));
   });
-  renderListaCadastro(lista.slice(0,12),'lista_produtos_cadastro',function(p){
+  var container=document.getElementById('lista_produtos_cadastro');
+  if(!container)return;
+  if(!lista||!lista.length){container.style.display='none';container.innerHTML='';return;}
+  container.style.display='block';
+  container.innerHTML='';
+  lista.slice(0,12).forEach(function(p){
     var preco='R$ '+(p.preco||0).toFixed(2).replace('.',',');
     var estoque=(p.quantidadeEstoque||0).toString().replace('.',',');
-    return '<strong>'+p.nome+'</strong> <small style="color:var(--muted)">'+(p.unidade||'UN')+' - '+preco+' - estoque: '+estoque+'</small>';
-  },function(p){
-    document.getElementById('cad_p_nome').value=p.nome||'';
-    document.getElementById('cad_p_descricao').value=p.descricao||'';
-    document.getElementById('cad_p_ean').value=p.ean||'';
-    document.getElementById('cad_p_ncm').value=p.ncm||'';
-    document.getElementById('cad_p_cfop').value=p.cfop||'';
-    document.getElementById('cad_p_cst').value=p.cst||'';
-    document.getElementById('cad_p_csosn').value=p.csosn||'';
-    document.getElementById('cad_p_cclasstrib').value=p.cClassTrib||'';
-    document.getElementById('cad_p_cst_ibscbs').value=p.cstIbsCbs||'';
-    var cestEl=document.getElementById('cad_p_cest');
-    if(cestEl){cestEl.value=p.cest||'';formatarCest(cestEl);}
-    document.getElementById('cad_p_cest_segmento').value='';
-    document.getElementById('cad_p_unidade').value=p.unidade||'UN';
-    document.getElementById('cad_p_preco').value=(p.preco||0).toFixed(2);
-    document.getElementById('cad_p_estoque').value=p.quantidadeEstoque||0;
-    estado.produtoId=p.id;estado.produtoNome=p.nome;
-    atualizarEstadoBar();
-    mostrarAlerta('alertaProdutoCadastro','success','Produto carregado para consulta: '+p.nome);
+    var el=document.createElement('div');
+    el.style.cssText='padding:8px 10px;border-bottom:1px solid var(--border);border-radius:4px;display:flex;justify-content:space-between;align-items:center;gap:10px';
+    el.innerHTML=
+      '<span style="flex:1;cursor:pointer"><strong>'+escHtml(p.nome)+'</strong>'
+      +' <small style="color:var(--muted)">'+(p.unidade||'UN')+' - '+preco+' - estoque: '+estoque+'</small></span>'
+      +'<span style="display:flex;gap:6px;flex-shrink:0">'
+      +'<button style="font-size:.7rem;border:none;cursor:pointer;background:var(--primary,#6d28d9);color:#fff;border-radius:4px;padding:3px 9px">Selecionar</button>'
+      +'<button style="font-size:.7rem;border:none;cursor:pointer;background:#ef4444;color:#fff;border-radius:4px;padding:3px 9px">✕ Excluir</button>'
+      +'</span>';
+    el.onmouseenter=function(){this.style.background='var(--step-active)';};
+    el.onmouseleave=function(){this.style.background='';};
+    var btns=el.querySelectorAll('button');
+    btns[0].onclick=function(e){e.stopPropagation();_carregarProdutoNoForm(p);};
+    btns[1].onclick=function(e){e.stopPropagation();excluirProduto(p.id,p.nome);};
+    container.appendChild(el);
   });
+}
+
+async function excluirProduto(id, nome){
+  if(!confirm('Excluir o produto "'+nome+'"?\n\nEssa ação desativa o produto permanentemente.'))return;
+  try{
+    var token=localStorage.getItem('jubilados_token');
+    var headers={'Content-Type':'application/json'};
+    if(token)headers['Authorization']='Bearer '+token;
+    var res=await fetch(API+'/api/produto/'+encodeURIComponent(id),{method:'DELETE',headers:headers});
+    var data=await safeJson(res);
+    if(!res.ok)throw new Error(data.erro||'HTTP '+res.status);
+    produtosCadastrados=produtosCadastrados.filter(function(p){return p.id!==id;});
+    filtrarProdutosCadastro();
+    mostrarAlerta('alertaProdutoCadastro','success','Produto "'+nome+'" excluído com sucesso.');
+    if(estado.produtoId===id){estado.produtoId=null;estado.produtoNome=null;atualizarEstadoBar();}
+  }catch(e){mostrarAlerta('alertaProdutoCadastro','error','Erro ao excluir: '+e.message);}
 }
 
 async function cadastrarProdutoCadastro(){

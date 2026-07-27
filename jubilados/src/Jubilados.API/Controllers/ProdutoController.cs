@@ -318,6 +318,19 @@ public class ProdutoController : ControllerBase
         });
     }
 
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> ExcluirAsync(Guid id, CancellationToken ct)
+    {
+        var produto = await _db.Produtos.FindAsync([id], ct);
+        if (produto is null)
+            return NotFound(new { erro = "Produto não encontrado." });
+
+        produto.Ativo = false;
+        produto.AtualizadoEm = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { sucesso = true, id });
+    }
+
     private async Task<ClassificacaoTributariaItem?> ObterClassificacaoPorCodigoAsync(string codigo, CancellationToken ct)
     {
         var itens = await ObterClassificacoesTributariasAsync(ct);
