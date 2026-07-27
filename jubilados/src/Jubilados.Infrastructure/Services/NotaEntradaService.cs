@@ -312,138 +312,144 @@ public class NotaEntradaService : InotaEntradaService
                 return new ImportarXmlResultDto(false, $"Item {item.ItemNumero}: complemento fiscal pendente.", lida.ChaveAcesso);
         }
 
-        using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
+        var strategy = _db.Database.CreateExecutionStrategy();
 
-        Guid? fornecedorId = lida.Fornecedor?.IdExistente;
-        if (lida.Fornecedor is not null && !fornecedorId.HasValue && !string.IsNullOrWhiteSpace(lida.Fornecedor.CpfCnpj))
+        var (produtosImportados, notaId, fornecedorId) = await strategy.ExecuteAsync(async () =>
         {
-            var novoFornecedor = new Fornecedor
+            using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
+
+            Guid? fId = lida!.Fornecedor?.IdExistente;
+            if (lida.Fornecedor is not null && !fId.HasValue && !string.IsNullOrWhiteSpace(lida.Fornecedor.CpfCnpj))
             {
-                Id = Guid.NewGuid(),
-                EmpresaId = empresaId,
-                Nome = lida.Fornecedor.Nome,
-                CPF_CNPJ = lida.Fornecedor.CpfCnpj,
-                InscricaoEstadual = lida.Fornecedor.InscricaoEstadual,
-                Logradouro = lida.Fornecedor.Logradouro,
-                Numero = lida.Fornecedor.Numero,
-                Complemento = lida.Fornecedor.Complemento,
-                Bairro = lida.Fornecedor.Bairro,
-                Municipio = lida.Fornecedor.Municipio,
-                CodigoMunicipio = lida.Fornecedor.CodigoMunicipio,
-                UF = lida.Fornecedor.Uf,
-                CEP = lida.Fornecedor.Cep
-            };
-            _db.Fornecedores.Add(novoFornecedor);
-            fornecedorId = novoFornecedor.Id;
-        }
-
-        var nota = new NotaFiscal
-        {
-            Id = Guid.NewGuid(),
-            EmpresaId = empresaId,
-            ChaveAcesso = lida.ChaveAcesso,
-            Numero = lida.Numero,
-            Serie = lida.Serie,
-            NaturezaOperacao = lida.NaturezaOperacao,
-            Status = StatusNota.Autorizada,
-            CStat = "100",
-            XMotivo = "Importado via XML com complementos validados",
-            TipoOperacao = "0",
-            EmitidaEm = lida.EmitidaEm,
-            AutorizadaEm = lida.EmitidaEm,
-            XmlEnvio = lida.XmlConteudo
-        };
-
-        var produtosImportados = new List<ProdutoImportadoDto>();
-        decimal valorTotal = 0m;
-
-        foreach (var item in lida.Itens)
-        {
-            var comp = compPorItem[item.ItemNumero];
-            Produto produto;
-            var jaExistia = item.ProdutoExistenteId.HasValue;
-
-            if (jaExistia)
-            {
-                produto = await _db.Produtos.FirstOrDefaultAsync(p => p.Id == item.ProdutoExistenteId!.Value, cancellationToken)
-                    ?? new Produto { Id = Guid.NewGuid(), EmpresaId = empresaId };
-                if (produto.EmpresaId == Guid.Empty)
-                    _db.Produtos.Add(produto);
-            }
-            else
-            {
-                produto = new Produto
+                var novoFornecedor = new Fornecedor
                 {
                     Id = Guid.NewGuid(),
                     EmpresaId = empresaId,
-                    Nome = item.Nome,
-                    NCM = item.Ncm,
-                    Unidade = string.IsNullOrWhiteSpace(item.Unidade) ? "UN" : item.Unidade,
-                    EAN = string.IsNullOrWhiteSpace(item.Ean) ? null : item.Ean,
-                    CEST = string.IsNullOrWhiteSpace(item.Cest) ? null : item.Cest,
-                    CSOSN = "400",
-                    CST = ""
+                    Nome = lida.Fornecedor.Nome,
+                    CPF_CNPJ = lida.Fornecedor.CpfCnpj,
+                    InscricaoEstadual = lida.Fornecedor.InscricaoEstadual,
+                    Logradouro = lida.Fornecedor.Logradouro,
+                    Numero = lida.Fornecedor.Numero,
+                    Complemento = lida.Fornecedor.Complemento,
+                    Bairro = lida.Fornecedor.Bairro,
+                    Municipio = lida.Fornecedor.Municipio,
+                    CodigoMunicipio = lida.Fornecedor.CodigoMunicipio,
+                    UF = lida.Fornecedor.Uf,
+                    CEP = lida.Fornecedor.Cep
                 };
-                _db.Produtos.Add(produto);
+                _db.Fornecedores.Add(novoFornecedor);
+                fId = novoFornecedor.Id;
             }
 
-            produto.Nome = string.IsNullOrWhiteSpace(produto.Nome) ? item.Nome : produto.Nome;
-            produto.NCM = string.IsNullOrWhiteSpace(produto.NCM) ? item.Ncm : produto.NCM;
-            produto.Unidade = string.IsNullOrWhiteSpace(item.Unidade) ? (string.IsNullOrWhiteSpace(produto.Unidade) ? "UN" : produto.Unidade) : item.Unidade;
-            produto.EAN = string.IsNullOrWhiteSpace(item.Ean) ? produto.EAN : item.Ean;
-            produto.CEST = string.IsNullOrWhiteSpace(item.Cest) ? produto.CEST : item.Cest;
-            produto.Preco = comp.PrecoVenda;
-            produto.CFOP = comp.Cfop.Trim();
-            produto.CClassTrib = comp.CClassTrib.Trim();
-            produto.CstIbsCbs = comp.CstIbsCbs.Trim();
-            produto.CodigoInterno = string.IsNullOrWhiteSpace(comp.CodigoInterno) ? produto.CodigoInterno : comp.CodigoInterno.Trim();
-            produto.Categoria = string.IsNullOrWhiteSpace(comp.Categoria) ? produto.Categoria : comp.Categoria.Trim();
-            produto.Organizacao = string.IsNullOrWhiteSpace(comp.Organizacao) ? produto.Organizacao : comp.Organizacao.Trim();
-            produto.Padronizacao = string.IsNullOrWhiteSpace(comp.Padronizacao) ? produto.Padronizacao : comp.Padronizacao.Trim();
-
-            nota.Itens.Add(new NotaItem
+            var nota = new NotaFiscal
             {
-                ProdutoId = produto.Id,
-                NumeroItem = item.ItemNumero,
-                Quantidade = item.Quantidade,
-                Unidade = string.IsNullOrWhiteSpace(item.Unidade) ? "UN" : item.Unidade,
-                ValorUnitario = item.ValorUnitario,
-                ValorDesconto = 0,
-                ValorTotal = item.ValorTotal,
-                BaseICMS = 0,
-                AliquotaICMS = 0,
-                ValorICMS = 0,
-                AliquotaIPI = 0,
-                ValorIPI = 0,
-                AliquotaPIS = 0,
-                ValorPIS = 0,
-                AliquotaCOFINS = 0,
-                ValorCOFINS = 0
-            });
+                Id = Guid.NewGuid(),
+                EmpresaId = empresaId,
+                ChaveAcesso = lida.ChaveAcesso,
+                Numero = lida.Numero,
+                Serie = lida.Serie,
+                NaturezaOperacao = lida.NaturezaOperacao,
+                Status = StatusNota.Autorizada,
+                CStat = "100",
+                XMotivo = "Importado via XML com complementos validados",
+                TipoOperacao = "0",
+                EmitidaEm = lida.EmitidaEm,
+                AutorizadaEm = lida.EmitidaEm,
+                XmlEnvio = lida.XmlConteudo
+            };
 
-            valorTotal += item.ValorTotal;
-            produtosImportados.Add(new ProdutoImportadoDto(
-                ItemNumero: item.ItemNumero,
-                Id: produto.Id,
-                Nome: item.Nome,
-                NCM: item.Ncm,
-                Unidade: item.Unidade,
-                EAN: string.IsNullOrWhiteSpace(item.Ean) ? null : item.Ean,
-                CEST: string.IsNullOrWhiteSpace(item.Cest) ? null : item.Cest,
-                Custo: item.ValorUnitario,
-                JaExistia: jaExistia
-            ));
-        }
+            var lista = new List<ProdutoImportadoDto>();
+            decimal valorTotal = 0m;
 
-        nota.ValorProdutos = valorTotal;
-        nota.ValorTotal = valorTotal;
+            foreach (var item in lida.Itens)
+            {
+                var comp = compPorItem[item.ItemNumero];
+                Produto produto;
+                var jaExistia = item.ProdutoExistenteId.HasValue;
 
-        _db.NotasFiscais.Add(nota);
-        await _db.SaveChangesAsync(cancellationToken);
-        await tx.CommitAsync(cancellationToken);
+                if (jaExistia)
+                {
+                    produto = await _db.Produtos.FirstOrDefaultAsync(p => p.Id == item.ProdutoExistenteId!.Value, cancellationToken)
+                        ?? new Produto { Id = Guid.NewGuid(), EmpresaId = empresaId };
+                    if (produto.EmpresaId == Guid.Empty)
+                        _db.Produtos.Add(produto);
+                }
+                else
+                {
+                    produto = new Produto
+                    {
+                        Id = Guid.NewGuid(),
+                        EmpresaId = empresaId,
+                        Nome = item.Nome,
+                        NCM = item.Ncm,
+                        Unidade = string.IsNullOrWhiteSpace(item.Unidade) ? "UN" : item.Unidade,
+                        EAN = string.IsNullOrWhiteSpace(item.Ean) ? null : item.Ean,
+                        CEST = string.IsNullOrWhiteSpace(item.Cest) ? null : item.Cest,
+                        CSOSN = "400",
+                        CST = ""
+                    };
+                    _db.Produtos.Add(produto);
+                }
+
+                produto.Nome = string.IsNullOrWhiteSpace(produto.Nome) ? item.Nome : produto.Nome;
+                produto.NCM = string.IsNullOrWhiteSpace(produto.NCM) ? item.Ncm : produto.NCM;
+                produto.Unidade = string.IsNullOrWhiteSpace(item.Unidade) ? (string.IsNullOrWhiteSpace(produto.Unidade) ? "UN" : produto.Unidade) : item.Unidade;
+                produto.EAN = string.IsNullOrWhiteSpace(item.Ean) ? produto.EAN : item.Ean;
+                produto.CEST = string.IsNullOrWhiteSpace(item.Cest) ? produto.CEST : item.Cest;
+                produto.Preco = comp.PrecoVenda;
+                produto.CFOP = comp.Cfop.Trim();
+                produto.CClassTrib = comp.CClassTrib.Trim();
+                produto.CstIbsCbs = comp.CstIbsCbs.Trim();
+                produto.CodigoInterno = string.IsNullOrWhiteSpace(comp.CodigoInterno) ? produto.CodigoInterno : comp.CodigoInterno.Trim();
+                produto.Categoria = string.IsNullOrWhiteSpace(comp.Categoria) ? produto.Categoria : comp.Categoria.Trim();
+                produto.Organizacao = string.IsNullOrWhiteSpace(comp.Organizacao) ? produto.Organizacao : comp.Organizacao.Trim();
+                produto.Padronizacao = string.IsNullOrWhiteSpace(comp.Padronizacao) ? produto.Padronizacao : comp.Padronizacao.Trim();
+
+                nota.Itens.Add(new NotaItem
+                {
+                    ProdutoId = produto.Id,
+                    NumeroItem = item.ItemNumero,
+                    Quantidade = item.Quantidade,
+                    Unidade = string.IsNullOrWhiteSpace(item.Unidade) ? "UN" : item.Unidade,
+                    ValorUnitario = item.ValorUnitario,
+                    ValorDesconto = 0,
+                    ValorTotal = item.ValorTotal,
+                    BaseICMS = 0,
+                    AliquotaICMS = 0,
+                    ValorICMS = 0,
+                    AliquotaIPI = 0,
+                    ValorIPI = 0,
+                    AliquotaPIS = 0,
+                    ValorPIS = 0,
+                    AliquotaCOFINS = 0,
+                    ValorCOFINS = 0
+                });
+
+                valorTotal += item.ValorTotal;
+                lista.Add(new ProdutoImportadoDto(
+                    ItemNumero: item.ItemNumero,
+                    Id: produto.Id,
+                    Nome: item.Nome,
+                    NCM: item.Ncm,
+                    Unidade: item.Unidade,
+                    EAN: string.IsNullOrWhiteSpace(item.Ean) ? null : item.Ean,
+                    CEST: string.IsNullOrWhiteSpace(item.Cest) ? null : item.Cest,
+                    Custo: item.ValorUnitario,
+                    JaExistia: jaExistia
+                ));
+            }
+
+            nota.ValorProdutos = valorTotal;
+            nota.ValorTotal = valorTotal;
+            _db.NotasFiscais.Add(nota);
+            await _db.SaveChangesAsync(cancellationToken);
+            await tx.CommitAsync(cancellationToken);
+
+            return (lista, nota.Id, fId);
+        });
 
         var novos = produtosImportados.Count(p => !p.JaExistia);
-        var fornecedorDto = lida.Fornecedor is null
+        var fornecedorDto = lida!.Fornecedor is null
             ? null
             : new FornecedorImportadoDto(
                 Id: fornecedorId ?? Guid.Empty,
@@ -454,8 +460,8 @@ public class NotaEntradaService : InotaEntradaService
         return new ImportarXmlResultDto(
             Sucesso: true,
             Mensagem: $"Nota importada com sucesso. {novos} produto(s) criado(s), {produtosImportados.Count - novos} já existia(m).",
-            ChaveAcesso: lida.ChaveAcesso,
-            NotaFiscalId: nota.Id,
+            ChaveAcesso: lida!.ChaveAcesso,
+            NotaFiscalId: notaId,
             ProdutosCriados: produtosImportados,
             Fornecedor: fornecedorDto);
     }
