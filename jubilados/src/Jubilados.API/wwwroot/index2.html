@@ -1259,8 +1259,9 @@
         <a href="https://dfe-portal.svrs.rs.gov.br/DFE/ClassificacaoTributaria" target="_blank" rel="noopener noreferrer">Portal de Conformidade Fiscal (SVRS) — Classificação Tributária</a>.
       </div>
       <div id="alertaProdutoCadastro"></div>
-      <div class="actions">
+      <div class="actions" style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="cadastrarProdutoCadastro()"><span id="spinProdutoCadastro" class="spinner" style="display:none"></span> Salvar Produto</button>
+        <button class="btn btn-secondary" style="background:#ef4444;color:#fff;border-color:#ef4444" onclick="excluirTodosProdutos()">&#128465; Excluir Todos</button>
       </div>
     </div>
   </div>
@@ -2414,6 +2415,21 @@ async function excluirProduto(id, nome){
     mostrarAlerta('alertaProdutoCadastro','success','Produto "'+nome+'" excluído com sucesso.');
     if(estado.produtoId===id){estado.produtoId=null;estado.produtoNome=null;atualizarEstadoBar();}
   }catch(e){mostrarAlerta('alertaProdutoCadastro','error','Erro ao excluir: '+e.message);}
+}
+
+async function excluirTodosProdutos(){
+  var empresaId=obterEmpresaSelecionada('cad_prod_empresaId','alertaProdutoCadastro');
+  if(!empresaId)return;
+  if(!confirm('Excluir TODOS os produtos desta empresa?\n\nEssa acao desativa todos permanentemente. Voce precisara recadastra-los manualmente.'))return;
+  try{
+    var res=await fetchAuth(API+'/api/produto/todos?empresaId='+encodeURIComponent(empresaId),{method:'DELETE'});
+    var data=await safeJson(res);
+    if(!res.ok)throw new Error(data.erro||'HTTP '+res.status);
+    produtosCadastrados=[];
+    filtrarProdutosCadastro();
+    mostrarAlerta('alertaProdutoCadastro','success','Todos os '+data.excluidos+' produto(s) foram excluidos.');
+    estado.produtoId=null;estado.produtoNome=null;atualizarEstadoBar();
+  }catch(e){mostrarAlerta('alertaProdutoCadastro','error','Erro: '+e.message);}
 }
 
 async function cadastrarProdutoCadastro(){
@@ -3832,17 +3848,7 @@ var LC_TPAG = {
   '01': 'Dinheiro', '03': 'Cartão Crédito', '04': 'Cartão Débito', '17': 'PIX'
 };
 
-// Produtos fictícios usados SOMENTE em homologação quando não há nenhum produto cadastrado
-var LC_SEED_PRODUTOS = [
-  {id:'seed-001',nome:'[SEED] Notebook Dell Inspiron 15',preco:2499.90,ncm:'84713012',cfop:'5102',csosn:'400',cst:null,cClassTrib:'000001',unidade:'UN',ativo:true,_seed:true},
-  {id:'seed-002',nome:'[SEED] Mouse Sem Fio Logitech',preco:89.90,ncm:'84716060',cfop:'5102',csosn:'400',cst:null,cClassTrib:'000001',unidade:'UN',ativo:true,_seed:true},
-  {id:'seed-003',nome:'[SEED] Teclado Mecânico USB',preco:159.00,ncm:'84716090',cfop:'5102',csosn:'400',cst:null,cClassTrib:'000001',unidade:'UN',ativo:true,_seed:true},
-  {id:'seed-004',nome:'[SEED] Monitor LED 24" Full HD',preco:849.00,ncm:'85285290',cfop:'5102',csosn:'400',cst:null,cClassTrib:'000001',unidade:'UN',ativo:true,_seed:true},
-  {id:'seed-005',nome:'[SEED] Cabo HDMI 2m Gold',preco:29.90,ncm:'85444290',cfop:'5102',csosn:'400',cst:null,cClassTrib:'000001',unidade:'UN',ativo:true,_seed:true},
-  {id:'seed-006',nome:'[SEED] Headset USB Gamer',preco:119.90,ncm:'85183000',cfop:'5102',csosn:'400',cst:null,cClassTrib:'000001',unidade:'UN',ativo:true,_seed:true},
-  {id:'seed-007',nome:'[SEED] Webcam HD 1080p',preco:199.00,ncm:'85258020',cfop:'5102',csosn:'400',cst:null,cClassTrib:'000001',unidade:'UN',ativo:true,_seed:true},
-  {id:'seed-008',nome:'[SEED] Pen Drive USB 64GB',preco:39.90,ncm:'84717090',cfop:'5102',csosn:'400',cst:null,cClassTrib:'000001',unidade:'UN',ativo:true,_seed:true}
-];
+// Seeds gerenciados pelo backend via POST /api/produto/seed-lacesta
 
 function lcToggleAmbiente() {
   var cb = document.getElementById('lc_producao');
@@ -3865,38 +3871,31 @@ async function gerarCesta() {
 
   spin('spinLaCesta', true);
   try {
-    // Busca produtos reais cadastrados
-    var res = await fetchAuth(API + '/api/produto?empresaId=' + empId);
-    if(!res.ok) { mostrarAlerta('alertaLaCesta','error','Erro ao carregar produtos.'); return; }
-    var data = await res.json();
-    var reais = (Array.isArray(data) ? data : (data.itens || [])).filter(function(p){ return p.preco > 0 && p.ativo !== false; });
-
     var todos;
     if(emProducao) {
-      // PRODUÇÃO: apenas produtos reais — sem seed, sem dado fictício
-      if(reais.length === 0) {
+      // PRODUÇÃO: usa produtos reais do banco (filtra seeds)
+      var res = await fetchAuth(API + '/api/produto?empresaId=' + empId);
+      if(!res.ok) { mostrarAlerta('alertaLaCesta','error','Erro ao carregar produtos.'); return; }
+      var data = await res.json();
+      todos = (Array.isArray(data) ? data : (data.itens || [])).filter(function(p){
+        return p.preco > 0 && p.ativo !== false && p.codigoInterno !== '_lcseed_';
+      });
+      if(todos.length === 0) {
         mostrarAlerta('alertaLaCesta','error',
-          '⚠ Nenhum produto cadastrado. Em produção é obrigatório usar produtos com dados fiscais reais. '
-          +'Cadastre produtos via "Cadastro de Produtos" ou importe um XML de entrada.');
+          '⚠ Nenhum produto real cadastrado. Cadastre produtos via "Cadastros > Produtos" ou importe XML de entrada para usar em producao.');
         return;
       }
-      todos = reais;
+      mostrarAlerta('alertaLaCesta','info','Usando ' + todos.length + ' produto(s) reais do banco.');
     } else {
-      // HOMOLOGAÇÃO: usa produtos reais se existirem; senão usa seeds para teste
-      if(reais.length > 0) {
-        todos = reais;
-        mostrarAlerta('alertaLaCesta','info','Usando ' + reais.length + ' produto(s) cadastrado(s).');
-      } else {
-        todos = LC_SEED_PRODUTOS;
-        mostrarAlerta('alertaLaCesta','warning',
-          '⚠ Nenhum produto cadastrado — usando dados fictícios [SEED] só para teste de homologação. '
-          +'Esses produtos não existem no banco e não serão importados para produção.');
-      }
+      // HOMOLOGAÇÃO: sempre usa os seeds dos XMLs (injeta no banco se necessário)
+      var seedRes = await fetchAuth(API + '/api/produto/seed-lacesta?empresaId=' + empId, {method:'POST'});
+      if(!seedRes.ok) { mostrarAlerta('alertaLaCesta','error','Erro ao carregar seeds de homologacao.'); return; }
+      todos = await seedRes.json();
+      mostrarAlerta('alertaLaCesta','info','Homologacao: usando ' + todos.length + ' produtos seeds (dados dos XMLs reais).');
     }
 
     var embaralhados = todos.slice().sort(function(){ return Math.random() - 0.5; }).slice(0, maxItens);
     var tpags = Object.keys(LC_TPAG);
-    // Um único método de pagamento para toda a cesta
     var tpagCesta = tpags[Math.floor(Math.random() * tpags.length)];
     var itens = [];
     var totalAcum = 0;
@@ -3913,21 +3912,13 @@ async function gerarCesta() {
     }
 
     if(itens.length === 0) { mostrarAlerta('alertaLaCesta','warning','Nenhum produto cabe no valor alvo — tente aumentar o valor.'); return; }
-    var usouSeed = itens.some(function(it){ return it.produto._seed; });
-    cestaAtual = { itens: itens, valorTotal: totalAcum, tpag: tpagCesta, ambiente: emProducao ? '1' : '2', usouSeed: usouSeed };
+    cestaAtual = { itens: itens, valorTotal: totalAcum, tpag: tpagCesta, ambiente: emProducao ? '1' : '2' };
     renderizarCesta();
-    // Seeds bloqueiam emissão — são só pra visualização
     var btnEmitir = document.getElementById('btn_emitir_cesta');
-    if(usouSeed) {
-      btnEmitir.disabled = true;
-      btnEmitir.title = 'Importe produtos reais via XML ou cadastre-os para poder emitir';
-    } else {
-      btnEmitir.disabled = false;
-      btnEmitir.title = '';
-    }
+    btnEmitir.disabled = false;
+    btnEmitir.title = '';
     document.getElementById('lc_log').innerHTML = '';
     document.getElementById('lc_log').style.display = 'none';
-    if(usouSeed) lcLog('Cesta gerada com dados fictícios [SEED]. Para emitir: importe um XML de entrada ou cadastre produtos reais.', 'info');
   } finally { spin('spinLaCesta', false); }
 }
 
@@ -3999,10 +3990,6 @@ function validarPayloadCesta(payload, itensComProduto) {
 async function emitirCesta() {
   if(!cestaAtual || cestaAtual.itens.length === 0) {
     mostrarAlerta('alertaLaCesta','warning','Gere a cesta primeiro.');
-    return;
-  }
-  if(cestaAtual.usouSeed) {
-    mostrarAlerta('alertaLaCesta','error','A cesta contém produtos fictícios [SEED]. Cadastre produtos reais antes de emitir.');
     return;
   }
   document.getElementById('lc_log').innerHTML = '';
