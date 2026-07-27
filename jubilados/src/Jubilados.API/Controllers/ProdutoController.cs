@@ -319,6 +319,45 @@ public class ProdutoController : ControllerBase
         });
     }
 
+    /// <summary>PUT /api/produto/{id} — atualiza todos os campos do produto.</summary>
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> AtualizarAsync(Guid id, [FromBody] Produto dto, CancellationToken ct)
+    {
+        var produto = await _db.Produtos.FindAsync([id], ct);
+        if (produto is null) return NotFound(new { erro = "Produto não encontrado." });
+
+        if (string.IsNullOrWhiteSpace(dto.Nome) || string.IsNullOrWhiteSpace(dto.NCM) || string.IsNullOrWhiteSpace(dto.CFOP))
+            return BadRequest(new { erro = "Nome, NCM e CFOP são obrigatórios." });
+
+        if (!string.IsNullOrWhiteSpace(dto.CClassTrib))
+        {
+            var classificacao = await ObterClassificacaoPorCodigoAsync(dto.CClassTrib, ct);
+            if (classificacao is null)
+                return BadRequest(new { erro = "cClassTrib inválido." });
+            produto.CClassTrib        = classificacao.Codigo;
+            produto.CstIbsCbs         = classificacao.Cst;
+            produto.ReducaoIbs        = classificacao.ReducaoPercentualIbs;
+            produto.ReducaoCbs        = classificacao.ReducaoPercentualCbs;
+            produto.TipoAliquotaIbsCbs = classificacao.TipoAliquota;
+        }
+
+        produto.Nome        = dto.Nome.Trim();
+        produto.Descricao   = dto.Descricao;
+        produto.NCM         = dto.NCM.Trim();
+        produto.CFOP        = dto.CFOP.Trim();
+        produto.CST         = dto.CST ?? produto.CST;
+        produto.CSOSN       = dto.CSOSN ?? produto.CSOSN;
+        produto.EAN         = string.IsNullOrWhiteSpace(dto.EAN) ? produto.EAN : dto.EAN;
+        produto.CEST        = dto.CEST ?? produto.CEST;
+        produto.Unidade     = string.IsNullOrWhiteSpace(dto.Unidade) ? produto.Unidade : dto.Unidade;
+        produto.Preco       = dto.Preco > 0 ? dto.Preco : produto.Preco;
+        produto.QuantidadeEstoque = dto.QuantidadeEstoque;
+        produto.AtualizadoEm = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { produto.Id, produto.Nome });
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> ExcluirAsync(Guid id, CancellationToken ct)
     {

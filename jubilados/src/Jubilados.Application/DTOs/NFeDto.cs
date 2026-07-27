@@ -287,6 +287,7 @@ public record ComplementoImportacaoProdutoDto(
     string CClassTrib,
     string CstIbsCbs,
     string Cfop,
+    string? Csosn = null,
     string? CodigoInterno = null,
     string? Categoria = null,
     string? Organizacao = null,

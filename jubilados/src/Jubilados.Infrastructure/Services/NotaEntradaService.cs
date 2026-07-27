@@ -394,8 +394,9 @@ public class NotaEntradaService : InotaEntradaService
                         Unidade = string.IsNullOrWhiteSpace(item.Unidade) ? "UN" : item.Unidade,
                         EAN = string.IsNullOrWhiteSpace(item.Ean) ? null : item.Ean,
                         CEST = string.IsNullOrWhiteSpace(item.Cest) ? string.Empty : item.Cest,
-                        CSOSN = "400",
-                        CST = ""
+                        CSOSN = "102",
+                        CST = "00",
+                        QuantidadeEstoque = Math.Round(item.Quantidade)
                     };
                     _db.Produtos.Add(produto);
                 }
@@ -409,6 +410,10 @@ public class NotaEntradaService : InotaEntradaService
                 produto.CFOP = comp.Cfop.Trim();
                 produto.CClassTrib = comp.CClassTrib.Trim();
                 produto.CstIbsCbs = comp.CstIbsCbs.Trim();
+                if (!string.IsNullOrWhiteSpace(comp.Csosn))
+                    produto.CSOSN = comp.Csosn.Trim();
+                // Adiciona quantidade comprada ao estoque (arredondado para inteiro)
+                produto.QuantidadeEstoque += Math.Round(item.Quantidade);
                 produto.CodigoInterno = string.IsNullOrWhiteSpace(comp.CodigoInterno) ? produto.CodigoInterno : comp.CodigoInterno.Trim();
                 produto.Categoria = string.IsNullOrWhiteSpace(comp.Categoria) ? produto.Categoria : comp.Categoria.Trim();
                 produto.Organizacao = string.IsNullOrWhiteSpace(comp.Organizacao) ? produto.Organizacao : comp.Organizacao.Trim();

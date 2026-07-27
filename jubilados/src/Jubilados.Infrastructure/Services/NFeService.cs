@@ -824,7 +824,10 @@ public class NFeService : INFeService
             if (empresa.CRT == 1)
             {
                 // Simples Nacional: usa CSOSN — grupo varia por CSOSN
-                var csosnFinal = !string.IsNullOrEmpty(csosn) ? csosn.PadLeft(3, '0') : "400";
+                // "060" e outros inválidos são substituídos por "102" para não quebrar o schema
+                var csosnValidos = new HashSet<string>{"101","102","103","201","202","203","300","400","500","900"};
+                var csosnParsed = !string.IsNullOrEmpty(csosn) ? csosn.PadLeft(3, '0') : "102";
+                var csosnFinal = csosnValidos.Contains(csosnParsed) ? csosnParsed : "102";
                 if (csosnFinal == "500")
                 {
                     // CSOSN 500: ICMS cobrado anteriormente por ST — usa ICMSSN500
@@ -1544,7 +1547,9 @@ public class NFeService : INFeService
             sb.AppendLine("        <indTot>1</indTot>");
             sb.AppendLine("      </prod>");
             sb.AppendLine("      <imposto>");
-            var csosnFinal = !string.IsNullOrEmpty(produto.CSOSN?.Trim()) ? produto.CSOSN!.Trim().PadLeft(3, '0') : "400";
+            var csosnValidos2 = new HashSet<string>{"101","102","103","201","202","203","300","400","500","900"};
+            var csosnParsed2 = !string.IsNullOrEmpty(produto.CSOSN?.Trim()) ? produto.CSOSN!.Trim().PadLeft(3,'0') : "102";
+            var csosnFinal = csosnValidos2.Contains(csosnParsed2) ? csosnParsed2 : "102";
             if (csosnFinal == "500")
             {
                 sb.AppendLine("        <ICMS><ICMSSN500>");
