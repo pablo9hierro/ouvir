@@ -635,10 +635,11 @@ public class NFeService : INFeService
                 ValorICMS = Math.Round(valorTotal * produto.AliquotaICMS / 100, 2),
                 AliquotaIPI = produto.AliquotaIPI,
                 ValorIPI = Math.Round(valorTotal * produto.AliquotaIPI / 100, 2),
-                AliquotaPIS = produto.AliquotaPIS,
-                ValorPIS = Math.Round(valorTotal * produto.AliquotaPIS / 100, 2),
-                AliquotaCOFINS = produto.AliquotaCOFINS,
-                ValorCOFINS = Math.Round(valorTotal * produto.AliquotaCOFINS / 100, 2)
+                // SN (CRT=1): PIS/COFINS recolhidos no DAS, não destacados na NF-e
+                AliquotaPIS = empresa.CRT == 1 ? 0 : produto.AliquotaPIS,
+                ValorPIS = empresa.CRT == 1 ? 0 : Math.Round(valorTotal * produto.AliquotaPIS / 100, 2),
+                AliquotaCOFINS = empresa.CRT == 1 ? 0 : produto.AliquotaCOFINS,
+                ValorCOFINS = empresa.CRT == 1 ? 0 : Math.Round(valorTotal * produto.AliquotaCOFINS / 100, 2)
             });
         }
         return nota;
