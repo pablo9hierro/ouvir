@@ -2665,11 +2665,11 @@ async function carregarEstoque(){
         +'<td style="padding:8px 10px;border-bottom:1px solid var(--border)">'+(i.nome||'')+'</td>'
         +'<td style="padding:8px 10px;border-bottom:1px solid var(--border)">'+(i.ncm||'')+'</td>'
         +'<td style="padding:8px 10px;border-bottom:1px solid var(--border)">'+(i.unidade||'UN')+'</td>'
-        +'<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">'+Number(i.precoUnitario||0).toFixed(2)+'</td>'
-        +'<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">'+Number(i.saldoAtual||0).toFixed(3)+'</td>'
-        +'<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">'+Number(i.totalEntradas||0).toFixed(3)+'</td>'
-        +'<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">'+Number(i.totalSaidas||0).toFixed(3)+'</td>'
-        +'<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">'+Number(i.valorEstoque||0).toFixed(2)+'</td>'
+        +'<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">'+Number(i.precoUnitario||0).toFixed(2).replace('.',',')+'</td>'
+        +'<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">'+Math.round(Number(i.saldoAtual||0))+'</td>'
+        +'<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">'+Math.round(Number(i.totalEntradas||0))+'</td>'
+        +'<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">'+Math.round(Number(i.totalSaidas||0))+'</td>'
+        +'<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">'+Number(i.valorEstoque||0).toFixed(2).replace('.',',')+'</td>'
       +'</tr>';
     }).join('');
 
@@ -2687,7 +2687,7 @@ async function carregarEstoque(){
       +(rows||'<tr><td colspan="8" style="padding:10px;color:var(--muted)">Nenhum produto encontrado.</td></tr>')
       +'</tbody></table>';
 
-    document.getElementById('estResumoSub').textContent='Produtos: '+Number(data.totalProdutos||0)+' | Valor total: R$ '+Number(data.valorTotalEstoque||0).toFixed(2);
+    document.getElementById('estResumoSub').textContent='Produtos: '+Number(data.totalProdutos||0)+' | Valor total: R$ '+Number(data.valorTotalEstoque||0).toFixed(2).replace('.',',');
     document.getElementById('resultEstoque').style.display='block';
   }catch(e){
     mostrarAlerta('alertaEstoque','error','Falha ao consultar estoque: '+e.message);
