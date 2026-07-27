@@ -606,7 +606,8 @@ public class NFeController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[API] Erro ao importar XML entrada.");
-            return StatusCode(500, new { erro = "Erro interno." });
+            var detalhe = ex.InnerException?.Message ?? ex.Message;
+            return StatusCode(500, new { erro = $"Erro interno: {detalhe}" });
         }
     }
 

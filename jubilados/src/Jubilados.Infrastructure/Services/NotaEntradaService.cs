@@ -384,7 +384,7 @@ public class NotaEntradaService : InotaEntradaService
                         NCM = item.Ncm,
                         Unidade = string.IsNullOrWhiteSpace(item.Unidade) ? "UN" : item.Unidade,
                         EAN = string.IsNullOrWhiteSpace(item.Ean) ? null : item.Ean,
-                        CEST = string.IsNullOrWhiteSpace(item.Cest) ? null : item.Cest,
+                        CEST = string.IsNullOrWhiteSpace(item.Cest) ? string.Empty : item.Cest,
                         CSOSN = "400",
                         CST = ""
                     };
@@ -395,7 +395,7 @@ public class NotaEntradaService : InotaEntradaService
                 produto.NCM = string.IsNullOrWhiteSpace(produto.NCM) ? item.Ncm : produto.NCM;
                 produto.Unidade = string.IsNullOrWhiteSpace(item.Unidade) ? (string.IsNullOrWhiteSpace(produto.Unidade) ? "UN" : produto.Unidade) : item.Unidade;
                 produto.EAN = string.IsNullOrWhiteSpace(item.Ean) ? produto.EAN : item.Ean;
-                produto.CEST = string.IsNullOrWhiteSpace(item.Cest) ? produto.CEST : item.Cest;
+                produto.CEST = string.IsNullOrWhiteSpace(item.Cest) ? (produto.CEST ?? string.Empty) : item.Cest;
                 produto.Preco = comp.PrecoVenda;
                 produto.CFOP = comp.Cfop.Trim();
                 produto.CClassTrib = comp.CClassTrib.Trim();
