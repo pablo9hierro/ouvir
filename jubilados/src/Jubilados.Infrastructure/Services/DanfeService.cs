@@ -57,10 +57,16 @@ public class DanfeService : IDanfeService
         if (string.Equals(nota.Modelo, "65", StringComparison.Ordinal))
             return GerarDanfeNfce(nota, empresa, cliente, produtos);
 
+        // Para Simples Nacional (CRT=1), PIS e COFINS são recolhidos no DAS,
+        // não devem ser exibidos no DANFE mesmo que estejam armazenados com valor calculado.
+        var isSimplesNacional = empresa?.CRT == 1;
+        var valorPisDanfe    = isSimplesNacional ? 0m : nota.ValorPIS;
+        var valorCofinsDanfe = isSimplesNacional ? 0m : nota.ValorCOFINS;
+
         var tributosExtras = ExtrairTributosExtrasDaNFe(nota.XmlEnvio, nota.XmlRetorno);
         var valorTotalTributosPago = tributosExtras.ValorTotalTributos > 0
             ? tributosExtras.ValorTotalTributos
-            : nota.ValorICMS + nota.ValorIPI + nota.ValorPIS + nota.ValorCOFINS + tributosExtras.ValorIbs + tributosExtras.ValorCbs;
+            : nota.ValorICMS + nota.ValorIPI + valorPisDanfe + valorCofinsDanfe + tributosExtras.ValorIbs + tributosExtras.ValorCbs;
 
         var doc = Document.Create(container =>
         {
@@ -275,8 +281,8 @@ public class DanfeService : IDanfeService
                         TotalItem(r, "DESCONTO",    $"R$ {nota.ValorDesconto:N2}");
                         TotalItem(r, "V. IPI",      $"R$ {nota.ValorIPI:N2}");
                         TotalItem(r, "V. ICMS",     $"R$ {nota.ValorICMS:N2}");
-                        TotalItem(r, "V. PIS",      $"R$ {nota.ValorPIS:N2}");
-                        TotalItem(r, "V. COFINS",   $"R$ {nota.ValorCOFINS:N2}");
+                        TotalItem(r, "V. PIS",      $"R$ {valorPisDanfe:N2}");
+                        TotalItem(r, "V. COFINS",   $"R$ {valorCofinsDanfe:N2}");
                         r.RelativeItem().Column(c =>
                         {
                             c.Item().Text("VALOR TOTAL DA NF-e").FontSize(5).FontColor(Colors.Grey.Darken2).Bold();
