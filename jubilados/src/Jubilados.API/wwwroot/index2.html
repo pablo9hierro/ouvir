@@ -561,6 +561,7 @@
           <button class="tab-btn" data-tab="inutilizar" onclick="navigateTo('inutilizar')">🚫 Inutilizar</button>
           <button class="tab-btn" data-tab="manifestar" onclick="navigateTo('manifestar')">💬 Manifesta&ccedil;&atilde;o</button>
           <button class="tab-btn" data-tab="entrada" onclick="navigateTo('entrada')">📥 Notas Entrada</button>
+          <button class="tab-btn" data-tab="lacesta" onclick="navigateTo('lacesta')">🛒 La Cesta</button>
         </div>
       </div>
 
@@ -1423,6 +1424,55 @@
     </div>
   </div>
 
+  <!-- ===== LA CESTA ===== -->
+  <div id="tab-lacesta" class="tab-pane">
+    <div class="card">
+      <h2>🛒 La Cesta &mdash; Emissão em Lote</h2>
+      <p class="subtitle">Gere uma cesta aleatória de produtos e emita uma NF-e de forma rápida.</p>
+
+      <div id="alertaLaCesta"></div>
+
+      <div class="grid3" style="margin-bottom:12px;align-items:end">
+        <div class="field">
+          <label>Valor Alvo (R$)</label>
+          <input type="number" id="lc_valor_alvo" value="500" min="1" step="1" style="width:100%">
+        </div>
+        <div class="field">
+          <label>Máx. produtos na cesta</label>
+          <input type="number" id="lc_max_itens" value="5" min="1" max="20" step="1" style="width:100%">
+        </div>
+        <div class="field">
+          <label>Ambiente</label>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+            <input type="checkbox" id="lc_producao" onchange="lcToggleAmbiente()" style="width:18px;height:18px;cursor:pointer">
+            <span id="lc_badge_amb" style="padding:2px 10px;border-radius:12px;font-size:.8rem;font-weight:700;background:var(--warning,#f59e0b);color:#fff">HOMOLOGAÇÃO</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-bottom:16px">
+        <button class="btn btn-primary" onclick="gerarCesta()">
+          <span id="spinLaCesta" class="spinner" style="display:none"></span>
+          🎲 Gerar
+        </button>
+        <button class="btn btn-primary" id="btn_emitir_cesta" onclick="emitirCesta()" disabled style="margin-left:8px">
+          📤 Emitir NF-e
+        </button>
+      </div>
+
+      <div id="lc_resultado" style="display:none">
+        <div class="section-title">Itens da cesta</div>
+        <div id="lc_tabela" style="overflow-x:auto"></div>
+        <div style="text-align:right;font-weight:700;margin-top:8px;font-size:1.05rem">
+          Total da Cesta: <span id="lc_total_valor">R$ 0,00</span>
+        </div>
+      </div>
+
+      <div id="lc_log" style="display:none;background:var(--surface2,#1e293b);border-radius:8px;padding:12px;margin-top:16px;font-family:monospace;max-height:220px;overflow-y:auto"></div>
+    </div>
+  </div>
+  <!-- ===== FIM LA CESTA ===== -->
+
 </div>
     </div><!-- /main-area -->
   </div><!-- /app-layout -->
@@ -1678,6 +1728,7 @@ const ROUTE_MAP = {
   '/relatorios/nuvem-fiscal':   'nuvemfiscal',
   '/relatorios/sped':           'sped',
   '/configuracoes':             'configuracoes',
+  '/lacesta':                   'lacesta',
 };
 const TAB_TO_ROUTE = Object.fromEntries(
   Object.entries(ROUTE_MAP).map(([r, t]) => [t, r])
@@ -3737,6 +3788,207 @@ preencherMesAtual();
     history.replaceState({ tab: 'emitir' }, '', '/operacoes/emitir-nfe');
   }
 })();
+
+// ===== LA CESTA =====
+var cestaAtual = null;
+var LC_TPAG = {
+  '01': 'Dinheiro', '03': 'Cartão Crédito', '04': 'Cartão Débito',
+  '17': 'PIX', '02': 'Cheque', '05': 'Crédito Loja', '99': 'Outros'
+};
+
+function lcToggleAmbiente() {
+  var cb = document.getElementById('lc_producao');
+  var badge = document.getElementById('lc_badge_amb');
+  if(cb.checked) {
+    badge.textContent = 'PRODUÇÃO';
+    badge.style.background = 'var(--success,#22c55e)';
+  } else {
+    badge.textContent = 'HOMOLOGAÇÃO';
+    badge.style.background = 'var(--warning,#f59e0b)';
+  }
+}
+
+async function gerarCesta() {
+  var empId = estado.empresaId;
+  if(!empId) { mostrarAlerta('alertaLaCesta','error','Selecione a empresa antes de gerar a cesta.'); return; }
+  var valorAlvo = parseFloat(document.getElementById('lc_valor_alvo').value) || 500;
+  var maxItens = parseInt(document.getElementById('lc_max_itens').value) || 5;
+
+  spin('spinLaCesta', true);
+  try {
+    var res = await fetchAuth(API + '/api/produto?empresaId=' + empId);
+    if(!res.ok) { mostrarAlerta('alertaLaCesta','error','Erro ao carregar produtos.'); return; }
+    var data = await res.json();
+    var todos = (Array.isArray(data) ? data : (data.itens || [])).filter(function(p){ return p.preco > 0 && p.ativo !== false; });
+    if(todos.length === 0) { mostrarAlerta('alertaLaCesta','warning','Nenhum produto com preço cadastrado.'); return; }
+
+    var embaralhados = todos.slice().sort(function(){ return Math.random() - 0.5; }).slice(0, maxItens);
+    var tpags = Object.keys(LC_TPAG);
+    var itens = [];
+    var totalAcum = 0;
+
+    for(var i = 0; i < embaralhados.length; i++) {
+      var p = embaralhados[i];
+      var maxQtd = Math.min(10, Math.floor((valorAlvo - totalAcum) / p.preco));
+      if(maxQtd <= 0) break;
+      var qtd = Math.floor(Math.random() * maxQtd) + 1;
+      var sub = +(qtd * p.preco).toFixed(2);
+      if(totalAcum + sub > valorAlvo + 0.01) break;
+      var tpag = tpags[Math.floor(Math.random() * tpags.length)];
+      itens.push({ produto: p, quantidade: qtd, subtotal: sub, tpag: tpag });
+      totalAcum = +(totalAcum + sub).toFixed(2);
+    }
+
+    if(itens.length === 0) { mostrarAlerta('alertaLaCesta','warning','Nenhum produto cabe no valor alvo.'); return; }
+    var ambiente = document.getElementById('lc_producao').checked ? '1' : '2';
+    cestaAtual = { itens: itens, valorTotal: totalAcum, ambiente: ambiente };
+    renderizarCesta();
+    document.getElementById('btn_emitir_cesta').disabled = false;
+    document.getElementById('lc_log').innerHTML = '';
+    document.getElementById('lc_log').style.display = 'none';
+  } finally { spin('spinLaCesta', false); }
+}
+
+function renderizarCesta() {
+  if(!cestaAtual) return;
+  var tpags = Object.keys(LC_TPAG);
+  var rows = cestaAtual.itens.map(function(item, i) {
+    var opts = tpags.map(function(c){ return '<option value="'+c+'"'+(c===item.tpag?' selected':'')+'>'+LC_TPAG[c]+'</option>'; }).join('');
+    return '<tr>'
+      +'<td>'+(i+1)+'</td>'
+      +'<td>'+escHtml(item.produto.nome)+'</td>'
+      +'<td>'+(item.produto.ncm||'-')+'</td>'
+      +'<td><input type="number" min="1" step="1" value="'+item.quantidade+'" style="width:60px" onchange="cestaAtual.itens['+i+'].quantidade=+this.value;cestaAtual.itens['+i+'].subtotal=+(+this.value*cestaAtual.itens['+i+'].produto.preco).toFixed(2);atualizarTotalCesta()"></td>'
+      +'<td>R$ '+item.produto.preco.toFixed(2)+'</td>'
+      +'<td id="lc_sub_'+i+'">R$ '+item.subtotal.toFixed(2)+'</td>'
+      +'<td><select onchange="cestaAtual.itens['+i+'].tpag=this.value">'+opts+'</select></td>'
+      +'</tr>';
+  }).join('');
+  document.getElementById('lc_tabela').innerHTML =
+    '<table class="table">'
+    +'<thead><tr><th>#</th><th>Produto</th><th>NCM</th><th>Qtd</th><th>Valor Unit.</th><th>Subtotal</th><th>Pagamento</th></tr></thead>'
+    +'<tbody>'+rows+'</tbody>'
+    +'</table>';
+  document.getElementById('lc_total_valor').textContent = 'R$ ' + cestaAtual.valorTotal.toFixed(2);
+  document.getElementById('lc_resultado').style.display = '';
+}
+
+function atualizarTotalCesta() {
+  if(!cestaAtual) return;
+  var total = cestaAtual.itens.reduce(function(s,it){ return s + it.subtotal; }, 0);
+  cestaAtual.valorTotal = +total.toFixed(2);
+  cestaAtual.itens.forEach(function(it,i) {
+    var el = document.getElementById('lc_sub_' + i);
+    if(el) el.textContent = 'R$ ' + it.subtotal.toFixed(2);
+  });
+  document.getElementById('lc_total_valor').textContent = 'R$ ' + cestaAtual.valorTotal.toFixed(2);
+}
+
+function lcLog(msg, tipo) {
+  var log = document.getElementById('lc_log');
+  log.style.display = '';
+  var cor = tipo==='ok'?'#22c55e':tipo==='err'?'#ef4444':'#94a3b8';
+  var icone = tipo==='ok'?'✔':tipo==='err'?'✘':'•';
+  log.innerHTML += '<div style="color:'+cor+';font-size:.85rem;margin:2px 0">'+icone+' '+escHtml(msg)+'</div>';
+}
+
+function validarPayloadCesta(payload, itensComProduto) {
+  var erros = [];
+  if(!payload.empresaId) erros.push('empresaId ausente');
+  if(!payload.itens || payload.itens.length === 0) erros.push('Nenhum item na cesta');
+  payload.itens.forEach(function(it, i) {
+    if(!it.produtoId) erros.push('Item '+(i+1)+': produtoId ausente');
+    if(!it.quantidade || it.quantidade <= 0) erros.push('Item '+(i+1)+': quantidade inválida');
+    if(!it.valorUnitario || it.valorUnitario <= 0) erros.push('Item '+(i+1)+': valorUnitario inválido');
+  });
+  itensComProduto.forEach(function(it) {
+    var p = it.produto;
+    if(!p.ncm) erros.push('Produto "'+p.nome+'" sem NCM');
+    if(!p.cfop) erros.push('Produto "'+p.nome+'" sem CFOP');
+    if(!p.cClassTrib && !p.cst && !p.csosn) erros.push('Produto "'+p.nome+'" sem CST/CSOSN/cClassTrib');
+  });
+  return erros;
+}
+
+async function emitirCesta() {
+  if(!cestaAtual || cestaAtual.itens.length === 0) {
+    mostrarAlerta('alertaLaCesta','warning','Gere a cesta primeiro.');
+    return;
+  }
+  document.getElementById('lc_log').innerHTML = '';
+  document.getElementById('lc_log').style.display = '';
+
+  lcLog('Iniciando validação do payload...', 'info');
+
+  var empId = estado.empresaId;
+  var tpagPrincipal = cestaAtual.itens[0].tpag;
+  var ambiente = cestaAtual.ambiente;
+
+  var payload = {
+    empresaId: empId,
+    clienteId: null,
+    naturezaOperacao: 'Venda de Mercadoria',
+    serie: '1',
+    itens: cestaAtual.itens.map(function(it){ return {
+      produtoId: it.produto.id,
+      quantidade: it.quantidade,
+      valorUnitario: it.produto.preco,
+      valorDesconto: 0
+    }; }),
+    valorFrete: 0,
+    valorSeguro: 0,
+    valorDesconto: 0,
+    valorOutros: 0,
+    formaPagamento: tpagPrincipal,
+    modalidadeFrete: '9',
+    indPres: '1',
+    destinoOperacao: '1',
+    ambiente: ambiente,
+    informacaoComplementar: 'La Cesta — gerado automaticamente. Pagamentos: ' +
+      cestaAtual.itens.map(function(it,i){ return 'Item '+(i+1)+': '+LC_TPAG[it.tpag]; }).join(', ')
+  };
+
+  var erros = validarPayloadCesta(payload, cestaAtual.itens);
+  if(erros.length > 0) {
+    erros.forEach(function(e){ lcLog(e, 'err'); });
+    mostrarAlerta('alertaLaCesta','error','Validação falhou: ' + erros.join('; '));
+    return;
+  }
+  lcLog('Payload validado. ' + payload.itens.length + ' itens, total R$ ' + cestaAtual.valorTotal.toFixed(2), 'ok');
+  lcLog('Ambiente: ' + (ambiente === '1' ? 'PRODUÇÃO ⚠' : 'Homologação'), 'info');
+
+  if(ambiente === '1') {
+    var conf = confirm('⚠ ATENÇÃO: Você está prestes a emitir uma NF-e em PRODUÇÃO.\nIsso gera uma nota fiscal real e válida fiscalmente.\n\nDeseja continuar?');
+    if(!conf) { lcLog('Emissão em produção cancelada pelo usuário.', 'info'); return; }
+  }
+
+  lcLog('Enviando para SEFAZ...', 'info');
+  spin('spinLaCesta', true);
+  try {
+    var res = await fetchAuth(API + '/api/nfe/emitir', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    var result = await res.json();
+    if(result.sucesso || result.cStat === '100') {
+      lcLog('NF-e autorizada! Protocolo: ' + (result.protocolo || '-'), 'ok');
+      lcLog('Chave: ' + (result.chaveAcesso || '-'), 'ok');
+      mostrarAlerta('alertaLaCesta','success','NF-e emitida com sucesso! Chave: ' + (result.chaveAcesso||''));
+      document.getElementById('btn_emitir_cesta').disabled = true;
+      cestaAtual = null;
+    } else {
+      lcLog('Rejeitado pela SEFAZ: [' + result.cStat + '] ' + result.xMotivo, 'err');
+      mostrarAlerta('alertaLaCesta','error','SEFAZ: [' + result.cStat + '] ' + result.xMotivo);
+    }
+  } catch(e) {
+    lcLog('Erro de comunicação: ' + e.message, 'err');
+    mostrarAlerta('alertaLaCesta','error','Erro de comunicação com o servidor.');
+  } finally {
+    spin('spinLaCesta', false);
+  }
+}
+// ===== FIM LA CESTA =====
 </script>
 </body>
 </html>

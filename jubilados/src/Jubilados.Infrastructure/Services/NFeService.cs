@@ -661,7 +661,7 @@ public class NFeService : INFeService
         var cUF = _options.CodigoUF;
         var cNF = new Random().Next(10000000, 99999999).ToString();
         var dEmi = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:sszzz");
-        var ambiente = _options.Ambiente;
+        var ambiente = (dto.Ambiente == "1" || dto.Ambiente == "2") ? dto.Ambiente : _options.Ambiente;
 
         var chave = GerarChaveAcesso(cUF, empresa.CNPJ, nota.Serie, nota.Numero.ToString(), cNF);
         nota.ChaveAcesso = chave;
