@@ -63,6 +63,9 @@ public class DanfeService : IDanfeService
         var valorPisDanfe    = isSimplesNacional ? 0m : nota.ValorPIS;
         var valorCofinsDanfe = isSimplesNacional ? 0m : nota.ValorCOFINS;
 
+        // Itens lidos do XML autorizado — fonte da verdade fiscal, não o estado atual do produto no DB.
+        var itensXml = ExtrairItensDaNFe(nota.XmlEnvio, nota.XmlRetorno);
+
         var tributosExtras = ExtrairTributosExtrasDaNFe(nota.XmlEnvio, nota.XmlRetorno);
         var valorTotalTributosPago = tributosExtras.ValorTotalTributos > 0
             ? tributosExtras.ValorTotalTributos
@@ -240,25 +243,35 @@ public class DanfeService : IDanfeService
                             static IContainer DataCell(IContainer c) =>
                                 c.BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(2);
 
-                            foreach (var item in nota.Itens.OrderBy(i => i.NumeroItem))
+                            // Renderiza a partir do XML autorizado (fonte da verdade fiscal)
+                            var itensParaRender = itensXml.Count > 0
+                                ? itensXml
+                                : nota.Itens.OrderBy(i => i.NumeroItem).Select(item =>
+                                {
+                                    var prod = produtos.TryGetValue(item.ProdutoId, out var p) ? p : null;
+                                    var cst = !string.IsNullOrWhiteSpace(prod?.CSOSN) ? prod!.CSOSN.Trim()
+                                            : !string.IsNullOrWhiteSpace(prod?.CST)   ? prod!.CST.Trim() : "";
+                                    return new DanfeItemXml(item.NumeroItem, prod?.Nome ?? "—", prod?.NCM ?? "",
+                                        prod?.CFOP ?? "", cst, item.Unidade, item.Quantidade,
+                                        item.ValorUnitario, item.ValorTotal,
+                                        item.AliquotaICMS, item.ValorICMS, item.AliquotaIPI, item.ValorIPI);
+                                }).ToList();
+
+                            foreach (var xi in itensParaRender)
                             {
-                                var prod = produtos.TryGetValue(item.ProdutoId, out var p) ? p : null;
-                                var cstCsosn = !string.IsNullOrWhiteSpace(prod?.CSOSN) ? prod!.CSOSN.Trim()
-                                             : !string.IsNullOrWhiteSpace(prod?.CST)   ? prod!.CST.Trim()
-                                             : "";
-                                t.Cell().Element(DataCell).Text(item.NumeroItem.ToString()).FontSize(6);
-                                t.Cell().Element(DataCell).Text(prod?.Nome ?? "—").FontSize(6);
-                                t.Cell().Element(DataCell).Text(prod?.NCM ?? "").FontSize(6);
-                                t.Cell().Element(DataCell).Text(prod?.CFOP ?? "").FontSize(6);
-                                t.Cell().Element(DataCell).Text(cstCsosn).FontSize(6);
-                                t.Cell().Element(DataCell).Text(item.Unidade).FontSize(6);
-                                t.Cell().Element(DataCell).Text(item.Quantidade.ToString("F2")).FontSize(6);
-                                t.Cell().Element(DataCell).Text(item.ValorUnitario.ToString("N2")).FontSize(6);
-                                t.Cell().Element(DataCell).Text(item.ValorTotal.ToString("N2")).FontSize(6);
-                                t.Cell().Element(DataCell).Text(item.AliquotaICMS > 0 ? item.AliquotaICMS.ToString("F2") : "").FontSize(6);
-                                t.Cell().Element(DataCell).Text(item.ValorICMS > 0 ? item.ValorICMS.ToString("N2") : "").FontSize(6);
-                                t.Cell().Element(DataCell).Text(item.AliquotaIPI > 0 ? item.AliquotaIPI.ToString("F2") : "").FontSize(6);
-                                t.Cell().Element(DataCell).Text(item.ValorIPI > 0 ? item.ValorIPI.ToString("N2") : "").FontSize(6);
+                                t.Cell().Element(DataCell).Text(xi.NumeroItem.ToString()).FontSize(6);
+                                t.Cell().Element(DataCell).Text(xi.Nome).FontSize(6);
+                                t.Cell().Element(DataCell).Text(xi.NCM).FontSize(6);
+                                t.Cell().Element(DataCell).Text(xi.CFOP).FontSize(6);
+                                t.Cell().Element(DataCell).Text(xi.CstCsosn).FontSize(6);
+                                t.Cell().Element(DataCell).Text(xi.Unidade).FontSize(6);
+                                t.Cell().Element(DataCell).Text(xi.Quantidade.ToString("F2")).FontSize(6);
+                                t.Cell().Element(DataCell).Text(xi.ValorUnitario.ToString("N2")).FontSize(6);
+                                t.Cell().Element(DataCell).Text(xi.ValorTotal.ToString("N2")).FontSize(6);
+                                t.Cell().Element(DataCell).Text(xi.AliquotaICMS > 0 ? xi.AliquotaICMS.ToString("F2") : "").FontSize(6);
+                                t.Cell().Element(DataCell).Text(xi.ValorICMS > 0 ? xi.ValorICMS.ToString("N2") : "").FontSize(6);
+                                t.Cell().Element(DataCell).Text(xi.AliquotaIPI > 0 ? xi.AliquotaIPI.ToString("F2") : "").FontSize(6);
+                                t.Cell().Element(DataCell).Text(xi.ValorIPI > 0 ? xi.ValorIPI.ToString("N2") : "").FontSize(6);
                             }
                         });
                     });
@@ -692,6 +705,71 @@ public class DanfeService : IDanfeService
         string? ReservadoAoFisco)
     {
         public static DanfeTributosExtras Vazio => new(0m, 0m, 0m, 0m, 0m, null);
+    }
+
+    private sealed record DanfeItemXml(
+        int NumeroItem,
+        string Nome,
+        string NCM,
+        string CFOP,
+        string CstCsosn,
+        string Unidade,
+        decimal Quantidade,
+        decimal ValorUnitario,
+        decimal ValorTotal,
+        decimal AliquotaICMS,
+        decimal ValorICMS,
+        decimal AliquotaIPI,
+        decimal ValorIPI);
+
+    private static List<DanfeItemXml> ExtrairItensDaNFe(string? xmlEnvio, string? xmlRetorno)
+    {
+        var xml = string.IsNullOrWhiteSpace(xmlRetorno) ? xmlEnvio : xmlRetorno;
+        if (string.IsNullOrWhiteSpace(xml)) return [];
+
+        try
+        {
+            var doc = new XmlDocument();
+            doc.LoadXml(xml);
+            var ns = new XmlNamespaceManager(doc.NameTable);
+            ns.AddNamespace("nfe", "http://www.portalfiscal.inf.br/nfe");
+
+            var detNodes = doc.SelectNodes("//nfe:det", ns);
+            if (detNodes is null) return [];
+
+            static decimal D(string? s) =>
+                decimal.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var v) ? v : 0m;
+
+            var itens = new List<DanfeItemXml>();
+            foreach (XmlNode det in detNodes)
+            {
+                var nItem = int.TryParse(det.Attributes?["nItem"]?.Value, out var n) ? n : itens.Count + 1;
+                var prod = det.SelectSingleNode("nfe:prod", ns);
+                var imp  = det.SelectSingleNode("nfe:imposto", ns);
+
+                var csosn = imp?.SelectSingleNode(".//*[local-name()='CSOSN']")?.InnerText?.Trim()
+                         ?? imp?.SelectSingleNode(".//*[local-name()='CST']")?.InnerText?.Trim()
+                         ?? "";
+
+                itens.Add(new DanfeItemXml(
+                    NumeroItem:  nItem,
+                    Nome:        prod?.SelectSingleNode("nfe:xProd", ns)?.InnerText ?? "",
+                    NCM:         prod?.SelectSingleNode("nfe:NCM",   ns)?.InnerText ?? "",
+                    CFOP:        prod?.SelectSingleNode("nfe:CFOP",  ns)?.InnerText ?? "",
+                    CstCsosn:    csosn,
+                    Unidade:     prod?.SelectSingleNode("nfe:uCom",  ns)?.InnerText ?? "",
+                    Quantidade:  D(prod?.SelectSingleNode("nfe:qCom",    ns)?.InnerText),
+                    ValorUnitario: D(prod?.SelectSingleNode("nfe:vUnCom", ns)?.InnerText),
+                    ValorTotal:  D(prod?.SelectSingleNode("nfe:vProd",   ns)?.InnerText),
+                    AliquotaICMS: D(imp?.SelectSingleNode(".//*[local-name()='pICMS']")?.InnerText),
+                    ValorICMS:   D(imp?.SelectSingleNode(".//*[local-name()='vICMS']")?.InnerText),
+                    AliquotaIPI: D(imp?.SelectSingleNode(".//*[local-name()='pIPI']")?.InnerText),
+                    ValorIPI:    D(imp?.SelectSingleNode(".//*[local-name()='vIPI']")?.InnerText)
+                ));
+            }
+            return itens;
+        }
+        catch { return []; }
     }
 }
 
