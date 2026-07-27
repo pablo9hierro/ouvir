@@ -3859,6 +3859,8 @@ async function gerarCesta() {
 
     var embaralhados = todos.slice().sort(function(){ return Math.random() - 0.5; }).slice(0, maxItens);
     var tpags = Object.keys(LC_TPAG);
+    // Um único método de pagamento para toda a cesta
+    var tpagCesta = tpags[Math.floor(Math.random() * tpags.length)];
     var itens = [];
     var totalAcum = 0;
 
@@ -3869,14 +3871,13 @@ async function gerarCesta() {
       var qtd = Math.floor(Math.random() * maxQtd) + 1;
       var sub = +(qtd * p.preco).toFixed(2);
       if(totalAcum + sub > valorAlvo + 0.01) break;
-      var tpag = tpags[Math.floor(Math.random() * tpags.length)];
-      itens.push({ produto: p, quantidade: qtd, subtotal: sub, tpag: tpag });
+      itens.push({ produto: p, quantidade: qtd, subtotal: sub });
       totalAcum = +(totalAcum + sub).toFixed(2);
     }
 
     if(itens.length === 0) { mostrarAlerta('alertaLaCesta','warning','Nenhum produto cabe no valor alvo — tente aumentar o valor.'); return; }
     var usouSeed = itens.some(function(it){ return it.produto._seed; });
-    cestaAtual = { itens: itens, valorTotal: totalAcum, ambiente: emProducao ? '1' : '2', usouSeed: usouSeed };
+    cestaAtual = { itens: itens, valorTotal: totalAcum, tpag: tpagCesta, ambiente: emProducao ? '1' : '2', usouSeed: usouSeed };
     renderizarCesta();
     // Seeds bloqueiam emissão — são só pra visualização
     var btnEmitir = document.getElementById('btn_emitir_cesta');
@@ -3895,9 +3896,7 @@ async function gerarCesta() {
 
 function renderizarCesta() {
   if(!cestaAtual) return;
-  var tpags = Object.keys(LC_TPAG);
   var rows = cestaAtual.itens.map(function(item, i) {
-    var opts = tpags.map(function(c){ return '<option value="'+c+'"'+(c===item.tpag?' selected':'')+'>'+LC_TPAG[c]+'</option>'; }).join('');
     return '<tr>'
       +'<td>'+(i+1)+'</td>'
       +'<td>'+escHtml(item.produto.nome)+'</td>'
@@ -3905,14 +3904,20 @@ function renderizarCesta() {
       +'<td><input type="number" min="1" step="1" value="'+item.quantidade+'" style="width:60px" onchange="cestaAtual.itens['+i+'].quantidade=+this.value;cestaAtual.itens['+i+'].subtotal=+(+this.value*cestaAtual.itens['+i+'].produto.preco).toFixed(2);atualizarTotalCesta()"></td>'
       +'<td>R$ '+item.produto.preco.toFixed(2)+'</td>'
       +'<td id="lc_sub_'+i+'">R$ '+item.subtotal.toFixed(2)+'</td>'
-      +'<td><select onchange="cestaAtual.itens['+i+'].tpag=this.value">'+opts+'</select></td>'
       +'</tr>';
+  }).join('');
+  var optsTPag = Object.keys(LC_TPAG).map(function(c){
+    return '<option value="'+c+'"'+(c===cestaAtual.tpag?' selected':'')+'>'+LC_TPAG[c]+'</option>';
   }).join('');
   document.getElementById('lc_tabela').innerHTML =
     '<table class="table">'
-    +'<thead><tr><th>#</th><th>Produto</th><th>NCM</th><th>Qtd</th><th>Valor Unit.</th><th>Subtotal</th><th>Pagamento</th></tr></thead>'
+    +'<thead><tr><th>#</th><th>Produto</th><th>NCM</th><th>Qtd</th><th>Valor Unit.</th><th>Subtotal</th></tr></thead>'
     +'<tbody>'+rows+'</tbody>'
-    +'</table>';
+    +'</table>'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-top:10px">'
+    +'<label style="font-weight:600;white-space:nowrap">Forma de Pagamento:</label>'
+    +'<select id="lc_tpag_select" onchange="cestaAtual.tpag=this.value" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border,#334155);background:var(--surface,#1e293b);color:var(--text,#e2e8f0)">'+optsTPag+'</select>'
+    +'</div>';
   document.getElementById('lc_total_valor').textContent = 'R$ ' + cestaAtual.valorTotal.toFixed(2);
   document.getElementById('lc_resultado').style.display = '';
 }
@@ -3969,7 +3974,6 @@ async function emitirCesta() {
   lcLog('Iniciando validação do payload...', 'info');
 
   var empId = estado.empresaId;
-  var tpagPrincipal = cestaAtual.itens[0].tpag;
   var ambiente = cestaAtual.ambiente;
 
   var payload = {
@@ -3987,13 +3991,12 @@ async function emitirCesta() {
     valorSeguro: 0,
     valorDesconto: 0,
     valorOutros: 0,
-    formaPagamento: tpagPrincipal,
+    formaPagamento: cestaAtual.tpag,
     modalidadeFrete: '9',
     indPres: '1',
     destinoOperacao: '1',
     ambiente: ambiente,
-    informacaoComplementar: 'La Cesta - gerado automaticamente. Pagamentos: ' +
-      cestaAtual.itens.map(function(it,i){ return 'Item '+(i+1)+': '+LC_TPAG[it.tpag]; }).join(', ')
+    informacaoComplementar: 'La Cesta - gerado automaticamente. Pagamento: ' + (LC_TPAG[cestaAtual.tpag] || cestaAtual.tpag)
   };
 
   var erros = validarPayloadCesta(payload, cestaAtual.itens);
