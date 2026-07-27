@@ -89,7 +89,7 @@ public class NFeService : INFeService
             nota.XmlEnvio = xmlAssinado;
 
             var (cStat, xMotivo, protocolo) = await EnviarParaSefazAsync(
-                xmlAssinado, empresa.CNPJ, certificado, cancellationToken);
+                xmlAssinado, empresa.CNPJ, certificado, cancellationToken, ambienteDto: dto.Ambiente);
 
             // ── Contingência SVC-AN: SEFAZ principal inacessível ──
             bool contingenciaNota = false;
@@ -100,9 +100,10 @@ public class NFeService : INFeService
                 var xmlConting = GerarXmlNFe(nota, empresa, cliente, produtos, dto, tpEmis: 6);
                 var xmlAssinadoConting = AssinarXml(xmlConting, certificado);
                 nota.XmlEnvio = xmlAssinadoConting;
+                var urlSvcAn = dto.Ambiente == "1" ? _options.UrlSvcAnProd : _options.UrlSvcAnHom;
                 (cStat, xMotivo, protocolo) = await EnviarParaSefazAsync(
                     xmlAssinadoConting, empresa.CNPJ, certificado, cancellationToken,
-                    urlOverride: _options.UrlSvcAn);
+                    urlOverride: urlSvcAn);
                 _logger.LogInformation("[NFe] SVC-AN resposta: cStat={CStat} | {XMotivo}", cStat, xMotivo);
             }
 
@@ -1117,9 +1118,10 @@ public class NFeService : INFeService
 
     private async Task<(string cStat, string xMotivo, string protocolo)> EnviarParaSefazAsync(
         string xmlAssinado, string cnpj, X509Certificate2 certificado, CancellationToken ct,
-        string? urlOverride = null)
+        string? urlOverride = null, string? ambienteDto = null)
     {
-        var url = urlOverride ?? (_options.IsHomologacao
+        var isHom = ambienteDto == "2" || (ambienteDto == null && _options.IsHomologacao);
+        var url = urlOverride ?? (isHom
             ? _options.SefazUrlHomologacao
             : _options.SefazUrlProducao);
 
