@@ -318,7 +318,7 @@
     }
 
     .sidebar-group.open .sidebar-group-content {
-      max-height: 380px;
+      max-height: 520px;
       padding: 6px;
     }
 
@@ -3792,8 +3792,7 @@ preencherMesAtual();
 // ===== LA CESTA =====
 var cestaAtual = null;
 var LC_TPAG = {
-  '01': 'Dinheiro', '03': 'Cartão Crédito', '04': 'Cartão Débito',
-  '17': 'PIX', '02': 'Cheque', '05': 'Crédito Loja', '99': 'Outros'
+  '01': 'Dinheiro', '03': 'Cartão Crédito', '04': 'Cartão Débito', '17': 'PIX'
 };
 
 // Produtos fictícios usados SOMENTE em homologação quando não há nenhum produto cadastrado
@@ -3993,7 +3992,7 @@ async function emitirCesta() {
     indPres: '1',
     destinoOperacao: '1',
     ambiente: ambiente,
-    informacaoComplementar: 'La Cesta — gerado automaticamente. Pagamentos: ' +
+    informacaoComplementar: 'La Cesta - gerado automaticamente. Pagamentos: ' +
       cestaAtual.itens.map(function(it,i){ return 'Item '+(i+1)+': '+LC_TPAG[it.tpag]; }).join(', ')
   };
 
