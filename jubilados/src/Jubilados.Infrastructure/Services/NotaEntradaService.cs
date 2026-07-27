@@ -512,11 +512,6 @@ public class NotaEntradaService : InotaEntradaService
             return (null, new ImportarXmlResultDto(false, "XML não contém elemento infNFe."));
 
         var chave = infNFe.Attributes?["Id"]?.Value?.Replace("NFe", "") ?? string.Empty;
-        var jaExiste = await _db.NotasFiscais
-            .AsNoTracking()
-            .AnyAsync(nf => nf.EmpresaId == empresaId && nf.ChaveAcesso == chave, cancellationToken);
-        if (jaExiste)
-            return (null, new ImportarXmlResultDto(false, $"Nota com chave {chave} já importada.", chave));
 
         var numero = int.TryParse(infNFe.SelectSingleNode("nfe:ide/nfe:nNF", ns)?.InnerText, out var n) ? n : 0;
         var serie = infNFe.SelectSingleNode("nfe:ide/nfe:serie", ns)?.InnerText ?? "1";

@@ -1249,8 +1249,8 @@
         <div class="field"><label>Segmento CEST (Anexo I — referência)</label><select id="cad_p_cest_segmento" onchange="aplicarSegmentoCest()"><option value="">-- Produto não sujeito à ST --</option></select></div>
         <div class="field"><label>CEST (Substituição Tributária)</label><input id="cad_p_cest" placeholder="00.000.00" maxlength="9" inputmode="numeric" oninput="formatarCest(this)"></div>
         <div class="field"><label>Unidade</label><select id="cad_p_unidade"><option selected>UN</option><option>PC</option><option>KG</option><option>LT</option><option>MT</option><option>CX</option></select></div>
-        <div class="field"><label>Preco Unitario (R$) <span class="req">*</span></label><input id="cad_p_preco" type="number" step="0.01" min="0.01" placeholder="0.00"></div>
-        <div class="field"><label>Quantidade em Estoque</label><input id="cad_p_estoque" type="number" step="0.001" min="0" value="0"></div>
+        <div class="field"><label>Preco Unitario (R$) <span class="req">*</span></label><input id="cad_p_preco" type="text" inputmode="decimal" placeholder="0,00" oninput="formatarPrecoInput(this)" onblur="formatarPrecoBlur(this)"></div>
+        <div class="field"><label>Quantidade em Estoque</label><input id="cad_p_estoque" type="number" step="1" min="0" value="0"></div>
       </div>
       <div id="cestInfoBox" class="alert alert-info" style="margin-bottom:12px">
         <strong>CEST — Código Especificador da Substituição Tributária:</strong> obrigatório apenas para produtos sujeitos ao regime de Substituição Tributária (ICMS-ST), conforme o
@@ -1726,6 +1726,23 @@ function formatarCest(input){
   if(digitos.length>5)formatado=digitos.slice(0,2)+'.'+digitos.slice(2,5)+'.'+digitos.slice(5);
   else if(digitos.length>2)formatado=digitos.slice(0,2)+'.'+digitos.slice(2);
   input.value=formatado;
+}
+
+function parsePrecoBRL(val){
+  return parseFloat((val||'0').replace(/\./g,'').replace(',','.'))||0;
+}
+
+function formatarPrecoInput(el){
+  var v=(el.value||'').replace(/[^0-9,]/g,'');
+  var partes=v.split(',');
+  if(partes.length>2)v=partes[0]+','+partes.slice(1).join('');
+  if(partes[1]&&partes[1].length>2)v=partes[0]+','+partes[1].slice(0,2);
+  el.value=v;
+}
+
+function formatarPrecoBlur(el){
+  var n=parsePrecoBRL(el.value);
+  el.value=isNaN(n)?'0,00':n.toFixed(2).replace('.',',');
 }
 
 // ── Client-side routing ────────────────────────────────────────────────────────
@@ -2380,8 +2397,8 @@ function _carregarProdutoNoForm(p){
   if(cestEl){cestEl.value=p.cest||'';formatarCest(cestEl);}
   document.getElementById('cad_p_cest_segmento').value='';
   document.getElementById('cad_p_unidade').value=p.unidade||'UN';
-  document.getElementById('cad_p_preco').value=(p.preco||0).toFixed(2);
-  document.getElementById('cad_p_estoque').value=p.quantidadeEstoque||0;
+  document.getElementById('cad_p_preco').value=(p.preco||0).toFixed(2).replace('.',',');
+  document.getElementById('cad_p_estoque').value=Math.round(p.quantidadeEstoque||0);
   estado.produtoId=p.id;estado.produtoNome=p.nome;
   atualizarEstadoBar();
   mostrarAlerta('alertaProdutoCadastro','success','Produto carregado para consulta: '+p.nome);
@@ -2462,11 +2479,11 @@ async function cadastrarProdutoCadastro(){
   spin('spinProdutoCadastro',true);
   try{
     var res=await fetch(API+'/api/produto',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({empresaId:empresaId,nome:v('cad_p_nome'),descricao:v('cad_p_descricao'),ean:v('cad_p_ean')||null,ncm:v('cad_p_ncm'),cfop:v('cad_p_cfop'),cst:v('cad_p_cst')||'00',csosn:v('cad_p_csosn')||'102',cClassTrib:v('cad_p_cclasstrib'),cstIbsCbs:v('cad_p_cst_ibscbs'),cest:cestDigitos,unidade:v('cad_p_unidade')||'UN',preco:parseFloat(v('cad_p_preco'))||0,quantidadeEstoque:parseFloat(v('cad_p_estoque'))||0,aliquotaICMS:0,aliquotaIPI:0,aliquotaPIS:0.65,aliquotaCOFINS:3})});
+      body:JSON.stringify({empresaId:empresaId,nome:v('cad_p_nome'),descricao:v('cad_p_descricao'),ean:v('cad_p_ean')||null,ncm:v('cad_p_ncm'),cfop:v('cad_p_cfop'),cst:v('cad_p_cst')||'00',csosn:v('cad_p_csosn')||'102',cClassTrib:v('cad_p_cclasstrib'),cstIbsCbs:v('cad_p_cst_ibscbs'),cest:cestDigitos,unidade:v('cad_p_unidade')||'UN',preco:parsePrecoBRL(v('cad_p_preco')),quantidadeEstoque:parseInt(v('cad_p_estoque'),10)||0,aliquotaICMS:0,aliquotaIPI:0,aliquotaPIS:0.65,aliquotaCOFINS:3})});
     var data=await safeJson(res);
     if(!res.ok)throw new Error(data.erro||'HTTP '+res.status);
     estado.produtoId=data.id;estado.produtoNome=data.nome||v('cad_p_nome');
-    produtosCadastrados.unshift({id:data.id,nome:estado.produtoNome,descricao:v('cad_p_descricao'),ean:v('cad_p_ean'),ncm:v('cad_p_ncm'),cfop:v('cad_p_cfop'),cst:v('cad_p_cst')||'00',csosn:v('cad_p_csosn')||'102',cClassTrib:v('cad_p_cclasstrib'),cstIbsCbs:v('cad_p_cst_ibscbs'),cest:cestDigitos,preco:parseFloat(v('cad_p_preco'))||0,unidade:v('cad_p_unidade')||'UN',quantidadeEstoque:parseFloat(v('cad_p_estoque'))||0});
+    produtosCadastrados.unshift({id:data.id,nome:estado.produtoNome,descricao:v('cad_p_descricao'),ean:v('cad_p_ean'),ncm:v('cad_p_ncm'),cfop:v('cad_p_cfop'),cst:v('cad_p_cst')||'00',csosn:v('cad_p_csosn')||'102',cClassTrib:v('cad_p_cclasstrib'),cstIbsCbs:v('cad_p_cst_ibscbs'),cest:cestDigitos,preco:parsePrecoBRL(v('cad_p_preco')),unidade:v('cad_p_unidade')||'UN',quantidadeEstoque:parseInt(v('cad_p_estoque'),10)||0});
     filtrarProdutosCadastro();
     atualizarEstadoBar();
     mostrarAlerta('alertaProdutoCadastro','success','Produto cadastrado! ID: '+data.id);
@@ -3134,7 +3151,7 @@ function mostrarComplementoFiscal(produtos){
         +'<div style="font-size:0.72rem;font-weight:600;color:var(--primary);letter-spacing:.05em;margin-bottom:8px">PREENCHER MANUALMENTE (DADOS DE VENDA)</div>'
         +'<div class="grid3">'
           +'<div class="field"><label>Preço de Venda (R$) <span class="req">*</span></label>'
-            +'<input type="number" id="comp_preco_'+id+'" step="0.01" min="0" placeholder="0,00"></div>'
+            +'<input type="text" inputmode="decimal" id="comp_preco_'+id+'" placeholder="0,00" oninput="formatarPrecoInput(this)" onblur="formatarPrecoBlur(this)"></div>'
           +'<div class="field"><label>Código Interno / SKU</label>'
             +'<input id="comp_codigo_'+id+'" maxlength="50" placeholder="código próprio da loja"></div>'
           +'<div class="field"><label>CFOP de Venda</label>'
@@ -3211,7 +3228,7 @@ function coletarComplementosImportacao(){
   for(var c of cards){
     var id=c.getAttribute('data-produto-id');
     var itemNumero=parseInt(c.getAttribute('data-item-numero')||'0',10);
-    var preco=parseFloat(document.getElementById('comp_preco_'+id)?.value||'0');
+    var preco=parsePrecoBRL(document.getElementById('comp_preco_'+id)?.value||'0');
     var classTrib=aplicarClassificacaoComplemento(id);
     var cfop=(document.getElementById('comp_cfop_'+id)?.value||'').trim();
     var cClassTrib=(document.getElementById('comp_cclasstrib_'+id)?.value||'').trim();
