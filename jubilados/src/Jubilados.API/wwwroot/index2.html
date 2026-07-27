@@ -3796,6 +3796,18 @@ var LC_TPAG = {
   '17': 'PIX', '02': 'Cheque', '05': 'Crédito Loja', '99': 'Outros'
 };
 
+// Produtos fictícios usados SOMENTE em homologação quando não há nenhum produto cadastrado
+var LC_SEED_PRODUTOS = [
+  {id:'seed-001',nome:'[SEED] Notebook Dell Inspiron 15',preco:2499.90,ncm:'84713012',cfop:'5102',csosn:'400',cst:null,cClassTrib:'000001',unidade:'UN',ativo:true,_seed:true},
+  {id:'seed-002',nome:'[SEED] Mouse Sem Fio Logitech',preco:89.90,ncm:'84716060',cfop:'5102',csosn:'400',cst:null,cClassTrib:'000001',unidade:'UN',ativo:true,_seed:true},
+  {id:'seed-003',nome:'[SEED] Teclado Mecânico USB',preco:159.00,ncm:'84716090',cfop:'5102',csosn:'400',cst:null,cClassTrib:'000001',unidade:'UN',ativo:true,_seed:true},
+  {id:'seed-004',nome:'[SEED] Monitor LED 24" Full HD',preco:849.00,ncm:'85285290',cfop:'5102',csosn:'400',cst:null,cClassTrib:'000001',unidade:'UN',ativo:true,_seed:true},
+  {id:'seed-005',nome:'[SEED] Cabo HDMI 2m Gold',preco:29.90,ncm:'85444290',cfop:'5102',csosn:'400',cst:null,cClassTrib:'000001',unidade:'UN',ativo:true,_seed:true},
+  {id:'seed-006',nome:'[SEED] Headset USB Gamer',preco:119.90,ncm:'85183000',cfop:'5102',csosn:'400',cst:null,cClassTrib:'000001',unidade:'UN',ativo:true,_seed:true},
+  {id:'seed-007',nome:'[SEED] Webcam HD 1080p',preco:199.00,ncm:'85258020',cfop:'5102',csosn:'400',cst:null,cClassTrib:'000001',unidade:'UN',ativo:true,_seed:true},
+  {id:'seed-008',nome:'[SEED] Pen Drive USB 64GB',preco:39.90,ncm:'84717090',cfop:'5102',csosn:'400',cst:null,cClassTrib:'000001',unidade:'UN',ativo:true,_seed:true}
+];
+
 function lcToggleAmbiente() {
   var cb = document.getElementById('lc_producao');
   var badge = document.getElementById('lc_badge_amb');
@@ -3813,14 +3825,38 @@ async function gerarCesta() {
   if(!empId) { mostrarAlerta('alertaLaCesta','error','Selecione a empresa antes de gerar a cesta.'); return; }
   var valorAlvo = parseFloat(document.getElementById('lc_valor_alvo').value) || 500;
   var maxItens = parseInt(document.getElementById('lc_max_itens').value) || 5;
+  var emProducao = document.getElementById('lc_producao').checked;
 
   spin('spinLaCesta', true);
   try {
+    // Busca produtos reais cadastrados
     var res = await fetchAuth(API + '/api/produto?empresaId=' + empId);
     if(!res.ok) { mostrarAlerta('alertaLaCesta','error','Erro ao carregar produtos.'); return; }
     var data = await res.json();
-    var todos = (Array.isArray(data) ? data : (data.itens || [])).filter(function(p){ return p.preco > 0 && p.ativo !== false; });
-    if(todos.length === 0) { mostrarAlerta('alertaLaCesta','warning','Nenhum produto com preço cadastrado.'); return; }
+    var reais = (Array.isArray(data) ? data : (data.itens || [])).filter(function(p){ return p.preco > 0 && p.ativo !== false; });
+
+    var todos;
+    if(emProducao) {
+      // PRODUÇÃO: apenas produtos reais — sem seed, sem dado fictício
+      if(reais.length === 0) {
+        mostrarAlerta('alertaLaCesta','error',
+          '⚠ Nenhum produto cadastrado. Em produção é obrigatório usar produtos com dados fiscais reais. '
+          +'Cadastre produtos via "Cadastro de Produtos" ou importe um XML de entrada.');
+        return;
+      }
+      todos = reais;
+    } else {
+      // HOMOLOGAÇÃO: usa produtos reais se existirem; senão usa seeds para teste
+      if(reais.length > 0) {
+        todos = reais;
+        mostrarAlerta('alertaLaCesta','info','Usando ' + reais.length + ' produto(s) cadastrado(s).');
+      } else {
+        todos = LC_SEED_PRODUTOS;
+        mostrarAlerta('alertaLaCesta','warning',
+          '⚠ Nenhum produto cadastrado — usando dados fictícios [SEED] só para teste de homologação. '
+          +'Esses produtos não existem no banco e não serão importados para produção.');
+      }
+    }
 
     var embaralhados = todos.slice().sort(function(){ return Math.random() - 0.5; }).slice(0, maxItens);
     var tpags = Object.keys(LC_TPAG);
@@ -3839,13 +3875,22 @@ async function gerarCesta() {
       totalAcum = +(totalAcum + sub).toFixed(2);
     }
 
-    if(itens.length === 0) { mostrarAlerta('alertaLaCesta','warning','Nenhum produto cabe no valor alvo.'); return; }
-    var ambiente = document.getElementById('lc_producao').checked ? '1' : '2';
-    cestaAtual = { itens: itens, valorTotal: totalAcum, ambiente: ambiente };
+    if(itens.length === 0) { mostrarAlerta('alertaLaCesta','warning','Nenhum produto cabe no valor alvo — tente aumentar o valor.'); return; }
+    var usouSeed = itens.some(function(it){ return it.produto._seed; });
+    cestaAtual = { itens: itens, valorTotal: totalAcum, ambiente: emProducao ? '1' : '2', usouSeed: usouSeed };
     renderizarCesta();
-    document.getElementById('btn_emitir_cesta').disabled = false;
+    // Seeds bloqueiam emissão — são só pra visualização
+    var btnEmitir = document.getElementById('btn_emitir_cesta');
+    if(usouSeed) {
+      btnEmitir.disabled = true;
+      btnEmitir.title = 'Importe produtos reais via XML ou cadastre-os para poder emitir';
+    } else {
+      btnEmitir.disabled = false;
+      btnEmitir.title = '';
+    }
     document.getElementById('lc_log').innerHTML = '';
     document.getElementById('lc_log').style.display = 'none';
+    if(usouSeed) lcLog('Cesta gerada com dados fictícios [SEED]. Para emitir: importe um XML de entrada ou cadastre produtos reais.', 'info');
   } finally { spin('spinLaCesta', false); }
 }
 
@@ -3913,6 +3958,10 @@ function validarPayloadCesta(payload, itensComProduto) {
 async function emitirCesta() {
   if(!cestaAtual || cestaAtual.itens.length === 0) {
     mostrarAlerta('alertaLaCesta','warning','Gere a cesta primeiro.');
+    return;
+  }
+  if(cestaAtual.usouSeed) {
+    mostrarAlerta('alertaLaCesta','error','A cesta contém produtos fictícios [SEED]. Cadastre produtos reais antes de emitir.');
     return;
   }
   document.getElementById('lc_log').innerHTML = '';
