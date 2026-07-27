@@ -71,7 +71,8 @@ public record EmitirNFCeDto(
     decimal ValorFrete = 0,
     decimal ValorDesconto = 0,
     string FormaPagamento = "01",   // 01=Dinheiro 03=Cartao Credito 04=Cartao Debito 05=Credito Loja 10=Vale Alimentacao 99=Outros
-    string? InformacaoComplementar = null
+    string? InformacaoComplementar = null,
+    string? Ambiente = null          // "1"=produção,"2"=homologação; null=usa config padrão
 );
 
 public record NfceResultDto(

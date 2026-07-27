@@ -16,7 +16,8 @@
   body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; }
   header { background: var(--primary); color: white; padding: 14px 24px; display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
   header h1 { font-size: 1.1rem; font-weight: 700; }
-  header .env-badge { margin-left: auto; background: #fbbf24; color: #78350f; border-radius: 6px; padding: 3px 12px; font-size:.8rem; font-weight:700; }
+  header .env-badge { margin-left: auto; background: #fbbf24; color: #78350f; border-radius: 6px; padding: 3px 12px; font-size:.8rem; font-weight:700; cursor:pointer; user-select:none; transition:background .2s,color .2s; }
+  header .env-badge.prod { background: #22c55e; color: #fff; }
   .container { max-width: 960px; margin: 0 auto; padding: 20px 16px 60px; }
   .tabs { display: flex; gap: 2px; background: var(--border); border-radius: 10px; padding: 3px; margin-bottom: 20px; flex-wrap: wrap; }
   .tab-btn { flex: 1; min-width: 110px; padding: 9px 8px; border: none; border-radius: 8px; font-size: .82rem; font-weight: 600; cursor: pointer; background: transparent; color: var(--muted); transition: all .15s; }
@@ -608,7 +609,7 @@
     <header class="app-header">
       <span style="font-size:1.1rem">🧾</span>
       <h1>Jubilados NF-e</h1>
-      <span class="env-badge">HOMOLOGACAO</span>
+      <span id="envBadge" class="env-badge" onclick="toggleGlobalAmbiente()" title="Clique para alternar: Homologação / Produção">HOMOLOGAÇÃO</span>
       <div class="header-right">
 
         <div class="sefaz-pill">
@@ -833,7 +834,7 @@
       <div class="card">
         <h2>Informações de Pagamento</h2>
         <p class="subtitle">Confirme os dados e clique em Emitir NF-e.</p>
-        <div class="alert alert-warn">Voce esta em AMBIENTE DE HOMOLOGACAO. As notas emitidas nao tem validade fiscal.</div>
+        <div id="alertaHomNFe" class="alert alert-warn">Voce esta em AMBIENTE DE HOMOLOGAÇÃO. As notas emitidas nao tem validade fiscal.</div>
 
         <!-- Resumo do destinatario selecionado -->
         <div id="resumoDestinatario" style="background:var(--step-active);border:1px solid #93c5fd;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.86rem"></div>
@@ -864,8 +865,8 @@
         <div id="itensContainer" style="margin-bottom:12px"></div>
         <div id="alertaEmitir"></div>
         <div class="actions">
-          <button class="btn btn-success" style="font-size:.96rem;padding:11px 28px" onclick="emitirNFe()">
-            <span id="spinEmitir" class="spinner" style="display:none"></span> Emitir NF-e em Homologacao
+          <button id="btnEmitirNFe" class="btn btn-success" style="font-size:.96rem;padding:11px 28px" onclick="emitirNFe()">
+            <span id="spinEmitir" class="spinner" style="display:none"></span> Emitir NF-e
           </button>
         </div>
       </div>
@@ -1154,7 +1155,7 @@
     <div class="card">
       <h2>Emitir NFC-e (Cupom Fiscal)</h2>
       <p class="subtitle">Emite cupom fiscal eletronico (modelo 65) para venda ao consumidor. Requer CSC configurado na aba Configura&ccedil;&otilde;es.</p>
-      <div class="alert alert-warn">Voce esta em AMBIENTE DE HOMOLOGACAO. Os cupons emitidos nao tem validade fiscal.</div>
+      <div id="alertaHomNFCe" class="alert alert-warn">Voce esta em AMBIENTE DE HOMOLOGAÇÃO. Os cupons emitidos nao tem validade fiscal.</div>
       <!-- Busca produto NFC-e -->
       <div style="background:var(--bg);border-radius:8px;padding:12px;margin-top:14px;margin-bottom:14px;border:1px solid var(--border)">
         <div class="section-title" style="margin-bottom:8px">Buscar produto já cadastrado</div>
@@ -1187,8 +1188,8 @@
       </div>
       <div id="alertaNfce"></div>
       <div class="actions">
-        <button class="btn btn-success" style="font-size:.96rem;padding:11px 28px" onclick="emitirNFCe()">
-          <span id="spinNfce" class="spinner" style="display:none"></span> Emitir NFC-e em Homologacao
+        <button id="btnEmitirNFCe" class="btn btn-success" style="font-size:.96rem;padding:11px 28px" onclick="emitirNFCe()">
+          <span id="spinNfce" class="spinner" style="display:none"></span> Emitir NFC-e
         </button>
       </div>
     </div>
@@ -1442,13 +1443,6 @@
           <label>Máx. produtos na cesta</label>
           <input type="number" id="lc_max_itens" value="5" min="1" max="20" step="1" style="width:100%">
         </div>
-        <div class="field">
-          <label>Ambiente</label>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-            <input type="checkbox" id="lc_producao" onchange="lcToggleAmbiente()" style="width:18px;height:18px;cursor:pointer">
-            <span id="lc_badge_amb" style="padding:2px 10px;border-radius:12px;font-size:.8rem;font-weight:700;background:var(--warning,#f59e0b);color:#fff">HOMOLOGAÇÃO</span>
-          </div>
-        </div>
       </div>
 
       <div class="actions" style="margin-bottom:16px">
@@ -1483,6 +1477,29 @@
 const estado = { empresaId:null, cnpj:null, clienteId:null, clienteNome:null, tipoDest:'cpf', produtoId:null, produtoNome:null, certEnviado:false, cscSalvo:false, pfxBase64:null, pfxNome:null, ultimaChave:null, ultimaNotaId:null };
 var clientesCadastrados = [];
 var produtosCadastrados = [];
+
+// ── Ambiente global (persiste em localStorage) ──────────────────────────────
+var globalAmbiente = localStorage.getItem('jubilados_ambiente') || '2';
+
+function toggleGlobalAmbiente() {
+  globalAmbiente = globalAmbiente === '2' ? '1' : '2';
+  localStorage.setItem('jubilados_ambiente', globalAmbiente);
+  _aplicarAmbiente();
+}
+
+function _aplicarAmbiente() {
+  var prod = globalAmbiente === '1';
+  var badge = document.getElementById('envBadge');
+  if (badge) {
+    badge.textContent = prod ? 'PRODUÇÃO' : 'HOMOLOGAÇÃO';
+    badge.className = 'env-badge' + (prod ? ' prod' : '');
+  }
+  var homIds = ['alertaHomNFe', 'alertaHomNFCe'];
+  homIds.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = prod ? 'none' : '';
+  });
+}
 var fornecedoresCadastrados = [];
 var empresasCadastradas = [];
 var notasCarregadas = [];
@@ -2696,7 +2713,7 @@ async function emitirNFe(isRetry){
   if(itensList.some(function(it){return!it.produtoId;})){mostrarAlerta('alertaEmitir','error','Selecione o produto em todos os itens.');return;}
   spin('spinEmitir',true);
   try{
-    var body={empresaId:estado.empresaId,clienteId:td==='anonimo'?null:estado.clienteId,naturezaOperacao:v('n_natureza')||'Venda de Mercadoria',serie:v('n_serie')||'1',itens:itensList,valorFrete:parseFloat(v('n_frete'))||0,valorSeguro:0,valorDesconto:parseFloat(v('n_desconto'))||0,formaPagamento:v('n_pag')||'01',informacaoComplementar:v('n_info')||null};
+    var body={empresaId:estado.empresaId,clienteId:td==='anonimo'?null:estado.clienteId,naturezaOperacao:v('n_natureza')||'Venda de Mercadoria',serie:v('n_serie')||'1',itens:itensList,valorFrete:parseFloat(v('n_frete'))||0,valorSeguro:0,valorDesconto:parseFloat(v('n_desconto'))||0,formaPagamento:v('n_pag')||'01',informacaoComplementar:v('n_info')||null,ambiente:globalAmbiente};
     if(td==='anonimo'){body.destinatarioCpfCnpj=null;body.destinatarioNome=null;}
     var res=await fetch(API+'/api/nfe/emitir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     var data=await safeJson(res);
@@ -3004,7 +3021,7 @@ async function emitirNFCe(){
   spin('spinNfce',true);
   try{
     var cpf=v('nfce_cpf').replace(/\D/g,'');
-    var body={empresaId:estado.empresaId,itens:itensList,serie:v('nfce_serie')||'1',cpfConsumidor:cpf||null,valorFrete:parseFloat(v('nfce_frete'))||0,valorDesconto:parseFloat(v('nfce_desconto'))||0,formaPagamento:v('nfce_pag')||'01',informacaoComplementar:v('nfce_info')||null};
+    var body={empresaId:estado.empresaId,itens:itensList,serie:v('nfce_serie')||'1',cpfConsumidor:cpf||null,valorFrete:parseFloat(v('nfce_frete'))||0,valorDesconto:parseFloat(v('nfce_desconto'))||0,formaPagamento:v('nfce_pag')||'01',informacaoComplementar:v('nfce_info')||null,ambiente:globalAmbiente};
     var res=await fetch(API+'/api/nfe/emitir-nfce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     var data=await safeJson(res);
     var resultEl=document.getElementById('resultNfce');resultEl.style.display='block';
@@ -3818,6 +3835,7 @@ async function carregarDadosEmpresa() {
   carregarEmpresasSelects();
   carregarClientes();
   carregarProdutos();
+  _aplicarAmbiente();
 }
 
 carregarDadosEmpresa();
@@ -3848,51 +3866,25 @@ var LC_TPAG = {
   '01': 'Dinheiro', '03': 'Cartão Crédito', '04': 'Cartão Débito', '17': 'PIX'
 };
 
-// Seeds gerenciados pelo backend via POST /api/produto/seed-lacesta
-
-function lcToggleAmbiente() {
-  var cb = document.getElementById('lc_producao');
-  var badge = document.getElementById('lc_badge_amb');
-  if(cb.checked) {
-    badge.textContent = 'PRODUÇÃO';
-    badge.style.background = 'var(--success,#22c55e)';
-  } else {
-    badge.textContent = 'HOMOLOGAÇÃO';
-    badge.style.background = 'var(--warning,#f59e0b)';
-  }
-}
-
 async function gerarCesta() {
   var empId = estado.empresaId;
   if(!empId) { mostrarAlerta('alertaLaCesta','error','Selecione a empresa antes de gerar a cesta.'); return; }
   var valorAlvo = parseFloat(document.getElementById('lc_valor_alvo').value) || 500;
   var maxItens = parseInt(document.getElementById('lc_max_itens').value) || 5;
-  var emProducao = document.getElementById('lc_producao').checked;
 
   spin('spinLaCesta', true);
   try {
-    var todos;
-    if(emProducao) {
-      // PRODUÇÃO: usa produtos reais do banco (filtra seeds)
-      var res = await fetchAuth(API + '/api/produto?empresaId=' + empId);
-      if(!res.ok) { mostrarAlerta('alertaLaCesta','error','Erro ao carregar produtos.'); return; }
-      var data = await res.json();
-      todos = (Array.isArray(data) ? data : (data.itens || [])).filter(function(p){
-        return p.preco > 0 && p.ativo !== false && p.codigoInterno !== '_lcseed_';
-      });
-      if(todos.length === 0) {
-        mostrarAlerta('alertaLaCesta','error',
-          '⚠ Nenhum produto real cadastrado. Cadastre produtos via "Cadastros > Produtos" ou importe XML de entrada para usar em producao.');
-        return;
-      }
-      mostrarAlerta('alertaLaCesta','info','Usando ' + todos.length + ' produto(s) reais do banco.');
-    } else {
-      // HOMOLOGAÇÃO: sempre usa os seeds dos XMLs (injeta no banco se necessário)
-      var seedRes = await fetchAuth(API + '/api/produto/seed-lacesta?empresaId=' + empId, {method:'POST'});
-      if(!seedRes.ok) { mostrarAlerta('alertaLaCesta','error','Erro ao carregar seeds de homologacao.'); return; }
-      todos = await seedRes.json();
-      mostrarAlerta('alertaLaCesta','info','Homologacao: usando ' + todos.length + ' produtos seeds (dados dos XMLs reais).');
+    var res = await fetchAuth(API + '/api/produto?empresaId=' + empId);
+    if(!res.ok) { mostrarAlerta('alertaLaCesta','error','Erro ao carregar produtos.'); return; }
+    var data = await res.json();
+    var todos = (Array.isArray(data) ? data : (data.itens || [])).filter(function(p){
+      return p.preco > 0 && p.ativo !== false;
+    });
+    if(todos.length === 0) {
+      mostrarAlerta('alertaLaCesta','error','Nenhum produto cadastrado. Cadastre produtos via "Cadastros > Produtos" ou importe XML de entrada.');
+      return;
     }
+    mostrarAlerta('alertaLaCesta','info','Usando ' + todos.length + ' produto(s) do banco.');
 
     var embaralhados = todos.slice().sort(function(){ return Math.random() - 0.5; }).slice(0, maxItens);
     var tpags = Object.keys(LC_TPAG);
@@ -3912,7 +3904,7 @@ async function gerarCesta() {
     }
 
     if(itens.length === 0) { mostrarAlerta('alertaLaCesta','warning','Nenhum produto cabe no valor alvo — tente aumentar o valor.'); return; }
-    cestaAtual = { itens: itens, valorTotal: totalAcum, tpag: tpagCesta, ambiente: emProducao ? '1' : '2' };
+    cestaAtual = { itens: itens, valorTotal: totalAcum, tpag: tpagCesta, ambiente: globalAmbiente };
     renderizarCesta();
     var btnEmitir = document.getElementById('btn_emitir_cesta');
     btnEmitir.disabled = false;

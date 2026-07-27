@@ -1368,13 +1368,15 @@ public class NFeService : INFeService
             var nota = MontarNotaFiscalNFCe(dto, empresa, produtos, ultimoNumero + 1);
             CalcularTotais(nota, dto.ValorFrete, dto.ValorDesconto);
 
+            var isHomNfce = dto.Ambiente == "2" || (dto.Ambiente == null && _options.IsHomologacao);
             var (xmlNFCe, qrCodeUrl) = GerarXmlNFCe(nota, empresa, produtos, dto);
             var xmlAssinado = AssinarXml(xmlNFCe, certificado);
-            // Inserir infNFeSupl APÓS Signature dentro de <NFe>
-            xmlAssinado = InserirInfoSuplNFCe(xmlAssinado, qrCodeUrl, _options.UrlNfceQrCode);
+            var urlQrConsulta = isHomNfce ? _options.UrlNfceQrCodeHom : _options.UrlNfceQrCodeProd;
+            xmlAssinado = InserirInfoSuplNFCe(xmlAssinado, qrCodeUrl, urlQrConsulta);
             nota.XmlEnvio = xmlAssinado;
 
-            var (cStat, xMotivo, protocolo) = await EnviarNFCeParaSefazAsync(xmlAssinado, certificado, ct);
+            var urlNfceAuth = isHomNfce ? _options.UrlNfceAutorizacaoHom : _options.UrlNfceAutorizacaoProd;
+            var (cStat, xMotivo, protocolo) = await EnviarNFCeParaSefazAsync(xmlAssinado, certificado, ct, urlNfceAuth);
             nota.CStat = cStat;
             nota.XMotivo = xMotivo;
             nota.Protocolo = protocolo;
@@ -1453,14 +1455,15 @@ public class NFeService : INFeService
         var cUF = _options.CodigoUF;
         var cNF = new Random().Next(10000000, 99999999).ToString();
         var dEmi = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:sszzz");
-        var ambiente = _options.Ambiente;
+        var ambiente = (dto.Ambiente == "1" || dto.Ambiente == "2") ? dto.Ambiente : _options.Ambiente;
 
         var chave = GerarChaveAcesso(cUF, empresa.CNPJ, nota.Serie, nota.Numero.ToString(), cNF, mod: "65");
         nota.ChaveAcesso = chave;
 
         var cscId = (empresa.NfceCscId ?? "000001").PadLeft(6, '0');
         var cscToken = empresa.NfceCscToken ?? "";
-        var qrCodeUrl = GerarQrCodeNFCe(chave, ambiente, cscId, cscToken, _options.UrlNfceQrCode);
+        var urlQrBase = ambiente == "1" ? _options.UrlNfceQrCodeProd : _options.UrlNfceQrCodeHom;
+        var qrCodeUrl = GerarQrCodeNFCe(chave, ambiente, cscId, cscToken, urlQrBase);
 
         var sb = new StringBuilder();
         sb.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
@@ -1632,9 +1635,9 @@ public class NFeService : INFeService
     }
 
     private async Task<(string cStat, string xMotivo, string protocolo)> EnviarNFCeParaSefazAsync(
-        string xmlAssinado, X509Certificate2 certificado, CancellationToken ct)
+        string xmlAssinado, X509Certificate2 certificado, CancellationToken ct, string? urlOverride = null)
     {
-        var url = _options.UrlNfceAutorizacao;
+        var url = urlOverride ?? _options.UrlNfceAutorizacao;
         const string wsdlNs   = "http://www.portalfiscal.inf.br/nfe/wsdl/NfceAutorizacao4";
         const string nfeNs    = "http://www.portalfiscal.inf.br/nfe";
         const string soapNs   = "http://www.w3.org/2003/05/soap-envelope";

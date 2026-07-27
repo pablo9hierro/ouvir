@@ -341,6 +341,15 @@ public class NotaEntradaService : InotaEntradaService
                 fId = novoFornecedor.Id;
             }
 
+            // Permite re-importar: remove nota anterior se existir
+            var notaAnterior = await _db.NotasFiscais
+                .FirstOrDefaultAsync(n => n.EmpresaId == empresaId && n.ChaveAcesso == lida!.ChaveAcesso, cancellationToken);
+            if (notaAnterior is not null)
+            {
+                _db.NotasFiscais.Remove(notaAnterior);
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+
             var nota = new NotaFiscal
             {
                 Id = Guid.NewGuid(),
