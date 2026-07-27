@@ -50,12 +50,6 @@ public class CancelamentoService : ICancelamentoService
         if (nota.CStat != "100" && nota.Status != StatusNota.Autorizada)
             throw new InvalidOperationException("Cancelamento só pode ser enviado para NF-e autorizada (cStat=100).");
 
-        // Em homologação (ambiente=2) não há prazo; em produção o prazo é 24h
-        if (_options.Ambiente != "2" &&
-            nota.AutorizadaEm.HasValue &&
-            (DateTime.UtcNow - nota.AutorizadaEm.Value).TotalHours > 24)
-            throw new InvalidOperationException("Prazo de cancelamento expirado (máximo 24 horas após autorização).");
-
         var empresa = await _db.Empresas.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == dto.EmpresaId, cancellationToken)
             ?? throw new InvalidOperationException($"Empresa {dto.EmpresaId} não encontrada.");
@@ -67,23 +61,37 @@ public class CancelamentoService : ICancelamentoService
             empresa.CertificadoBase64!, empresa.CertificadoSenha!);
 
         var cnpj = new string(empresa.CNPJ.Where(char.IsDigit).ToArray()).PadLeft(14, '0');
-        var chave = nota.ChaveAcesso;
+        var chave = nota.ChaveAcesso?.Trim() ?? "";
+
+        if (chave.Length != 44 || !chave.All(char.IsDigit))
+            throw new InvalidOperationException(
+                $"ChaveAcesso inválida para cancelamento ('{chave}', {chave.Length} chars). Nota corrompida ou não emitida por este sistema.");
+
+        // Determina o ambiente em que a nota foi EMITIDA (pode diferir do ambiente atual)
+        var ambienteNota = ExtrairTpAmbDoXml(nota.XmlEnvio ?? nota.XmlRetorno);
+        var ambienteCancel = ambienteNota ?? _options.Ambiente;
+        _logger.LogInformation("[Cancelamento] ChaveAcesso={Chave} AmbienteNota={Amb} AmbienteOpcoes={AmbOpt}",
+            chave, ambienteCancel, _options.Ambiente);
+
+        // Em homologação (ambiente=2) não há prazo; em produção o prazo é 24h
+        if (ambienteCancel != "2" &&
+            nota.AutorizadaEm.HasValue &&
+            (DateTime.UtcNow - nota.AutorizadaEm.Value).TotalHours > 24)
+            throw new InvalidOperationException("Prazo de cancelamento expirado (máximo 24 horas após autorização).");
+
         var dhEvento = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3)).ToString("yyyy-MM-ddTHH:mm:sszzz");
         const string tpEvento = "110111";
         var idEvento = $"ID{tpEvento}{chave}01";
         var idLote = (int)(DateTimeOffset.UtcNow.ToUnixTimeSeconds() % int.MaxValue);
 
-        // Monta e assina evento via DOM — mesmo padrão do ManifestacaoService
         var enviEventoDoc = ConstruirEAssinarEvento(
-            idEvento, chave!, cnpj, nota.Protocolo ?? "",
-            dto.Justificativa.Trim(), dhEvento, idLote, _options.CodigoUF, _options.Ambiente, certificado);
+            idEvento, chave, cnpj, nota.Protocolo ?? "",
+            dto.Justificativa.Trim(), dhEvento, idLote, _options.CodigoUF, ambienteCancel, certificado);
 
         var soap = MontarSoap(enviEventoDoc);
         _logger.LogInformation("[Cancelamento] SOAP (primeiros 3000): {S}", soap.Length > 3000 ? soap[..3000] : soap);
 
-        // Cancelamento usa endpoint do estado (SVRS/estado), não o AN
-        // O AN (hom1.nfe.fazenda.gov.br) só aceita Manifestação do Destinatário (cOrgao=91)
-        var urlEvento = _options.UrlEvento;
+        var urlEvento = ambienteCancel == "2" ? _options.SefazUrlEventoHom : _options.SefazUrlEventoProd;
         const string soapAction = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4/nfeRecepcaoEvento";
 
         string cStat, xMotivo, protocolo;
@@ -113,6 +121,20 @@ public class CancelamentoService : ICancelamentoService
         }
 
         return new CancelamentoResultDto(cStat is "135" or "136", cStat, xMotivo, protocolo);
+    }
+
+    private static string? ExtrairTpAmbDoXml(string? xml)
+    {
+        if (string.IsNullOrWhiteSpace(xml)) return null;
+        try
+        {
+            var doc = new XmlDocument();
+            doc.LoadXml(xml);
+            var node = doc.SelectSingleNode("//*[local-name()='tpAmb']");
+            var val = node?.InnerText?.Trim();
+            return val is "1" or "2" ? val : null;
+        }
+        catch { return null; }
     }
 
     private static (string cStat, string xMotivo, string protocolo) InterpretarRetorno(string xml)
