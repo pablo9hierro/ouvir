@@ -251,7 +251,11 @@ public class NotaEntradaService : InotaEntradaService
             EAN: string.IsNullOrWhiteSpace(i.Ean) ? null : i.Ean,
             CEST: string.IsNullOrWhiteSpace(i.Cest) ? null : i.Cest,
             Custo: i.ValorUnitario,
-            JaExistia: i.ProdutoExistenteId.HasValue
+            JaExistia: i.ProdutoExistenteId.HasValue,
+            CfopEntrada: i.Cfop,
+            TemST: i.TemST,
+            CClassTrib: string.IsNullOrWhiteSpace(i.CClassTrib) ? null : i.CClassTrib,
+            CstIbsCbs: string.IsNullOrWhiteSpace(i.CstIbsCbs) ? null : i.CstIbsCbs
         )).ToList();
 
         FornecedorImportadoDto? fornecedor = null;
@@ -449,7 +453,11 @@ public class NotaEntradaService : InotaEntradaService
                     EAN: string.IsNullOrWhiteSpace(item.Ean) ? null : item.Ean,
                     CEST: string.IsNullOrWhiteSpace(item.Cest) ? null : item.Cest,
                     Custo: item.ValorUnitario,
-                    JaExistia: jaExistia
+                    JaExistia: jaExistia,
+                    CfopEntrada: item.Cfop,
+                    TemST: item.TemST,
+                    CClassTrib: string.IsNullOrWhiteSpace(item.CClassTrib) ? null : item.CClassTrib,
+                    CstIbsCbs: string.IsNullOrWhiteSpace(item.CstIbsCbs) ? null : item.CstIbsCbs
                 ));
             }
 
@@ -591,6 +599,18 @@ public class NotaEntradaService : InotaEntradaService
                     System.Globalization.CultureInfo.InvariantCulture,
                     out var vp) ? vp : qtd * vUn;
 
+                // Extrai dados fiscais do bloco <imposto> para detecção de ST
+                var impNode = det.SelectSingleNode("nfe:imposto", ns);
+                var vIcmsStRaw = impNode?.SelectSingleNode(".//*[local-name()='vICMSST']")?.InnerText
+                              ?? impNode?.SelectSingleNode(".//*[local-name()='vICMSSTRet']")?.InnerText
+                              ?? "0";
+                var vIcmsSt = decimal.TryParse(vIcmsStRaw,
+                    System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture, out var stv) ? stv : 0;
+                var ibsCbsNode = impNode?.SelectSingleNode(".//*[local-name()='IBSCBS']");
+                var cClassTribXml = ibsCbsNode?.SelectSingleNode("*[local-name()='cClassTrib']")?.InnerText ?? string.Empty;
+                var cstIbsCbsXml  = ibsCbsNode?.SelectSingleNode("*[local-name()='CST']")?.InnerText ?? string.Empty;
+
                 var produtoExistenteId = await _db.Produtos
                     .AsNoTracking()
                     .Where(p => p.EmpresaId == empresaId && p.NCM == ncm && p.Nome == nome)
@@ -609,7 +629,10 @@ public class NotaEntradaService : InotaEntradaService
                     Quantidade = qtd,
                     ValorUnitario = vUn,
                     ValorTotal = vTotal,
-                    ProdutoExistenteId = produtoExistenteId
+                    ProdutoExistenteId = produtoExistenteId,
+                    ValorIcmsSt = vIcmsSt,
+                    CClassTrib = cClassTribXml,
+                    CstIbsCbs = cstIbsCbsXml
                 });
             }
         }
@@ -670,5 +693,11 @@ public class NotaEntradaService : InotaEntradaService
         public required decimal ValorUnitario { get; init; }
         public required decimal ValorTotal { get; init; }
         public Guid? ProdutoExistenteId { get; init; }
+        // Dados fiscais extraídos do bloco <imposto> do XML de entrada
+        public decimal ValorIcmsSt { get; init; }
+        public string CClassTrib { get; init; } = string.Empty;
+        public string CstIbsCbs { get; init; } = string.Empty;
+        public bool TemST => ValorIcmsSt > 0
+            || Cfop is "5401" or "5403" or "6401" or "6403";
     }
 }

@@ -871,8 +871,8 @@ public class NFeService : INFeService
                     sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
                     sb.AppendLine("        </ICMSSN102></ICMS>");
                 }
-                sb.AppendLine("        <PIS><PISNT><CST>07</CST></PISNT></PIS>");
-                sb.AppendLine("        <COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS>");
+                sb.AppendLine("        <PIS><PISNT><CST>49</CST></PISNT></PIS>");
+                sb.AppendLine("        <COFINS><COFINSNT><CST>49</CST></COFINSNT></COFINS>");
             }
             else
             {
@@ -1578,8 +1578,8 @@ public class NFeService : INFeService
                 sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
                 sb.AppendLine("        </ICMSSN102></ICMS>");
             }
-            sb.AppendLine("        <PIS><PISNT><CST>07</CST></PISNT></PIS>");
-            sb.AppendLine("        <COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS>");
+            sb.AppendLine("        <PIS><PISNT><CST>49</CST></PISNT></PIS>");
+            sb.AppendLine("        <COFINS><COFINSNT><CST>49</CST></COFINSNT></COFINS>");
             sb.AppendLine("      </imposto>");
             sb.AppendLine("    </det>");
         }

@@ -3152,6 +3152,7 @@ function mostrarComplementoFiscal(produtos){
     var id=p.id||('novo_'+idx);
     var itemNumero=Number(p.itemNumero||idx+1);
     var jaLabel=p.jaExistia?'<span style="background:#ECC94B;color:#744210;padding:2px 8px;border-radius:10px;font-size:0.75rem">já existia</span>':'<span style="background:#38A169;color:white;padding:2px 8px;border-radius:10px;font-size:0.75rem">novo</span>';
+    var stLabel=p.temST?'<span style="background:#e53e3e;color:#fff;padding:2px 8px;border-radius:10px;font-size:0.75rem" title="ICMS-ST já recolhido na compra. Use CFOP 5405 + CSOSN 500 na saída.">⚠ ICMS-ST</span>':'';
     var card=document.createElement('div');
     card.className='complemento-card';
     card.id='complemento-'+id;
@@ -3160,7 +3161,7 @@ function mostrarComplementoFiscal(produtos){
     card.style.cssText='border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;background:var(--card);transition:opacity .3s';
     card.innerHTML=
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
-        +'<div style="display:flex;align-items:center;gap:8px"><strong style="font-size:1rem">Item '+itemNumero+' · '+escHtml(p.nome)+'</strong>'+jaLabel+'</div>'
+        +'<div style="display:flex;align-items:center;gap:8px"><strong style="font-size:1rem">Item '+itemNumero+' · '+escHtml(p.nome)+'</strong>'+jaLabel+stLabel+'</div>'
       +'</div>'
       +'<div style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:14px">'
         +'<div style="font-size:0.72rem;font-weight:600;color:var(--muted);letter-spacing:.05em;margin-bottom:8px">EXTRAÍDO AUTOMATICAMENTE DO XML</div>'
@@ -3172,7 +3173,7 @@ function mostrarComplementoFiscal(produtos){
         +'<div class="grid3">'
           +'<div class="field"><label>CEST</label><input disabled value="'+escHtml(p.cest||'-')+'"></div>'
           +'<div class="field"><label>Custo unitário (R$)</label><input disabled value="'+Number(p.custo||0).toFixed(2)+'"></div>'
-          +'<div class="field"></div>'
+          +'<div class="field"><label>CFOP do fornecedor</label><input disabled value="'+escHtml(p.cfopEntrada||'-')+'" title="CFOP da NF-e de entrada (5403=ST, 5102=sem ST)"></div>'
         +'</div>'
       +'</div>'
       +'<div>'
@@ -3180,14 +3181,20 @@ function mostrarComplementoFiscal(produtos){
         +'<div class="grid3">'
           +'<div class="field"><label>Preço de Venda (R$) <span class="req">*</span></label>'
             +'<input type="text" inputmode="decimal" id="comp_preco_'+id+'" placeholder="0,00" oninput="formatarPrecoInput(this)" onblur="formatarPrecoBlur(this)"></div>'
+          +(p.temST?'<div class="field" style="grid-column:span 3"><div class="alert alert-warn" style="margin:0;font-size:.8rem">⚠ Produto com <strong>ICMS-ST já recolhido</strong> na compra (CFOP '+(p.cfopEntrada||'5403')+') — use <strong>CFOP 5405 + CSOSN 500</strong> na saída.</div></div>':'')
           +'<div class="field"><label>CFOP de Venda <span class="req">*</span></label>'
-            +'<input id="comp_cfop_'+id+'" maxlength="4" value="5102"></div>'
+            +'<input id="comp_cfop_'+id+'" maxlength="4" value="'+(p.temST?'5405':'5102')+'" title="5405=revenda com ST anterior; 5102=revenda sem ST"></div>'
           +'<div class="field"><label>CSOSN</label>'
-            +'<select id="comp_csosn_'+id+'"><option value="102">102 — Tributada SN s/ crédito</option><option value="400">400 — Não tributada SN</option><option value="500">500 — ST anterior</option><option value="101">101 — Tributada SN c/ crédito</option><option value="300">300 — Imune</option><option value="900">900 — Outros</option></select></div>'
+            +'<select id="comp_csosn_'+id+'">'
+            +(p.temST
+              ?'<option value="500" selected>500 — ST anterior</option><option value="102">102 — Tributada SN s/ crédito</option><option value="400">400 — Não tributada SN</option>'
+              :'<option value="102" selected>102 — Tributada SN s/ crédito</option><option value="500">500 — ST anterior</option><option value="400">400 — Não tributada SN</option>')
+            +'<option value="101">101 — Tributada SN c/ crédito</option><option value="300">300 — Imune</option><option value="900">900 — Outros</option>'
+            +'</select></div>'
         +'</div>'
         +'<div class="grid3">'
           +'<div class="field"><label>cClassTrib IBS/CBS <span class="req">*</span></label>'
-            +'<select id="comp_cclasstrib_'+id+'" class="comp-cclasstrib" data-cst-target="comp_cstibscbs_'+id+'" onchange="aplicarClassificacaoComplemento(\''+id+'\')">'
+            +'<select id="comp_cclasstrib_'+id+'" class="comp-cclasstrib" data-cst-target="comp_cstibscbs_'+id+'" data-selected="'+escHtml(p.cClassTrib||'')+'" onchange="aplicarClassificacaoComplemento(\''+id+'\')">'
             +buildClassTribOpts(p.cClassTrib||'')
             +'</select></div>'
           +'<div class="field"><label>CST IBS/CBS</label>'

@@ -257,7 +257,11 @@ public record ProdutoImportadoDto(
     string? EAN,
     string? CEST,
     decimal Custo,
-    bool JaExistia
+    bool JaExistia,
+    string? CfopEntrada = null,
+    bool TemST = false,
+    string? CClassTrib = null,
+    string? CstIbsCbs = null
 );
 
 /// <summary>Fornecedor (emitente) identificado no XML de entrada.</summary>
