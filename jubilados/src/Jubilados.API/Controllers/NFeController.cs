@@ -1,3 +1,4 @@
+using Jubilados.API.Filters;
 using Jubilados.Application.DTOs;
 using Jubilados.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -9,6 +10,7 @@ namespace Jubilados.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
+[TypeFilter(typeof(RequireAuthFilter))]
 public class NFeController : ControllerBase
 {
     private readonly INFeService _nfeService;

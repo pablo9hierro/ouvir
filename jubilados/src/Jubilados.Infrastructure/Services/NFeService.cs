@@ -833,7 +833,7 @@ public class NFeService : INFeService
                 {
                     // CSOSN 500: ICMS cobrado anteriormente por ST — usa ICMSSN500
                     sb.AppendLine("        <ICMS><ICMSSN500>");
-                    sb.AppendLine("          <orig>0</orig>");
+                    sb.AppendLine($"          <orig>{produto.Origem}</orig>");
                     sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
                     sb.AppendLine("          <vBCSTRet>0.00</vBCSTRet><pST>0.00</pST><vICMSSTRet>0.00</vICMSSTRet>");
                     sb.AppendLine("        </ICMSSN500></ICMS>");
@@ -842,7 +842,7 @@ public class NFeService : INFeService
                 {
                     // CSOSN 201/202/203: com ST — usa ICMSSN202
                     sb.AppendLine("        <ICMS><ICMSSN202>");
-                    sb.AppendLine("          <orig>0</orig>");
+                    sb.AppendLine($"          <orig>{produto.Origem}</orig>");
                     sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
                     sb.AppendLine("          <modBCST>4</modBCST>");
                     sb.AppendLine("          <pMVAST>0.00</pMVAST><pRedBCST>0.00</pRedBCST>");
@@ -854,7 +854,7 @@ public class NFeService : INFeService
                 {
                     // CSOSN 900: outros — usa ICMSSN900
                     sb.AppendLine("        <ICMS><ICMSSN900>");
-                    sb.AppendLine("          <orig>0</orig>");
+                    sb.AppendLine($"          <orig>{produto.Origem}</orig>");
                     sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
                     sb.AppendLine("          <modBC>3</modBC><pRedBC>0.00</pRedBC>");
                     sb.AppendLine($"          <vBC>{item.BaseICMS:F2}</vBC><pICMS>{item.AliquotaICMS:F2}</pICMS><vICMS>{item.ValorICMS:F2}</vICMS>");
@@ -867,7 +867,7 @@ public class NFeService : INFeService
                 {
                     // CSOSN 102, 103, 300, 400 → ICMSSN102
                     sb.AppendLine("        <ICMS><ICMSSN102>");
-                    sb.AppendLine("          <orig>0</orig>");
+                    sb.AppendLine($"          <orig>{produto.Origem}</orig>");
                     sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
                     sb.AppendLine("        </ICMSSN102></ICMS>");
                 }
@@ -883,7 +883,7 @@ public class NFeService : INFeService
                     totalVBC  += item.BaseICMS;
                     totalVICMS += item.ValorICMS;
                     sb.AppendLine("        <ICMS><ICMS00>");
-                    sb.AppendLine("          <orig>0</orig>");
+                    sb.AppendLine($"          <orig>{produto.Origem}</orig>");
                     sb.AppendLine($"          <CST>{cstFinal}</CST>");
                     sb.AppendLine("          <modBC>3</modBC>");
                     sb.AppendLine($"          <vBC>{item.BaseICMS:F2}</vBC>");
@@ -894,7 +894,7 @@ public class NFeService : INFeService
                 else
                 {
                     sb.AppendLine("        <ICMS><ICMS40>");
-                    sb.AppendLine("          <orig>0</orig>");
+                    sb.AppendLine($"          <orig>{produto.Origem}</orig>");
                     sb.AppendLine($"          <CST>{cstFinal}</CST>");
                     sb.AppendLine("        </ICMS40></ICMS>");
                 }
@@ -1554,7 +1554,7 @@ public class NFeService : INFeService
             if (csosnFinal == "500")
             {
                 sb.AppendLine("        <ICMS><ICMSSN500>");
-                sb.AppendLine("          <orig>0</orig>");
+                sb.AppendLine($"          <orig>{produto.Origem}</orig>");
                 sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
                 sb.AppendLine("          <vBCSTRet>0.00</vBCSTRet><pST>0.00</pST><vICMSSTRet>0.00</vICMSSTRet>");
                 sb.AppendLine("        </ICMSSN500></ICMS>");
@@ -1562,7 +1562,7 @@ public class NFeService : INFeService
             else if (csosnFinal == "201" || csosnFinal == "202" || csosnFinal == "203")
             {
                 sb.AppendLine("        <ICMS><ICMSSN202>");
-                sb.AppendLine("          <orig>0</orig>");
+                sb.AppendLine($"          <orig>{produto.Origem}</orig>");
                 sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
                 sb.AppendLine("          <modBCST>4</modBCST>");
                 sb.AppendLine("          <pMVAST>0.00</pMVAST><pRedBCST>0.00</pRedBCST>");
@@ -1574,7 +1574,7 @@ public class NFeService : INFeService
             {
                 // CSOSN 102, 103, 300, 400, 900 → ICMSSN102
                 sb.AppendLine("        <ICMS><ICMSSN102>");
-                sb.AppendLine("          <orig>0</orig>");
+                sb.AppendLine($"          <orig>{produto.Origem}</orig>");
                 sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
                 sb.AppendLine("        </ICMSSN102></ICMS>");
             }

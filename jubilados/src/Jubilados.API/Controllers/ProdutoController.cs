@@ -1,3 +1,4 @@
+using Jubilados.API.Filters;
 using Jubilados.Application.DTOs;
 using Jubilados.Domain.Entities;
 using Jubilados.Infrastructure.Data;
@@ -14,6 +15,7 @@ namespace Jubilados.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
+[TypeFilter(typeof(RequireAuthFilter))]
 public class ProdutoController : ControllerBase
 {
     private readonly JubiladosDbContext _db;

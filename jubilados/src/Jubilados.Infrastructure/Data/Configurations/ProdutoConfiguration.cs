@@ -20,6 +20,7 @@ public class ProdutoConfiguration : IEntityTypeConfiguration<Produto>
         builder.Property(p => p.CSOSN).HasColumnName("csosn").HasMaxLength(3);
         builder.Property(p => p.CEST).HasColumnName("cest").HasMaxLength(7);
         builder.Property(p => p.Unidade).HasColumnName("unidade").HasMaxLength(6);
+        builder.Property(p => p.Origem).HasColumnName("origem").HasMaxLength(1).IsRequired().HasDefaultValue("0");
         builder.Property(p => p.Preco).HasColumnName("preco").HasPrecision(18, 2).IsRequired();
         builder.Property(p => p.AliquotaICMS).HasColumnName("aliquota_icms").HasPrecision(5, 2);
         builder.Property(p => p.AliquotaIPI).HasColumnName("aliquota_ipi").HasPrecision(5, 2);

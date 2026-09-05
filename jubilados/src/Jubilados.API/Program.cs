@@ -249,6 +249,11 @@ using (var startupScope = app.Services.CreateScope())
             ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS modal_frete     VARCHAR(1) NOT NULL DEFAULT '9';
             ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS forma_pagamento VARCHAR(2) NOT NULL DEFAULT '01';");
 
+        // Migration 013: origem da mercadoria (grupo ICMS obrigatorio no XML,
+        // confirmado ausente na auditoria da integracao com o Resolutoo).
+        await db.Database.ExecuteSqlRawAsync(@"
+            ALTER TABLE produtos ADD COLUMN IF NOT EXISTS origem CHAR(1) NOT NULL DEFAULT '0';");
+
         Console.WriteLine("[STARTUP] Migrations manuais aplicadas.");
 
         // Seed: insere dados iniciais se a empresa de Orlando não existir
@@ -401,12 +406,26 @@ static async Task ServeHtml(HttpContext ctx, IWebHostEnvironment env, string fil
     ctx.Response.ContentType = "text/html; charset=utf-8";
     await ctx.Response.SendFileAsync(Path.Combine(env.WebRootPath, file));
 }
-app.MapGet("/login",        (HttpContext ctx, IWebHostEnvironment env) => ServeHtml(ctx, env, "login.html"));
-app.MapGet("/onboarding",   (HttpContext ctx, IWebHostEnvironment env) => ServeHtml(ctx, env, "onboarding.html"));
-app.MapGet("/resetar-senha",(HttpContext ctx, IWebHostEnvironment env) => ServeHtml(ctx, env, "resetar-senha.html"));
 
-// SPA fallback: todas as rotas do app (operacoes/*, cadastros/*, etc.) servem index2.html
-app.MapFallbackToFile("index2.html");
+// Todas as rotas do produto "Jubilados NF-e" vivem sob o prefixo /jubilados.
+// Isso evita colisão com o site principal (Rodoletas), que passa a ocupar
+// as rotas de nível raiz (/, /login, /onboarding, /cadastro, /dashboard etc.)
+// em resolutoo.com.
+app.MapGet("/jubilados",             (HttpContext ctx, IWebHostEnvironment env) => ServeHtml(ctx, env, "jubilados/index.html"));
+app.MapGet("/jubilados/login",        (HttpContext ctx, IWebHostEnvironment env) => ServeHtml(ctx, env, "jubilados/login.html"));
+app.MapGet("/jubilados/onboarding",   (HttpContext ctx, IWebHostEnvironment env) => ServeHtml(ctx, env, "jubilados/onboarding.html"));
+app.MapGet("/jubilados/resetar-senha",(HttpContext ctx, IWebHostEnvironment env) => ServeHtml(ctx, env, "jubilados/resetar-senha.html"));
+
+// SPA fallback: todas as demais rotas do app (/jubilados/operacoes/*, /jubilados/cadastros/*, etc.) servem index2.html
+app.MapFallbackToFile("/jubilados/{*path}", "jubilados/index2.html");
+
+// Compatibilidade: as rotas antigas (sem prefixo) serviam este app diretamente.
+// Agora essas rotas top-level pertencem ao site principal (Rodoletas); mantemos
+// apenas um redirect temporário para não quebrar links/bookmarks já compartilhados.
+app.MapGet("/", () => Results.Redirect("/jubilados", permanent: false));
+app.MapGet("/login", () => Results.Redirect("/jubilados/login", permanent: false));
+app.MapGet("/onboarding", () => Results.Redirect("/jubilados/onboarding", permanent: false));
+app.MapGet("/resetar-senha", () => Results.Redirect("/jubilados/resetar-senha", permanent: false));
 
 app.Run();
 

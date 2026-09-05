@@ -1,3 +1,4 @@
+using Jubilados.API.Filters;
 using Jubilados.Domain.Entities;
 using Jubilados.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +9,7 @@ namespace Jubilados.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
+[TypeFilter(typeof(RequireAuthFilter))]
 public class ClienteController : ControllerBase
 {
     private readonly JubiladosDbContext _db;

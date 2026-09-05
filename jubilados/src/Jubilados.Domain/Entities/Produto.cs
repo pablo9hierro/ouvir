@@ -13,6 +13,8 @@ public class Produto
     public string CSOSN { get; set; } = string.Empty;  // Simples Nacional
     public string CEST { get; set; } = string.Empty;   // Código Especificador Substituição Tributária
     public string Unidade { get; set; } = "UN";
+    /// <summary>Origem da mercadoria (grupo ICMS): 0=Nacional, 1-8=conforme tabela oficial (importado etc).</summary>
+    public string Origem { get; set; } = "0";
 
     public decimal Preco { get; set; }
     public decimal AliquotaICMS { get; set; }
