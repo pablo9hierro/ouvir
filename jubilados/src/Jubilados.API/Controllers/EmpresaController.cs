@@ -268,7 +268,10 @@ public class EmpresaController : ControllerBase
 }
 
 public record AtualizarCertificadoRequest(string Base64, string Senha, DateTime? Validade);
-public record AtualizarCscRequest(string CscId, string CscToken);
+// Nullable: limpar o CSC (voltar pra "sem CSC configurado") exige poder
+// enviar null -- string nao-anulavel fazia o [ApiController] rejeitar isso
+// como "campo obrigatorio" mesmo sendo um PUT valido de limpeza.
+public record AtualizarCscRequest(string? CscId, string? CscToken);
 
 public record AtualizarEmpresaRequest(
     string CNPJ, string? RazaoSocial, string? NomeFantasia, string? InscricaoEstadual,
