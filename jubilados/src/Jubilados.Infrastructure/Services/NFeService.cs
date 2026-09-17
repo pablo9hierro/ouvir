@@ -801,11 +801,18 @@ public class NFeService : INFeService
         foreach (var item in nota.Itens)
         {
             var produto = produtos.First(p => p.Id == item.ProdutoId);
-            sb.AppendLine($"    <det nItem=\"{nItem++}\">");
+            var itemAtual = nItem++;
+            sb.AppendLine($"    <det nItem=\"{itemAtual}\">");
             sb.AppendLine("      <prod>");
             sb.AppendLine($"        <cProd>{produto.Id.ToString()[..8].ToUpper()}</cProd>");
             sb.AppendLine("        <cEAN>SEM GTIN</cEAN>");
-            sb.AppendLine($"        <xProd>{XmlEnc(produto.Nome)}</xProd>");
+            // SEFAZ exige que o PRIMEIRO item, em homologacao, tenha essa descricao
+            // literal -- sem isso rejeita com cStat 373 mesmo com schema/assinatura
+            // corretos (regra separada da xNome do emitente/destinatario).
+            var xProd = (ambiente == "2" && itemAtual == 1)
+                ? "NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL"
+                : produto.Nome;
+            sb.AppendLine($"        <xProd>{XmlEnc(xProd)}</xProd>");
             sb.AppendLine($"        <NCM>{produto.NCM}</NCM>");
             sb.AppendLine($"        <CFOP>{produto.CFOP}</CFOP>");
             sb.AppendLine($"        <uCom>{produto.Unidade}</uCom>");
@@ -1530,11 +1537,18 @@ public class NFeService : INFeService
         foreach (var item in nota.Itens)
         {
             var produto = produtos.First(p => p.Id == item.ProdutoId);
-            sb.AppendLine($"    <det nItem=\"{nItem++}\">");
+            var itemAtual = nItem++;
+            sb.AppendLine($"    <det nItem=\"{itemAtual}\">");
             sb.AppendLine("      <prod>");
             sb.AppendLine($"        <cProd>{produto.Id.ToString()[..8].ToUpper()}</cProd>");
             sb.AppendLine("        <cEAN>SEM GTIN</cEAN>");
-            sb.AppendLine($"        <xProd>{XmlEnc(produto.Nome)}</xProd>");
+            // SEFAZ exige que o PRIMEIRO item, em homologacao, tenha essa descricao
+            // literal -- sem isso rejeita com cStat 373 mesmo com schema/assinatura
+            // corretos (regra separada da xNome do emitente/destinatario).
+            var xProd = (ambiente == "2" && itemAtual == 1)
+                ? "NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL"
+                : produto.Nome;
+            sb.AppendLine($"        <xProd>{XmlEnc(xProd)}</xProd>");
             sb.AppendLine($"        <NCM>{produto.NCM}</NCM>");
             sb.AppendLine($"        <CFOP>{produto.CFOP}</CFOP>");
             sb.AppendLine($"        <uCom>{produto.Unidade}</uCom>");
