@@ -29,7 +29,11 @@ public record EmitirNFeDto(
     string? FormaPagamento = null,   // "01"=dinheiro,"03"=cartão crédito,"04"=cartão débito,"15"=boleto,"17"=pix,"99"=outros
     string? ModalidadeFrete = null,  // "0"=emitente,"1"=destinatário,"2"=terceiros,"9"=sem frete (padrão)
     List<DuplicataDto>? Duplicatas = null,
-    string? Ambiente = null          // "1"=produção,"2"=homologação; null=usa config padrão da empresa
+    string? Ambiente = null,         // "1"=produção,"2"=homologação; null=usa config padrão da empresa
+    // Grupo <card> (NT 2025.001, rejeição 391/392) -- CNPJ do MP é fixo
+    // (fiscal, não vem do request); bandeira/autorização vêm do gateway real.
+    string? CardBrand = null,
+    string? CardAuthorizationCode = null
 );
 
 public record ItemNFeDto(
@@ -72,7 +76,9 @@ public record EmitirNFCeDto(
     decimal ValorDesconto = 0,
     string FormaPagamento = "01",   // 01=Dinheiro 03=Cartao Credito 04=Cartao Debito 05=Credito Loja 10=Vale Alimentacao 99=Outros
     string? InformacaoComplementar = null,
-    string? Ambiente = null          // "1"=produção,"2"=homologação; null=usa config padrão
+    string? Ambiente = null,         // "1"=produção,"2"=homologação; null=usa config padrão
+    string? CardBrand = null,
+    string? CardAuthorizationCode = null
 );
 
 public record NfceResultDto(

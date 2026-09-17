@@ -1000,6 +1000,7 @@ public class NFeService : INFeService
         sb.AppendLine("    <pag><detPag>");
         sb.AppendLine($"      <tPag>{nota.FormaPagamento}</tPag>");
         sb.AppendLine($"      <vPag>{nota.ValorTotal:F2}</vPag>");
+        sb.AppendLine(CardGroupBuilder.Montar(nota.FormaPagamento, dto.CardBrand, dto.CardAuthorizationCode));
         sb.AppendLine("    </detPag></pag>");
         if (!string.IsNullOrWhiteSpace(dto.InformacaoComplementar))
         {
@@ -1351,6 +1352,7 @@ public class NFeService : INFeService
     private static string Limpar(string v) => new(v?.Where(char.IsDigit).ToArray() ?? Array.Empty<char>());
     private static string XmlEnc(string v) => System.Security.SecurityElement.Escape(v ?? string.Empty)!;
 
+
     // DIFAL EC 87/2015 — alíquota interna por UF de destino
     private static decimal AliquotaInternaUF(string uf) => uf?.ToUpperInvariant() switch
     {
@@ -1685,6 +1687,7 @@ public class NFeService : INFeService
         sb.AppendLine("    <pag><detPag>");
         sb.AppendLine($"      <tPag>{dto.FormaPagamento}</tPag>");
         sb.AppendLine($"      <vPag>{nota.ValorTotal:F2}</vPag>");
+        sb.AppendLine(CardGroupBuilder.Montar(dto.FormaPagamento, dto.CardBrand, dto.CardAuthorizationCode));
         sb.AppendLine("    </detPag></pag>");
         if (!string.IsNullOrWhiteSpace(dto.InformacaoComplementar))
         {
