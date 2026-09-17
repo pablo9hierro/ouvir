@@ -1613,7 +1613,11 @@ public class NFeService : INFeService
 
     private static string InserirInfoSuplNFCe(string xmlAssinado, string qrCodeUrl, string urlChave)
     {
-        // Insere <infNFeSupl> após </Signature> como filho direto de <NFe>
+        // XSD da NFe exige a sequencia infNFe -> infNFeSupl -> Signature dentro de
+        // <NFe> -- AppendChild colocava depois de </Signature> (ultimo filho, já
+        // que a assinatura roda antes desta chamada), violando o schema e
+        // rejeitando com cStat 225 "Falha no Schema XML" apontando pro proprio
+        // infNFeSupl.
         var doc = new XmlDocument { PreserveWhitespace = false };
         doc.LoadXml(xmlAssinado);
         const string nfeNs = "http://www.portalfiscal.inf.br/nfe";
@@ -1624,7 +1628,12 @@ public class NFeService : INFeService
         ul.InnerText = urlChave;
         supl.AppendChild(qr);
         supl.AppendChild(ul);
-        doc.DocumentElement!.AppendChild(supl);
+        var signature = doc.DocumentElement!.SelectSingleNode(
+            "*[local-name()='Signature']");
+        if (signature is not null)
+            doc.DocumentElement.InsertBefore(supl, signature);
+        else
+            doc.DocumentElement.AppendChild(supl);
         return doc.DocumentElement.OuterXml;
     }
 
