@@ -63,11 +63,14 @@ public class NFeOptions
     public string UrlSvcAnProd { get; set; } = "https://www.nfe.fazenda.gov.br/NFeAutorizacao4/NFeAutorizacao4.asmx";
 
     // ── NFC-e (Cupom Fiscal Eletrônico — mod=65) ──────────────────────────────
-    /// <summary>URL WS SVRS NFC-e homologação — Autorização</summary>
-    public string UrlNfceAutorizacaoHom { get; set; } = "https://nfce-homologacao.svrs.rs.gov.br/ws/NfceAutorizacao/NFCeAutorizacao4.asmx";
+    /// <summary>URL WS SVRS NFC-e homologação — Autorização (mesmo webservice da
+    /// NFe, o mod=65 no XML é o que diferencia NFC-e; a pasta é "NfeAutorizacao",
+    /// não "NfceAutorizacao" -- URL antiga voltava 404 da própria SVRS, nunca
+    /// tinha existido esse path).</summary>
+    public string UrlNfceAutorizacaoHom { get; set; } = "https://nfce-homologacao.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx";
 
     /// <summary>URL WS SVRS NFC-e produção — Autorização</summary>
-    public string UrlNfceAutorizacaoProd { get; set; } = "https://nfce.svrs.rs.gov.br/ws/NfceAutorizacao/NFCeAutorizacao4.asmx";
+    public string UrlNfceAutorizacaoProd { get; set; } = "https://nfce.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx";
 
     /// <summary>URL base para consulta QR Code NFC-e (homologação)</summary>
     public string UrlNfceQrCodeHom { get; set; } = "https://nfce-homologacao.svrs.rs.gov.br/consulta.aspx";
