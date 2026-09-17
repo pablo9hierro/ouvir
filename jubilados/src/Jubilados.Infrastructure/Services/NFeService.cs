@@ -885,7 +885,12 @@ public class NFeService : INFeService
             {
                 // Regime Normal (Lucro Presumido ou Real): usa CST
                 var cstFinal = !string.IsNullOrEmpty(cst) ? cst.PadLeft(2, '0') : "40";
-                if (item.AliquotaICMS > 0 && cstFinal != "40" && cstFinal != "41" && cstFinal != "50")
+                // <ICMS40> so aceita CST 40/41/50 (isento/nao tributado/suspenso) --
+                // decidir pela aliquota (AliquotaICMS>0) em vez do CST em si jogava
+                // um CST tributavel (ex: "00") dentro de <ICMS40> sempre que o
+                // produto nao tinha aliquota configurada, violando o schema mesmo
+                // com CST correto.
+                if (cstFinal != "40" && cstFinal != "41" && cstFinal != "50")
                 {
                     totalVBC  += item.BaseICMS;
                     totalVICMS += item.ValorICMS;
@@ -1606,7 +1611,9 @@ public class NFeService : INFeService
             {
                 // Regime Normal (Lucro Presumido ou Real): usa CST
                 var cstFinal2 = !string.IsNullOrEmpty(cst2) ? cst2.PadLeft(2, '0') : "40";
-                if (item.AliquotaICMS > 0 && cstFinal2 != "40" && cstFinal2 != "41" && cstFinal2 != "50")
+                // Ver comentario equivalente no fluxo NFe acima -- <ICMS40> so
+                // aceita CST 40/41/50.
+                if (cstFinal2 != "40" && cstFinal2 != "41" && cstFinal2 != "50")
                 {
                     sb.AppendLine("        <ICMS><ICMS00>");
                     sb.AppendLine($"          <orig>{produto.Origem}</orig>");
