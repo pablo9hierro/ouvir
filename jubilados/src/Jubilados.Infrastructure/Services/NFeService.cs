@@ -1380,6 +1380,9 @@ public class NFeService : INFeService
                 qrCodeUrl, qrCodeUrl.Length, urlQrConsulta,
                 empresa.NfceCscId ?? "(null)", (empresa.NfceCscToken ?? "").Length);
             xmlAssinado = InserirInfoSuplNFCe(xmlAssinado, qrCodeUrl, urlQrConsulta);
+            var suplIdx = xmlAssinado.IndexOf("<infNFeSupl", StringComparison.Ordinal);
+            _logger.LogInformation("[NFCe] trecho infNFeSupl no XML final: {Trecho}",
+                suplIdx >= 0 ? xmlAssinado.Substring(suplIdx, Math.Min(400, xmlAssinado.Length - suplIdx)) : "(NAO ENCONTRADO)");
             nota.XmlEnvio = xmlAssinado;
 
             var urlNfceAuth = isHomNfce ? _options.UrlNfceAutorizacaoHom : _options.UrlNfceAutorizacaoProd;
