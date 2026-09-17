@@ -1376,6 +1376,9 @@ public class NFeService : INFeService
             var (xmlNFCe, qrCodeUrl) = GerarXmlNFCe(nota, empresa, produtos, dto);
             var xmlAssinado = AssinarXml(xmlNFCe, certificado);
             var urlQrConsulta = isHomNfce ? _options.UrlNfceQrCodeHom : _options.UrlNfceQrCodeProd;
+            _logger.LogInformation("[NFCe] qrCodeUrl={Qr} (len={Len}) urlChave={Uc} cscId={CscId} cscTokenLen={CtLen}",
+                qrCodeUrl, qrCodeUrl.Length, urlQrConsulta,
+                empresa.NfceCscId ?? "(null)", (empresa.NfceCscToken ?? "").Length);
             xmlAssinado = InserirInfoSuplNFCe(xmlAssinado, qrCodeUrl, urlQrConsulta);
             nota.XmlEnvio = xmlAssinado;
 
