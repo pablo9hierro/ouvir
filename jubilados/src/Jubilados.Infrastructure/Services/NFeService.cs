@@ -1376,13 +1376,7 @@ public class NFeService : INFeService
             var (xmlNFCe, qrCodeUrl) = GerarXmlNFCe(nota, empresa, produtos, dto);
             var xmlAssinado = AssinarXml(xmlNFCe, certificado);
             var urlQrConsulta = isHomNfce ? _options.UrlNfceQrCodeHom : _options.UrlNfceQrCodeProd;
-            _logger.LogInformation("[NFCe] qrCodeUrl={Qr} (len={Len}) urlChave={Uc} cscId={CscId} cscTokenLen={CtLen}",
-                qrCodeUrl, qrCodeUrl.Length, urlQrConsulta,
-                empresa.NfceCscId ?? "(null)", (empresa.NfceCscToken ?? "").Length);
             xmlAssinado = InserirInfoSuplNFCe(xmlAssinado, qrCodeUrl, urlQrConsulta);
-            var suplIdx = xmlAssinado.IndexOf("<infNFeSupl", StringComparison.Ordinal);
-            _logger.LogInformation("[NFCe] trecho infNFeSupl no XML final: {Trecho}",
-                suplIdx >= 0 ? xmlAssinado.Substring(suplIdx, Math.Min(400, xmlAssinado.Length - suplIdx)) : "(NAO ENCONTRADO)");
             nota.XmlEnvio = xmlAssinado;
 
             var urlNfceAuth = isHomNfce ? _options.UrlNfceAutorizacaoHom : _options.UrlNfceAutorizacaoProd;
@@ -1645,14 +1639,27 @@ public class NFeService : INFeService
 
     private static string GerarQrCodeNFCe(string chave, string tpAmb, string cscId, string cscToken, string urlBase)
     {
-        // NT 2015.002 v1.21: cHashQRCode = SHA1(chave|100|tpAmb|cscId[sem sep]cscToken).ToUpper()
-        var nVersao = "100";
+        // O formato "?p=chave|nVersao|tpAmb|cIdToken|hash" (pipe-delimited) e o
+        // QRCODE V2/V3 do schema atual (leiauteNFe_v4.00.xsd, NT 2020.005) --
+        // nVersao tem que ser o literal "2" (identifica a VERSAO DO QR CODE, nao
+        // "100"; "100" e resquicio do formato V1 antigo com parametros nomeados
+        // ?chNFe=...&nVersao=100&..., que e outro padrao inteiramente). Usar
+        // "100" aqui fazia a SVRS rejeitar com cStat 225 "Falha no Schema XML"
+        // apontando pro proprio elemento qrCode -- nenhum dos 5 padroes regex do
+        // XSD batia com a string gerada.
+        //
+        // cIdToken tb nao pode ter zero a esquerda na URL (regex exige
+        // 0|[1-9][0-9]{0,5}, nao 6 digitos fixos) -- só o hash usa o Id
+        // zero-padded de 6 digitos, por convencao do calculo oficial do CSC.
+        const string nVersaoQr = "2";
         var cIdPad = cscId.PadLeft(6, '0');
-        var hashInput = $"{chave}|{nVersao}|{tpAmb}|{cIdPad}{cscToken}";
+        var cIdSemZero = cscId.TrimStart('0');
+        if (cIdSemZero.Length == 0) cIdSemZero = "0";
+        var hashInput = $"{chave}|{nVersaoQr}|{tpAmb}|{cIdPad}{cscToken}";
         var hashBytes = System.Security.Cryptography.SHA1.HashData(
             System.Text.Encoding.UTF8.GetBytes(hashInput));
         var hashHex = Convert.ToHexString(hashBytes).ToUpper();
-        return $"{urlBase}?p={chave}|{nVersao}|{tpAmb}|{cIdPad}|{hashHex}";
+        return $"{urlBase}?p={chave}|{nVersaoQr}|{tpAmb}|{cIdSemZero}|{hashHex}";
     }
 
     private async Task<(string cStat, string xMotivo, string protocolo)> EnviarNFCeParaSefazAsync(
