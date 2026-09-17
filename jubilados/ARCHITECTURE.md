@@ -13,7 +13,8 @@
 - **Backend:** ASP.NET Core 8, C# 12, EF Core 8
 - **Banco de Dados:** PostgreSQL 15+ (Supabase)
 - **Autenticação:** Supabase Auth (JWT Bearer)
-- **Frontend:** HTML/CSS/JavaScript vanilla (SPA em `wwwroot/index2.html`)
+- **Frontend:** HTML/CSS/JavaScript vanilla (SPA em `wwwroot/jubilados/index2.html`)
+- **Rotas:** todas as páginas do app vivem sob o prefixo `/jubilados` (ex: `/jubilados/login`, `/jubilados/operacoes/emitir-nfe`), para não colidir com o site principal (Rodoletas) que ocupa as rotas de nível raiz em `resolutoo.com`
 - **Container:** Docker + docker-compose
 - **Relatórios:** QuestPDF (DANFE)
 
@@ -99,9 +100,12 @@ jubilados/
 │       │   ├── NFeController.cs
 │       │   └── DiagnosticController.cs
 │       ├── wwwroot/
-│       │   ├── index2.html        ← SPA principal (abas)
-│       │   ├── login.html         ← Autenticação Supabase
-│       │   └── onboarding.html    ← Wizard fiscal multi-passo
+│       │   └── jubilados/         ← todas as páginas do app, sob o prefixo /jubilados
+│       │       ├── index.html     ← Landing
+│       │       ├── index2.html    ← SPA principal (abas)
+│       │       ├── login.html     ← Autenticação local (JWT)
+│       │       ├── onboarding.html← Wizard fiscal multi-passo
+│       │       └── resetar-senha.html
 │       ├── Program.cs
 │       ├── appsettings.json
 │       └── appsettings.Development.json
@@ -317,7 +321,7 @@ const API = 'https://api.jubilados.com.br';
 function fetchAuth(url, options = {}) {
     const token = localStorage.getItem('sb_token');
     if (!token) {
-        window.location.href = '/login.html';
+        window.location.href = '/jubilados/login';
         return Promise.reject('Não autenticado');
     }
     
@@ -642,6 +646,30 @@ if (idDest == "2" && cliente.IndIEDest == "9")
 **Bloco H — Inventário:**
 - `H005`: data e valor total do inventário
 - `H010`: itens do inventário (produto por produto)
+
+---
+
+## 🗺️ ESTADOS SUPORTADOS
+
+Config de webservice (autorização, consulta, status, inutilização, evento, QR-Code
+NFC-e) resolvida por `empresa.UF` via `UfWebserviceConfig.PorUf`
+(`src/Jubilados.Infrastructure/Services/UfWebserviceConfig.cs`), com fallback pra
+`NFeOptions` (PB) se a UF não tiver entrada — ver `ResolverConfigUf` em
+`NFeService.cs`. Autorização/consulta/status/inutilização/evento são idênticas pra
+todo estado do grupo SVRS; só a URL de consulta do QR Code da NFC-e varia de
+verdade por estado (usar a errada derruba a emissão com cStat 395).
+
+| UF | Grupo | Status |
+|----|-------|--------|
+| PB | SVRS  | **cStat 100 real confirmado** em homologação (empresa de teste real) |
+| AC, AL, AP, DF, ES, PA, RO, SC, SE, TO | SVRS | Config implementada, URL de QR Code confirmada contra fonte oficial (ENCAT + domínio .gov.br do estado) — **não testada com empresa/certificado real** |
+| RN, RR | SVRS | Deixadas de fora de propósito — URL de QR Code com sinal de transição (RN) ou endereço frágil tipo IP numérico em homologação (RR); cai no fallback PB até confirmação direta com a SEFAZ do estado |
+| SP, RJ, MG, BA, PR, RS, MS, MT, GO, MA, PI, CE, PE, AM (SEFAZ própria) | Não implementado | Cada um exige URL de autorização própria (não usa SVRS) — fora de escopo até haver empresa real nesses estados |
+
+**Nunca adicionar uma UF na tabela sem confirmar a URL contra fonte oficial** —
+histórico real: um erro de URL da NFC-e de PB (domínio genérico SVRS em vez do
+oficial `sefaz.pb.gov.br`) derrubou toda emissão silenciosamente até ser testado
+com uma empresa real em homologação.
 
 ---
 

@@ -84,14 +84,15 @@ public class CancelamentoService : ICancelamentoService
         var idEvento = $"ID{tpEvento}{chave}01";
         var idLote = (int)(DateTimeOffset.UtcNow.ToUnixTimeSeconds() % int.MaxValue);
 
+        var cfg = UfWebserviceConfig.Resolve(empresa.UF, _options);
         var enviEventoDoc = ConstruirEAssinarEvento(
             idEvento, chave, cnpj, nota.Protocolo ?? "",
-            dto.Justificativa.Trim(), dhEvento, idLote, _options.CodigoUF, ambienteCancel, certificado);
+            dto.Justificativa.Trim(), dhEvento, idLote, cfg.CodigoUF, ambienteCancel, certificado);
 
         var soap = MontarSoap(enviEventoDoc);
         _logger.LogInformation("[Cancelamento] SOAP (primeiros 3000): {S}", soap.Length > 3000 ? soap[..3000] : soap);
 
-        var urlEvento = ambienteCancel == "2" ? _options.SefazUrlEventoHom : _options.SefazUrlEventoProd;
+        var urlEvento = ambienteCancel == "2" ? cfg.UrlEventoHom : cfg.UrlEventoProd;
         const string soapAction = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4/nfeRecepcaoEvento";
 
         string cStat, xMotivo, protocolo;

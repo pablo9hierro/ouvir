@@ -20,6 +20,7 @@ public class EmpresaConfiguration : IEntityTypeConfiguration<Empresa>
         builder.Property(e => e.Complemento).HasColumnName("complemento").HasMaxLength(60);
         builder.Property(e => e.Bairro).HasColumnName("bairro").HasMaxLength(60);
         builder.Property(e => e.Municipio).HasColumnName("municipio").HasMaxLength(60);
+        builder.Property(e => e.CodigoMunicipio).HasColumnName("codigo_municipio").HasMaxLength(7);
         builder.Property(e => e.UF).HasColumnName("uf").HasMaxLength(2);
         builder.Property(e => e.CEP).HasColumnName("cep").HasMaxLength(9);
         builder.Property(e => e.Telefone).HasColumnName("telefone").HasMaxLength(15);

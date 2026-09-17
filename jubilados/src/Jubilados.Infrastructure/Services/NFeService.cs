@@ -38,6 +38,19 @@ public class NFeService : INFeService
         _logger = logger;
     }
 
+    /// <summary>Resolve config de webservice fiscal pela UF da empresa. Cai no
+    /// fallback de NFeOptions (PB, comportamento histórico) se a UF não tiver
+    /// entrada confirmada em UfWebserviceConfig -- nunca falha silenciosamente
+    /// pra uma URL errada, só usa o default já validado.</summary>
+    private UfWebserviceInfo ResolverConfigUf(Empresa empresa)
+    {
+        if (!UfWebserviceConfig.PorUf.ContainsKey(empresa.UF ?? string.Empty))
+            _logger.LogWarning(
+                "[NFe] UF={Uf} da empresa {EmpresaId} nao tem config de webservice confirmada -- usando fallback PB (NFeOptions).",
+                empresa.UF, empresa.Id);
+        return UfWebserviceConfig.Resolve(empresa.UF, _options);
+    }
+
     public async Task<NFeResultDto> EmitirNFeAsync(EmitirNFeDto dto, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("[NFe] Iniciando emissão para EmpresaId={EmpresaId}", dto.EmpresaId);
@@ -52,6 +65,7 @@ public class NFeService : INFeService
         var certificado = _certificadoService.CarregarCertificado(
             empresa.CertificadoBase64, empresa.CertificadoSenha!);
         ValidarPrecondicoesEmissao(empresa, certificado);
+        var cfg = ResolverConfigUf(empresa);
 
         // Destinatário: cliente do banco ou destino avulso
         Cliente? cliente = null;
@@ -88,8 +102,10 @@ public class NFeService : INFeService
             var xmlAssinado = AssinarXml(xmlNFe, certificado);
             nota.XmlEnvio = xmlAssinado;
 
+            var urlAutorizacao = (dto.Ambiente ?? _options.Ambiente) == "1" ? cfg.UrlAutorizacaoProd : cfg.UrlAutorizacaoHom;
             var (cStat, xMotivo, protocolo) = await EnviarParaSefazAsync(
-                xmlAssinado, empresa.CNPJ, certificado, cancellationToken, ambienteDto: dto.Ambiente);
+                xmlAssinado, empresa.CNPJ, certificado, cancellationToken,
+                urlOverride: urlAutorizacao, ambienteDto: dto.Ambiente, codigoUfOverride: cfg.CodigoUF);
 
             // ── Contingência SVC-AN: SEFAZ principal inacessível ──
             bool contingenciaNota = false;
@@ -103,7 +119,7 @@ public class NFeService : INFeService
                 var urlSvcAn = dto.Ambiente == "1" ? _options.UrlSvcAnProd : _options.UrlSvcAnHom;
                 (cStat, xMotivo, protocolo) = await EnviarParaSefazAsync(
                     xmlAssinadoConting, empresa.CNPJ, certificado, cancellationToken,
-                    urlOverride: urlSvcAn);
+                    urlOverride: urlSvcAn, codigoUfOverride: cfg.CodigoUF);
                 _logger.LogInformation("[NFe] SVC-AN resposta: cStat={CStat} | {XMotivo}", cStat, xMotivo);
             }
 
@@ -184,6 +200,7 @@ public class NFeService : INFeService
 
         var certificado = _certificadoService.CarregarCertificado(
             empresa.CertificadoBase64!, empresa.CertificadoSenha!);
+        var cfg = ResolverConfigUf(empresa);
 
         const string wsdlNs = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeConsultaProtocolo4";
         const string nfeNs  = "http://www.portalfiscal.inf.br/nfe";
@@ -199,7 +216,7 @@ public class NFeService : INFeService
         var header = soapDoc.CreateElement("soap12", "Header", soapNs);
         envelope.AppendChild(header);
         var cabec = soapDoc.CreateElement("nfeCabecMsg", wsdlNs);
-        var elCUF = soapDoc.CreateElement("cUF", wsdlNs); elCUF.InnerText = _options.CodigoUF;
+        var elCUF = soapDoc.CreateElement("cUF", wsdlNs); elCUF.InnerText = cfg.CodigoUF;
         var elVer = soapDoc.CreateElement("versaoDados", wsdlNs); elVer.InnerText = "4.00";
         cabec.AppendChild(elCUF); cabec.AppendChild(elVer);
         header.AppendChild(cabec);
@@ -232,7 +249,8 @@ public class NFeService : INFeService
                 var content = new StringContent(xml, Encoding.UTF8);
                 content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(
                     $"application/soap+xml; charset=utf-8; action=\"{soapAction}\"");
-                var response = await http.PostAsync(_options.UrlConsulta, content, cancellationToken);
+                var urlConsulta = _options.IsHomologacao ? cfg.UrlConsultaHom : cfg.UrlConsultaProd;
+                var response = await http.PostAsync(urlConsulta, content, cancellationToken);
                 var retorno = await response.Content.ReadAsStringAsync(cancellationToken);
                 _logger.LogInformation("[NFe] ConsultarSefaz resposta (attempt {A}): {Body}", attempt + 1, retorno.Length > 2000 ? retorno[..2000] : retorno);
                 lastResult = InterpretarConsultaProtocolo(retorno, _logger);
@@ -267,6 +285,7 @@ public class NFeService : INFeService
 
         var certificado = _certificadoService.CarregarCertificado(
             empresa.CertificadoBase64!, empresa.CertificadoSenha!);
+        var cfg = ResolverConfigUf(empresa);
 
         const string wsdlNs = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4";
         const string nfeNs  = "http://www.portalfiscal.inf.br/nfe";
@@ -282,7 +301,7 @@ public class NFeService : INFeService
         var header = soapDoc.CreateElement("soap12", "Header", soapNs);
         envelope.AppendChild(header);
         var cabec = soapDoc.CreateElement("nfeCabecMsg", wsdlNs);
-        var elCUF = soapDoc.CreateElement("cUF", wsdlNs); elCUF.InnerText = _options.CodigoUF;
+        var elCUF = soapDoc.CreateElement("cUF", wsdlNs); elCUF.InnerText = cfg.CodigoUF;
         var elVer = soapDoc.CreateElement("versaoDados", wsdlNs); elVer.InnerText = "4.00";
         cabec.AppendChild(elCUF); cabec.AppendChild(elVer);
         header.AppendChild(cabec);
@@ -295,7 +314,7 @@ public class NFeService : INFeService
         var consStat = soapDoc.CreateElement("consStatServ", nfeNs);
         consStat.SetAttribute("versao", "4.00");
         var elTpAmb = soapDoc.CreateElement("tpAmb", nfeNs); elTpAmb.InnerText = _options.Ambiente;
-        var elCuf2  = soapDoc.CreateElement("cUF", nfeNs);   elCuf2.InnerText  = _options.CodigoUF;
+        var elCuf2  = soapDoc.CreateElement("cUF", nfeNs);   elCuf2.InnerText  = cfg.CodigoUF;
         var elXServ = soapDoc.CreateElement("xServ", nfeNs); elXServ.InnerText = "STATUS";
         consStat.AppendChild(elTpAmb); consStat.AppendChild(elCuf2); consStat.AppendChild(elXServ);
         nfeDadosMsg.AppendChild(consStat);
@@ -311,7 +330,8 @@ public class NFeService : INFeService
             var content = new StringContent(xml, Encoding.UTF8);
             content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(
                 $"application/soap+xml; charset=utf-8; action=\"{soapAction}\"");
-            var response = await http.PostAsync(_options.UrlStatus, content, cancellationToken);
+            var urlStatus = _options.IsHomologacao ? cfg.UrlStatusHom : cfg.UrlStatusProd;
+            var response = await http.PostAsync(urlStatus, content, cancellationToken);
             var retorno = await response.Content.ReadAsStringAsync(cancellationToken);
             _logger.LogInformation("[NFe] ConsultarStatus resposta: {Body}", retorno.Length > 2000 ? retorno[..2000] : retorno);
             return InterpretarStatus(retorno, _logger);
@@ -341,19 +361,20 @@ public class NFeService : INFeService
 
         var certificado = _certificadoService.CarregarCertificado(
             empresa.CertificadoBase64!, empresa.CertificadoSenha!);
+        var cfg = ResolverConfigUf(empresa);
 
         var cnpj = Limpar(empresa.CNPJ).PadLeft(14, '0');
         var ano  = DateTime.Now.ToString("yy");
         var serie = dto.Serie.PadLeft(3, '0');
         var nNFIni = dto.NumeroInicial.ToString().PadLeft(9, '0');
         var nNFFin = dto.NumeroFinal.ToString().PadLeft(9, '0');
-        var idInut = $"ID{_options.CodigoUF}{ano}{cnpj}55{serie}{nNFIni}{nNFFin}";
+        var idInut = $"ID{cfg.CodigoUF}{ano}{cnpj}55{serie}{nNFIni}{nNFFin}";
 
         var xmlInut = $@"<inutNFe versao=""4.00"" xmlns=""http://www.portalfiscal.inf.br/nfe"">
   <infInut Id=""{idInut}"">
     <tpAmb>{_options.Ambiente}</tpAmb>
     <xServ>INUTILIZAR</xServ>
-    <cUF>{_options.CodigoUF}</cUF>
+    <cUF>{cfg.CodigoUF}</cUF>
     <ano>{ano}</ano>
     <CNPJ>{cnpj}</CNPJ>
     <mod>55</mod>
@@ -379,7 +400,7 @@ public class NFeService : INFeService
         var header = soapDoc.CreateElement("soap12", "Header", soapNs);
         envelope.AppendChild(header);
         var cabec = soapDoc.CreateElement("nfeCabecMsg", wsdlNs);
-        var elCUF = soapDoc.CreateElement("cUF", wsdlNs); elCUF.InnerText = _options.CodigoUF;
+        var elCUF = soapDoc.CreateElement("cUF", wsdlNs); elCUF.InnerText = cfg.CodigoUF;
         var elVer = soapDoc.CreateElement("versaoDados", wsdlNs); elVer.InnerText = "4.00";
         cabec.AppendChild(elCUF); cabec.AppendChild(elVer);
         header.AppendChild(cabec);
@@ -405,7 +426,8 @@ public class NFeService : INFeService
             var content = new StringContent(xml, Encoding.UTF8);
             content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(
                 $"application/soap+xml; charset=utf-8; action=\"{soapAction}\"");
-            var response = await http.PostAsync(_options.UrlInutilizacao, content, cancellationToken);
+            var urlInutilizacao = _options.IsHomologacao ? cfg.UrlInutilizacaoHom : cfg.UrlInutilizacaoProd;
+            var response = await http.PostAsync(urlInutilizacao, content, cancellationToken);
             var retorno = await response.Content.ReadAsStringAsync(cancellationToken);
             _logger.LogInformation("[NFe] Inutilizar resposta: {Body}", retorno.Length > 2000 ? retorno[..2000] : retorno);
             return InterpretarInutilizacao(retorno, _logger);
@@ -482,6 +504,7 @@ public class NFeService : INFeService
 
         var certificado = _certificadoService.CarregarCertificado(
             empresa.CertificadoBase64!, empresa.CertificadoSenha!);
+        var cfg = ResolverConfigUf(empresa);
 
         var cnpj = Limpar(empresa.CNPJ).PadLeft(14, '0');
         var chave = nota.ChaveAcesso;
@@ -496,7 +519,7 @@ public class NFeService : INFeService
   <idLote>1</idLote>
   <evento versao=""1.00"">
     <infEvento Id=""{idEvento}"">
-      <cOrgao>{_options.CodigoUF}</cOrgao>
+      <cOrgao>{cfg.CodigoUF}</cOrgao>
       <tpAmb>{_options.Ambiente}</tpAmb>
       <CNPJ>{cnpj}</CNPJ>
       <chNFe>{chave}</chNFe>
@@ -527,7 +550,7 @@ public class NFeService : INFeService
 
         var header = soapDoc.CreateElement("soap12", "Header", soapNs);
         var cabec = soapDoc.CreateElement("nfeCabecMsg", wsdlNs);
-        var elCUF = soapDoc.CreateElement("cUF", wsdlNs); elCUF.InnerText = _options.CodigoUF;
+        var elCUF = soapDoc.CreateElement("cUF", wsdlNs); elCUF.InnerText = cfg.CodigoUF;
         var elVer = soapDoc.CreateElement("versaoDados", wsdlNs); elVer.InnerText = "1.00";
         cabec.AppendChild(elCUF); cabec.AppendChild(elVer);
         header.AppendChild(cabec);
@@ -547,8 +570,9 @@ public class NFeService : INFeService
         try
         {
             var pkcs12 = _certificadoService.CarregarCadeiaPkcs12(empresa.CertificadoBase64!, empresa.CertificadoSenha!);
+            var urlEvento = _options.IsHomologacao ? cfg.UrlEventoHom : cfg.UrlEventoProd;
             var retorno = await SefazSoapClient.PostAsync(
-                _options.UrlEvento, soapAction, soap, pkcs12, TimeSpan.FromSeconds(30), _logger, cancellationToken);
+                urlEvento, soapAction, soap, pkcs12, TimeSpan.FromSeconds(30), _logger, cancellationToken);
             _logger.LogInformation("[CCe] Resposta: {Body}", retorno.Length > 2000 ? retorno[..2000] : retorno);
             return InterpretarCce(retorno, _logger);
         }
@@ -660,7 +684,8 @@ public class NFeService : INFeService
     private string GerarXmlNFe(NotaFiscal nota, Empresa empresa, Cliente? cliente,
         List<Produto> produtos, EmitirNFeDto dto, int tpEmis = 1)
     {
-        var cUF = _options.CodigoUF;
+        var cUF = ResolverConfigUf(empresa).CodigoUF;
+        var codigoMunicipioEmpresa = empresa.CodigoMunicipio ?? _options.CodigoMunicipio;
         var cNF = new Random().Next(10000000, 99999999).ToString();
         var dEmi = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:sszzz");
         var ambiente = (dto.Ambiente == "1" || dto.Ambiente == "2") ? dto.Ambiente : _options.Ambiente;
@@ -686,7 +711,7 @@ public class NFeService : INFeService
         var ufDest = (cliente?.UF ?? empresa.UF ?? string.Empty).Trim().ToUpperInvariant();
         var idDest = dto.DestinoOperacao ?? ((!string.IsNullOrEmpty(ufDest) && ufDest != ufOrigem) ? "2" : "1");
         sb.AppendLine($"      <idDest>{idDest}</idDest>");
-        sb.AppendLine($"      <cMunFG>{_options.CodigoMunicipio}</cMunFG>");
+        sb.AppendLine($"      <cMunFG>{codigoMunicipioEmpresa}</cMunFG>");
         sb.AppendLine("      <tpImp>1</tpImp>");
         sb.AppendLine($"      <tpEmis>{tpEmis}</tpEmis>");
         sb.AppendLine($"      <cDV>{chave[^1]}</cDV>");
@@ -713,7 +738,7 @@ public class NFeService : INFeService
         if (!string.IsNullOrWhiteSpace(empresa.Complemento))
             sb.AppendLine($"        <xCpl>{XmlEnc(empresa.Complemento)}</xCpl>");
         sb.AppendLine($"        <xBairro>{XmlEnc(empresa.Bairro)}</xBairro>");
-        sb.AppendLine($"        <cMun>{_options.CodigoMunicipio}</cMun>");
+        sb.AppendLine($"        <cMun>{codigoMunicipioEmpresa}</cMun>");
         sb.AppendLine($"        <xMun>{XmlEnc(empresa.Municipio)}</xMun>");
         sb.AppendLine($"        <UF>{empresa.UF}</UF>");
         sb.AppendLine($"        <CEP>{Limpar(empresa.CEP)}</CEP>");
@@ -740,7 +765,7 @@ public class NFeService : INFeService
             sb.AppendLine($"        <xLgr>{XmlEnc(string.IsNullOrWhiteSpace(cliente.Logradouro) ? "NAO INFORMADO" : cliente.Logradouro)}</xLgr>");
             sb.AppendLine($"        <nro>{XmlEnc(string.IsNullOrWhiteSpace(cliente.Numero) ? "S/N" : cliente.Numero)}</nro>");
             sb.AppendLine($"        <xBairro>{XmlEnc(string.IsNullOrWhiteSpace(cliente.Bairro) ? "NAO INFORMADO" : cliente.Bairro)}</xBairro>");
-            sb.AppendLine($"        <cMun>{(string.IsNullOrWhiteSpace(cliente.CodigoMunicipio) ? _options.CodigoMunicipio : cliente.CodigoMunicipio)}</cMun>");
+            sb.AppendLine($"        <cMun>{(string.IsNullOrWhiteSpace(cliente.CodigoMunicipio) ? codigoMunicipioEmpresa : cliente.CodigoMunicipio)}</cMun>");
             sb.AppendLine($"        <xMun>{XmlEnc(string.IsNullOrWhiteSpace(cliente.Municipio) ? empresa.Municipio : cliente.Municipio)}</xMun>");
             sb.AppendLine($"        <UF>{(string.IsNullOrWhiteSpace(ufDest) ? ufOrigem : ufDest)}</UF>");
             sb.AppendLine($"        <CEP>{(string.IsNullOrWhiteSpace(cliente.CEP) ? Limpar(empresa.CEP) : Limpar(cliente.CEP))}</CEP>");
@@ -779,7 +804,7 @@ public class NFeService : INFeService
                 sb.AppendLine("        <xLgr>NAO IDENTIFICADO</xLgr>");
                 sb.AppendLine("        <nro>S/N</nro>");
                 sb.AppendLine("        <xBairro>NAO IDENTIFICADO</xBairro>");
-                sb.AppendLine($"        <cMun>{_options.CodigoMunicipio}</cMun>");
+                sb.AppendLine($"        <cMun>{codigoMunicipioEmpresa}</cMun>");
                 sb.AppendLine($"        <xMun>{XmlEnc(empresa.Municipio)}</xMun>");
                 sb.AppendLine($"        <UF>{empresa.UF}</UF>");
                 sb.AppendLine($"        <CEP>{Limpar(empresa.CEP)}</CEP>");
@@ -1134,12 +1159,13 @@ public class NFeService : INFeService
 
     private async Task<(string cStat, string xMotivo, string protocolo)> EnviarParaSefazAsync(
         string xmlAssinado, string cnpj, X509Certificate2 certificado, CancellationToken ct,
-        string? urlOverride = null, string? ambienteDto = null)
+        string? urlOverride = null, string? ambienteDto = null, string? codigoUfOverride = null)
     {
         var isHom = ambienteDto == "2" || (ambienteDto == null && _options.IsHomologacao);
         var url = urlOverride ?? (isHom
             ? _options.SefazUrlHomologacao
             : _options.SefazUrlProducao);
+        var codigoUf = codigoUfOverride ?? _options.CodigoUF;
 
         var idLote = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var soapAction = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4/nfeAutorizacaoLote";
@@ -1160,7 +1186,7 @@ public class NFeService : INFeService
         envelope.AppendChild(header);
         var cabecMsg = soapDoc.CreateElement("nfeCabecMsg", wsdlNs);
         var elCUF = soapDoc.CreateElement("cUF", wsdlNs);
-        elCUF.InnerText = _options.CodigoUF;
+        elCUF.InnerText = codigoUf;
         var elVersao = soapDoc.CreateElement("versaoDados", wsdlNs);
         elVersao.InnerText = "4.00";
         cabecMsg.AppendChild(elCUF);
@@ -1297,13 +1323,16 @@ public class NFeService : INFeService
         if (!certificado.HasPrivateKey)
             throw new InvalidOperationException("Certificado digital sem chave privada. Reenvie o arquivo .pfx da empresa.");
 
-        var codigoUf = Limpar(_options.CodigoUF);
+        // Valida a EMPRESA, nao a config global -- antes validava _options.CodigoUF/
+        // CodigoMunicipio (sempre PB, sempre 7 digitos por default), o que nunca
+        // pegava uma empresa mal cadastrada de verdade.
+        var codigoUf = Limpar(ResolverConfigUf(empresa).CodigoUF);
         if (codigoUf.Length != 2)
             throw new InvalidOperationException("Configuração NFe inválida: CodigoUF deve conter 2 dígitos numéricos.");
 
-        var codigoMunicipio = Limpar(_options.CodigoMunicipio);
+        var codigoMunicipio = Limpar(empresa.CodigoMunicipio ?? _options.CodigoMunicipio);
         if (codigoMunicipio.Length != 7)
-            throw new InvalidOperationException("Configuração NFe inválida: CodigoMunicipio deve conter 7 dígitos numéricos.");
+            throw new InvalidOperationException("Empresa sem código IBGE de município configurado (7 dígitos) -- necessário para emissão de NF-e/NFC-e.");
 
         if (string.IsNullOrWhiteSpace(empresa.CNPJ) || Limpar(empresa.CNPJ).Length != 14)
             throw new InvalidOperationException("CNPJ da empresa inválido para emissão de NF-e.");
@@ -1384,15 +1413,16 @@ public class NFeService : INFeService
             var nota = MontarNotaFiscalNFCe(dto, empresa, produtos, ultimoNumero + 1);
             CalcularTotais(nota, dto.ValorFrete, dto.ValorDesconto);
 
+            var cfg = ResolverConfigUf(empresa);
             var isHomNfce = dto.Ambiente == "2" || (dto.Ambiente == null && _options.IsHomologacao);
             var (xmlNFCe, qrCodeUrl) = GerarXmlNFCe(nota, empresa, produtos, dto);
             var xmlAssinado = AssinarXml(xmlNFCe, certificado);
-            var urlQrConsulta = isHomNfce ? _options.UrlNfceQrCodeHom : _options.UrlNfceQrCodeProd;
+            var urlQrConsulta = isHomNfce ? cfg.UrlNfceQrCodeHom : cfg.UrlNfceQrCodeProd;
             xmlAssinado = InserirInfoSuplNFCe(xmlAssinado, qrCodeUrl, urlQrConsulta);
             nota.XmlEnvio = xmlAssinado;
 
-            var urlNfceAuth = isHomNfce ? _options.UrlNfceAutorizacaoHom : _options.UrlNfceAutorizacaoProd;
-            var (cStat, xMotivo, protocolo) = await EnviarNFCeParaSefazAsync(xmlAssinado, certificado, ct, urlNfceAuth);
+            var urlNfceAuth = isHomNfce ? cfg.UrlNfceAutorizacaoHom : cfg.UrlNfceAutorizacaoProd;
+            var (cStat, xMotivo, protocolo) = await EnviarNFCeParaSefazAsync(xmlAssinado, certificado, ct, urlNfceAuth, cfg.CodigoUF);
             nota.CStat = cStat;
             nota.XMotivo = xMotivo;
             nota.Protocolo = protocolo;
@@ -1468,7 +1498,9 @@ public class NFeService : INFeService
     private (string xml, string qrCodeUrl) GerarXmlNFCe(NotaFiscal nota, Empresa empresa,
         List<Produto> produtos, EmitirNFCeDto dto)
     {
-        var cUF = _options.CodigoUF;
+        var cfgUf = ResolverConfigUf(empresa);
+        var cUF = cfgUf.CodigoUF;
+        var codigoMunicipioEmpresa = empresa.CodigoMunicipio ?? _options.CodigoMunicipio;
         var cNF = new Random().Next(10000000, 99999999).ToString();
         var dEmi = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:sszzz");
         var ambiente = (dto.Ambiente == "1" || dto.Ambiente == "2") ? dto.Ambiente : _options.Ambiente;
@@ -1478,7 +1510,7 @@ public class NFeService : INFeService
 
         var cscId = (empresa.NfceCscId ?? "000001").PadLeft(6, '0');
         var cscToken = empresa.NfceCscToken ?? "";
-        var urlQrBase = ambiente == "1" ? _options.UrlNfceQrCodeProd : _options.UrlNfceQrCodeHom;
+        var urlQrBase = ambiente == "1" ? cfgUf.UrlNfceQrCodeProd : cfgUf.UrlNfceQrCodeHom;
         var qrCodeUrl = GerarQrCodeNFCe(chave, ambiente, cscId, cscToken, urlQrBase);
 
         var sb = new StringBuilder();
@@ -1495,7 +1527,7 @@ public class NFeService : INFeService
         sb.AppendLine($"      <dhEmi>{dEmi}</dhEmi>");
         sb.AppendLine("      <tpNF>1</tpNF>");
         sb.AppendLine("      <idDest>1</idDest>");
-        sb.AppendLine($"      <cMunFG>{_options.CodigoMunicipio}</cMunFG>");
+        sb.AppendLine($"      <cMunFG>{codigoMunicipioEmpresa}</cMunFG>");
         sb.AppendLine("      <tpImp>4</tpImp>");
         sb.AppendLine("      <tpEmis>1</tpEmis>");
         sb.AppendLine($"      <cDV>{chave[^1]}</cDV>");
@@ -1517,7 +1549,7 @@ public class NFeService : INFeService
         if (!string.IsNullOrWhiteSpace(empresa.Complemento))
             sb.AppendLine($"        <xCpl>{XmlEnc(empresa.Complemento)}</xCpl>");
         sb.AppendLine($"        <xBairro>{XmlEnc(empresa.Bairro)}</xBairro>");
-        sb.AppendLine($"        <cMun>{_options.CodigoMunicipio}</cMun>");
+        sb.AppendLine($"        <cMun>{codigoMunicipioEmpresa}</cMun>");
         sb.AppendLine($"        <xMun>{XmlEnc(empresa.Municipio)}</xMun>");
         sb.AppendLine($"        <UF>{empresa.UF}</UF>");
         sb.AppendLine($"        <CEP>{Limpar(empresa.CEP)}</CEP>");
@@ -1717,7 +1749,8 @@ public class NFeService : INFeService
     }
 
     private async Task<(string cStat, string xMotivo, string protocolo)> EnviarNFCeParaSefazAsync(
-        string xmlAssinado, X509Certificate2 certificado, CancellationToken ct, string? urlOverride = null)
+        string xmlAssinado, X509Certificate2 certificado, CancellationToken ct, string? urlOverride = null,
+        string? codigoUfOverride = null)
     {
         // Mesmo webservice/WSDL da NFe (mod=55) -- SVRS nao tem um "NfceAutorizacao4"
         // separado, o mod=65 dentro do XML e que diferencia NFC-e. Namespace/soapAction
@@ -1725,6 +1758,7 @@ public class NFeService : INFeService
         // recognized" mesmo com a URL certa -- tem que ser exatamente igual ao fluxo
         // NFe (EnviarParaSefazAsync) em maiusculo.
         var url = urlOverride ?? _options.UrlNfceAutorizacao;
+        var codigoUf = codigoUfOverride ?? _options.CodigoUF;
         const string wsdlNs   = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4";
         const string nfeNs    = "http://www.portalfiscal.inf.br/nfe";
         const string soapNs   = "http://www.w3.org/2003/05/soap-envelope";
@@ -1740,7 +1774,7 @@ public class NFeService : INFeService
         var header = soapDoc.CreateElement("soap12", "Header", soapNs);
         envelope.AppendChild(header);
         var cabec = soapDoc.CreateElement("nfeCabecMsg", wsdlNs);
-        var elCUF = soapDoc.CreateElement("cUF", wsdlNs); elCUF.InnerText = _options.CodigoUF;
+        var elCUF = soapDoc.CreateElement("cUF", wsdlNs); elCUF.InnerText = codigoUf;
         var elVer = soapDoc.CreateElement("versaoDados", wsdlNs); elVer.InnerText = "4.00";
         cabec.AppendChild(elCUF); cabec.AppendChild(elVer);
         header.AppendChild(cabec);

@@ -264,6 +264,15 @@ using (var startupScope = app.Services.CreateScope())
         await db.Database.ExecuteSqlRawAsync(@"
             ALTER TABLE produtos ALTER COLUMN csosn DROP NOT NULL;");
 
+        // Migration 015: codigo_municipio (IBGE) na empresa -- necessario pra
+        // resolver emissao por UF sem depender de config global fixa em PB
+        // (ver UfWebserviceConfig.cs). Backfill do tenant PB ja existente com
+        // Joao Pessoa, unico valor usado ate hoje.
+        await db.Database.ExecuteSqlRawAsync(@"
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS codigo_municipio VARCHAR(7);
+            UPDATE empresas SET codigo_municipio = '2507507'
+                WHERE uf = 'PB' AND codigo_municipio IS NULL;");
+
         Console.WriteLine("[STARTUP] Migrations manuais aplicadas.");
 
         // Seed: insere dados iniciais se a empresa de Orlando não existir

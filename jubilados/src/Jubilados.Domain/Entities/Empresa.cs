@@ -12,6 +12,9 @@ public class Empresa
     public string Complemento { get; set; } = string.Empty;
     public string Bairro { get; set; } = string.Empty;
     public string Municipio { get; set; } = string.Empty;
+    /// <summary>Código IBGE do município (7 dígitos, ex: 2507507 = João Pessoa/PB) --
+    /// usado no XML fiscal (cMunFG/cMun), nunca deduzido do nome de Municipio.</summary>
+    public string? CodigoMunicipio { get; set; }
     public string UF { get; set; } = string.Empty;
     public string CEP { get; set; } = string.Empty;
     public string Telefone { get; set; } = string.Empty;
