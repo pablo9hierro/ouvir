@@ -10,7 +10,13 @@ public class Produto
     public string NCM { get; set; } = string.Empty;    // Nomenclatura Comum do Mercosul
     public string CFOP { get; set; } = string.Empty;   // Código Fiscal de Operações
     public string CST { get; set; } = string.Empty;    // Código de Situação Tributária
-    public string CSOSN { get; set; } = string.Empty;  // Simples Nacional
+    // Nullable: produto de empresa fora do Simples Nacional (CRT != 1) usa CST,
+    // nunca CSOSN -- string nao-anulavel fazia o [ApiController] do
+    // ProdutoController rejeitar qualquer PUT com csosn=null como "CSOSN field
+    // is required", mesmo pra empresas que corretamente nao preenchem CSOSN.
+    // Coluna Postgres ja aceita NULL (ProdutoConfiguration nunca marcou
+    // IsRequired pra CSOSN); so a entidade C# estava incorreta.
+    public string? CSOSN { get; set; }
     public string CEST { get; set; } = string.Empty;   // Código Especificador Substituição Tributária
     public string Unidade { get; set; } = "UN";
     /// <summary>Origem da mercadoria (grupo ICMS): 0=Nacional, 1-8=conforme tabela oficial (importado etc).</summary>
