@@ -671,6 +671,44 @@ histórico real: um erro de URL da NFC-e de PB (domínio genérico SVRS em vez d
 oficial `sefaz.pb.gov.br`) derrubou toda emissão silenciosamente até ser testado
 com uma empresa real em homologação.
 
+### Regras de negócio específicas por estado (além da URL)
+
+Levantamento pente-fino em documentação oficial (decretos/portarias/instruções
+normativas de cada SEFAZ), pra além de config de webservice. Nenhum dos 11
+estados tem regra "emissão simultânea obrigatória ao pagamento" (tipo Goiás/
+RS/MT/CE) — a peça mais próxima disso é nacional, não por estado: ver seção
+"Grupo `<card>`" abaixo.
+
+| UF | Regra confirmada | Fonte |
+|----|-------------------|-------|
+| AC | Limiar de identificação: **R$ 10.000** | Decreto 7.668/2021, sefaz.ac.gov.br |
+| PB | Decreto 43.077/2022 exige integração TEF/POS↔NFC-e; limiar R$500 | sefaz.pb.gov.br |
+| AL | Contingência offline com prazo até **168h** (EPEC), mais generoso que o padrão de 24h | sefaz.al.gov.br/nise/faq |
+| DF | Cancelamento de NFC-e emitida em contingência tem prazo de **168h** (vs. 30min do cancelamento normal) | Portaria SEEC 227/2023 |
+| PA | Cancelamento possivelmente ainda em **24h** (não confirmado se aderiu ao padrão nacional de 30min pós-2018) — **verificar antes de assumir 30min** | IN SEFA 11/2014 (via LegisWeb, não fonte primária) |
+| RO | Mínimo **20% dos PDVs** de cada estabelecimento devem emitir exclusivamente NFC-e; MEI dispensado da obrigatoriedade | IN 003/2014/GAB/CRE |
+| SC | Regras específicas de contingência pra postos de combustível (totalização diária por bico antes da 1ª emissão do dia) | Ato DIAT 38/2020 |
+| SE | CCe tem prazo de 5 anos, mas não pode corrigir valores/impostos/data/numeração; limiar R$10.000 (fonte de 2013, não confirmado se segue vigente) | Decreto 29108/2013 |
+| TO | Se cancelamento pós-contingência não for transmitido em 30min, precisa emitir NF-e de ajuste (modelo 55) referenciando a NFC-e original | Portaria SEFAZ 1328/2019, Art. 6º-C |
+
+**Não confirmado / precisa validação antes de virar regra de sistema:** limiar
+de RO (nenhuma norma estadual encontrada), limiar exato de TO (R$2.000 na
+portaria primária vs. R$3.000 em fontes secundárias não confirmadas), se AL
+mudou algo com a IN SEF 60/2026 (revogação não lida na íntegra).
+
+### Grupo `<card>` (NT 2025.001, rejeição 391/392)
+
+Pagamento cartão (tPag 03/04) ou PIX dinâmico integrado (tPag 17) pode exigir
+o grupo `<card>` (CNPJ da credenciadora, bandeira, código de autorização)
+dentro de `<pag><detPag>` — **facultativo por UF, cada SEFAZ ativa quando
+quer, sem aviso público centralizado**. Confirmado ativo em PB desde 2024
+(cartão) e set/2025 (PIX dinâmico); não confirmado pros outros 10 estados
+(busca não achou nada, incluindo o link oficial da ENCAT quebrado no
+momento da pesquisa). Decisão: montar `CardGroupBuilder.Montar()`
+(`src/Jubilados.Infrastructure/Services/CardGroupBuilder.cs`) sempre que o
+dado existir, independente da UF — custo baixo, evita risco de rejeição
+silenciosa em qualquer estado que ative sem aviso.
+
 ---
 
 ## 🔒 SEGURANÇA
