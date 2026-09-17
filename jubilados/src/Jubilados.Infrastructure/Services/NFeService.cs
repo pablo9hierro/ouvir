@@ -1562,35 +1562,68 @@ public class NFeService : INFeService
             sb.AppendLine("        <indTot>1</indTot>");
             sb.AppendLine("      </prod>");
             sb.AppendLine("      <imposto>");
-            var csosnValidos2 = new HashSet<string>{"101","102","103","201","202","203","300","400","500","900"};
-            var csosnParsed2 = !string.IsNullOrEmpty(produto.CSOSN?.Trim()) ? produto.CSOSN!.Trim().PadLeft(3,'0') : "102";
-            var csosnFinal = csosnValidos2.Contains(csosnParsed2) ? csosnParsed2 : "102";
-            if (csosnFinal == "500")
+            // Decide grupo de ICMS: Simples Nacional (CSOSN) ou Regime Normal (CST) --
+            // igual ao fluxo NFe (mod=55) acima. Antes disto, NFC-e SEMPRE montava
+            // CSOSN (com default "102"!) ignorando CRT/CST -- SEFAZ rejeita com
+            // cStat 591 "Informado CSOSN para emissor que nao e do Simples Nacional"
+            // pra qualquer empresa Lucro Presumido/Real.
+            var csosn2 = produto.CSOSN?.Trim();
+            var cst2   = produto.CST?.Trim();
+            if (empresa.CRT == 1)
             {
-                sb.AppendLine("        <ICMS><ICMSSN500>");
-                sb.AppendLine($"          <orig>{produto.Origem}</orig>");
-                sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
-                sb.AppendLine("          <vBCSTRet>0.00</vBCSTRet><pST>0.00</pST><vICMSSTRet>0.00</vICMSSTRet>");
-                sb.AppendLine("        </ICMSSN500></ICMS>");
-            }
-            else if (csosnFinal == "201" || csosnFinal == "202" || csosnFinal == "203")
-            {
-                sb.AppendLine("        <ICMS><ICMSSN202>");
-                sb.AppendLine($"          <orig>{produto.Origem}</orig>");
-                sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
-                sb.AppendLine("          <modBCST>4</modBCST>");
-                sb.AppendLine("          <pMVAST>0.00</pMVAST><pRedBCST>0.00</pRedBCST>");
-                sb.AppendLine("          <vBCST>0.00</vBCST><pICMSST>0.00</pICMSST><vICMSST>0.00</vICMSST>");
-                sb.AppendLine("          <vBCFCPST>0.00</vBCFCPST><pFCPST>0.00</pFCPST><vFCPST>0.00</vFCPST>");
-                sb.AppendLine("        </ICMSSN202></ICMS>");
+                var csosnValidos2 = new HashSet<string>{"101","102","103","201","202","203","300","400","500","900"};
+                var csosnParsed2 = !string.IsNullOrEmpty(csosn2) ? csosn2.PadLeft(3, '0') : "102";
+                var csosnFinal = csosnValidos2.Contains(csosnParsed2) ? csosnParsed2 : "102";
+                if (csosnFinal == "500")
+                {
+                    sb.AppendLine("        <ICMS><ICMSSN500>");
+                    sb.AppendLine($"          <orig>{produto.Origem}</orig>");
+                    sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
+                    sb.AppendLine("          <vBCSTRet>0.00</vBCSTRet><pST>0.00</pST><vICMSSTRet>0.00</vICMSSTRet>");
+                    sb.AppendLine("        </ICMSSN500></ICMS>");
+                }
+                else if (csosnFinal == "201" || csosnFinal == "202" || csosnFinal == "203")
+                {
+                    sb.AppendLine("        <ICMS><ICMSSN202>");
+                    sb.AppendLine($"          <orig>{produto.Origem}</orig>");
+                    sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
+                    sb.AppendLine("          <modBCST>4</modBCST>");
+                    sb.AppendLine("          <pMVAST>0.00</pMVAST><pRedBCST>0.00</pRedBCST>");
+                    sb.AppendLine("          <vBCST>0.00</vBCST><pICMSST>0.00</pICMSST><vICMSST>0.00</vICMSST>");
+                    sb.AppendLine("          <vBCFCPST>0.00</vBCFCPST><pFCPST>0.00</pFCPST><vFCPST>0.00</vFCPST>");
+                    sb.AppendLine("        </ICMSSN202></ICMS>");
+                }
+                else
+                {
+                    // CSOSN 102, 103, 300, 400, 900 → ICMSSN102
+                    sb.AppendLine("        <ICMS><ICMSSN102>");
+                    sb.AppendLine($"          <orig>{produto.Origem}</orig>");
+                    sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
+                    sb.AppendLine("        </ICMSSN102></ICMS>");
+                }
             }
             else
             {
-                // CSOSN 102, 103, 300, 400, 900 → ICMSSN102
-                sb.AppendLine("        <ICMS><ICMSSN102>");
-                sb.AppendLine($"          <orig>{produto.Origem}</orig>");
-                sb.AppendLine($"          <CSOSN>{csosnFinal}</CSOSN>");
-                sb.AppendLine("        </ICMSSN102></ICMS>");
+                // Regime Normal (Lucro Presumido ou Real): usa CST
+                var cstFinal2 = !string.IsNullOrEmpty(cst2) ? cst2.PadLeft(2, '0') : "40";
+                if (item.AliquotaICMS > 0 && cstFinal2 != "40" && cstFinal2 != "41" && cstFinal2 != "50")
+                {
+                    sb.AppendLine("        <ICMS><ICMS00>");
+                    sb.AppendLine($"          <orig>{produto.Origem}</orig>");
+                    sb.AppendLine($"          <CST>{cstFinal2}</CST>");
+                    sb.AppendLine("          <modBC>3</modBC>");
+                    sb.AppendLine($"          <vBC>{item.BaseICMS:F2}</vBC>");
+                    sb.AppendLine($"          <pICMS>{item.AliquotaICMS:F2}</pICMS>");
+                    sb.AppendLine($"          <vICMS>{item.ValorICMS:F2}</vICMS>");
+                    sb.AppendLine("        </ICMS00></ICMS>");
+                }
+                else
+                {
+                    sb.AppendLine("        <ICMS><ICMS40>");
+                    sb.AppendLine($"          <orig>{produto.Origem}</orig>");
+                    sb.AppendLine($"          <CST>{cstFinal2}</CST>");
+                    sb.AppendLine("        </ICMS40></ICMS>");
+                }
             }
             sb.AppendLine("        <PIS><PISNT><CST>07</CST></PISNT></PIS>");
             sb.AppendLine("        <COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS>");
