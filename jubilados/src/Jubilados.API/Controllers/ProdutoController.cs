@@ -347,8 +347,14 @@ public class ProdutoController : ControllerBase
         produto.Descricao   = dto.Descricao;
         produto.NCM         = dto.NCM.Trim();
         produto.CFOP        = dto.CFOP.Trim();
-        produto.CST         = dto.CST ?? produto.CST;
-        produto.CSOSN       = dto.CSOSN ?? produto.CSOSN;
+        // CST e CSOSN sao mutuamente exclusivos (dependem do CRT da empresa) --
+        // "dto.X ?? produto.X" nunca deixava limpar um dos dois quando o
+        // lojista trocava de regime, porque um envio com valor null era
+        // tratado como "nao informado, mantem o antigo" em vez de "e pra
+        // ficar vazio mesmo". PUT e substituicao completa, entao usa o valor
+        // enviado direto, mesmo quando null.
+        produto.CST         = dto.CST;
+        produto.CSOSN       = dto.CSOSN;
         produto.EAN         = string.IsNullOrWhiteSpace(dto.EAN) ? produto.EAN : dto.EAN;
         produto.CEST        = dto.CEST ?? produto.CEST;
         produto.Unidade     = string.IsNullOrWhiteSpace(dto.Unidade) ? produto.Unidade : dto.Unidade;
