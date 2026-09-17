@@ -1643,11 +1643,16 @@ public class NFeService : INFeService
     private async Task<(string cStat, string xMotivo, string protocolo)> EnviarNFCeParaSefazAsync(
         string xmlAssinado, X509Certificate2 certificado, CancellationToken ct, string? urlOverride = null)
     {
+        // Mesmo webservice/WSDL da NFe (mod=55) -- SVRS nao tem um "NfceAutorizacao4"
+        // separado, o mod=65 dentro do XML e que diferencia NFC-e. Namespace/soapAction
+        // com "Nfce" (minusculo errado) faz o servidor devolver SOAP Fault "action not
+        // recognized" mesmo com a URL certa -- tem que ser exatamente igual ao fluxo
+        // NFe (EnviarParaSefazAsync) em maiusculo.
         var url = urlOverride ?? _options.UrlNfceAutorizacao;
-        const string wsdlNs   = "http://www.portalfiscal.inf.br/nfe/wsdl/NfceAutorizacao4";
+        const string wsdlNs   = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4";
         const string nfeNs    = "http://www.portalfiscal.inf.br/nfe";
         const string soapNs   = "http://www.w3.org/2003/05/soap-envelope";
-        const string soapAction = "http://www.portalfiscal.inf.br/nfe/wsdl/NfceAutorizacao4/nfceAutorizacaoLote";
+        const string soapAction = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeAutorizacao4/nfeAutorizacaoLote";
 
         var idLote = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var soapDoc = new XmlDocument();
