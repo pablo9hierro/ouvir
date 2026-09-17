@@ -72,11 +72,18 @@ public class NFeOptions
     /// <summary>URL WS SVRS NFC-e produção — Autorização</summary>
     public string UrlNfceAutorizacaoProd { get; set; } = "https://nfce.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx";
 
-    /// <summary>URL base para consulta QR Code NFC-e (homologação)</summary>
-    public string UrlNfceQrCodeHom { get; set; } = "https://nfce-homologacao.svrs.rs.gov.br/consulta.aspx";
+    /// <summary>URL base para consulta QR Code NFC-e (homologação). SEFAZ valida
+    /// que essa URL bate com o site OFICIAL DA UF do emitente (cStat 395
+    /// "Endereço do site da UF da consulta via QR-Code diverge do previsto"),
+    /// não com o domínio genérico da SVRS (que é só o webservice de
+    /// autorização, autenticação, compartilhado entre UFs) -- confirmado
+    /// rejeitando em teste real de emissão. Fixo pra PB (única UF hoje,
+    /// CodigoUF="25" default) -- trocar pra por-UF se um dia atender outro
+    /// estado.</summary>
+    public string UrlNfceQrCodeHom { get; set; } = "http://www.sefaz.pb.gov.br/nfcehom";
 
-    /// <summary>URL base para consulta QR Code NFC-e (produção)</summary>
-    public string UrlNfceQrCodeProd { get; set; } = "https://nfce.svrs.rs.gov.br/consulta.aspx";
+    /// <summary>URL base para consulta QR Code NFC-e (produção) -- ver nota acima.</summary>
+    public string UrlNfceQrCodeProd { get; set; } = "http://www.sefaz.pb.gov.br/nfce";
 
     public bool IsHomologacao => Ambiente == "2";
 
