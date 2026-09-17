@@ -254,6 +254,16 @@ using (var startupScope = app.Services.CreateScope())
         await db.Database.ExecuteSqlRawAsync(@"
             ALTER TABLE produtos ADD COLUMN IF NOT EXISTS origem CHAR(1) NOT NULL DEFAULT '0';");
 
+        // Migration 014: csosn nunca deveria ter sido NOT NULL -- CST e CSOSN
+        // sao mutuamente exclusivos (dependem do CRT da empresa), coluna
+        // csosn tinha NOT NULL no banco (drift do schema em relacao a
+        // entidade C#, que ja tratava csosn como opcional em código antes
+        // desta migration existir) -- bloqueava salvar produto de empresa
+        // fora do Simples Nacional sem CSOSN, confirmado testando emissao
+        // real de NFC-e em homologacao.
+        await db.Database.ExecuteSqlRawAsync(@"
+            ALTER TABLE produtos ALTER COLUMN csosn DROP NOT NULL;");
+
         Console.WriteLine("[STARTUP] Migrations manuais aplicadas.");
 
         // Seed: insere dados iniciais se a empresa de Orlando não existir
